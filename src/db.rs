@@ -49,17 +49,6 @@ pub fn delete_post(board_name: &String, post_no: i64) -> anyhow::Result<usize>{
         .execute(&connection)?;
     Ok(res)
 }
-pub fn _load_posts() {
-    use crate::schema::posts::dsl::*;
-
-    let connection = establish_connection();
-    let results = posts.filter(resto.eq(0)).load::<Post>(&connection).expect("Error loading posts");
-
-    for post in results {
-        println!("{:?}", post);
-        println!("----------\n");
-    }
-}
 
 pub fn image_exists(img_md5: &String) -> anyhow::Result<bool>{
     use crate::schema::images::dsl::*;
