@@ -1,11 +1,10 @@
 use diesel::prelude::*;
-use diesel::debug_query;
-use diesel::pg::Pg;
+// use diesel::debug_query;
 use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use std::env;
 
-use crate::models::{Post, Image};
+use crate::models::{Post, Image, PostUpdate};
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
@@ -17,28 +16,38 @@ pub fn establish_connection() -> PgConnection {
 }
 
 pub fn insert_posts(entries: Vec<Post>) -> anyhow::Result<usize> {
-    use crate::schema::posts::dsl::*;
     use crate::schema::posts::table;
     let connection = establish_connection();
     
-    let query = diesel::insert_into(table)
+    let res = diesel::insert_into(table)
         .values(&entries)
-        .on_conflict((board, no))
-        .do_update().set(
-            (
-                closed.eq(closed),
-                sticky.eq(sticky),
-                filedeleted.eq(filedeleted),
-                replies.eq(replies),
-                images.eq(images),
-                bumplimit.eq(bumplimit),
-                imagelimit.eq(imagelimit),
-                unique_ips.eq(unique_ips),
-                archived.eq(archived),
-            )
-        );
-    println!("{}", debug_query::<Pg, _>(&query));
-    Ok(query.execute(&connection)?)
+        .on_conflict_do_nothing()
+        .execute(&connection)?;
+    
+    for entry in &entries {
+        update_post(entry)?;
+    }
+    Ok(res)
+}
+pub fn update_post(entry: &Post) -> anyhow::Result<usize> {
+    use crate::schema::posts::dsl::*;
+    let connection = establish_connection();
+    let target = posts.filter(board.eq(&entry.board)).filter(no.eq(&entry.no));
+    let res = diesel::update(target).set(&PostUpdate::from(entry)).execute(&connection)?;
+    Ok(res)
+}
+pub fn get_post(board_name: &String, post_no: i64) -> anyhow::Result<Option<Post>> {
+    use crate::schema::posts::dsl::*;
+    let connection = establish_connection();
+    let post = posts.filter(board.eq(board_name)).filter(no.eq(&post_no)).first::<Post>(&connection).optional()?;
+    Ok(post)
+}
+pub fn delete_post(board_name: &String, post_no: i64) -> anyhow::Result<usize>{
+    use crate::schema::posts::dsl::*;
+    let connection = establish_connection();
+    let res = diesel::delete(posts.filter(board.eq(board_name)).filter(no.eq(&post_no)))
+        .execute(&connection)?;
+    Ok(res)
 }
 pub fn _load_posts() {
     use crate::schema::posts::dsl::*;
@@ -89,30 +98,54 @@ fn image_operations() {
 }
 
 #[test]
-fn thread_operations() {
+fn insert_upsert_test() {
     let mut post1 = Post::default();
-    post1.board = "biz".to_string();
+    post1.board = "test".to_string();
     post1.no = 10;
-    let mut post2 = Post::default();
-    post2.board = "biz".to_string();
-    post2.no = 12;
-    post1.images = 1;
-    post2.images = 2;
-    insert_posts(vec![post1, post2]).unwrap();
-}
-#[test]
-fn thread_operations2() {
-    let mut post1 = Post::default();
-    post1.board = "biz".to_string();
-    post1.no = 10;
-    let mut post2 = Post::default();
-    post2.board = "biz".to_string();
-    post2.no = 12;
+    post1.time = 1337;
     post1.images = 77;
-    post2.images = 88;
+    let mut post2 = Post::default();
+    post2.board = "test".to_string();
+    post2.no = 11;
+    post2.time = 1559;
+    post2.images = 55;
     let mut post3 = Post::default();
-    post3.board = "biz".to_string();
-    post3.no = 15;
-    post3.time = 1556;
-    insert_posts(vec![post1, post2, post3]).unwrap();
+    post3.board = "test".to_string();
+    post3.no = 12;
+    post3.time = 4444;
+    assert_eq!(3, insert_posts(vec![post1.clone(), post2.clone(), post3.clone()]).unwrap());
+    post3.time = 5555;
+    post2.images = 2222;
+    post1.images = 1111;
+    assert_eq!(0, insert_posts(vec![post1.clone(), post2.clone(), post3.clone()]).unwrap());
+
+    assert_eq!(1111, get_post(&post1.board, post1.no).unwrap().unwrap().images);
+    assert_eq!(2222, get_post(&post2.board, post2.no).unwrap().unwrap().images);
+    assert_eq!(4444, get_post(&post3.board, post3.no).unwrap().unwrap().time);
+    
+    assert_eq!(1, delete_post(&post1.board, post1.no).unwrap());
+    assert_eq!(1, delete_post(&post2.board, post2.no).unwrap());
+    assert_eq!(1, delete_post(&post3.board, post3.no).unwrap());
+}
+
+#[test]
+fn update_test(){
+    let mut post1 = Post::default();
+    post1.board = "test".to_string();
+    post1.no = 10;
+    insert_posts(vec![post1.clone()]).unwrap();
+    post1.images = 55;
+    assert_eq!(1, update_post(&post1).unwrap());
+    assert_eq!(55, get_post(&post1.board, post1.no).unwrap().unwrap().images);
+    post1.time = 500;
+    assert_eq!(1, update_post(&post1).unwrap());
+    assert_eq!(0, get_post(&post1.board, post1.no).unwrap().unwrap().time);
+    post1.unique_ips = 30;
+    assert_eq!(1, update_post(&post1).unwrap());
+    assert_eq!(30, get_post(&post1.board, post1.no).unwrap().unwrap().unique_ips);
+    post1.unique_ips = 0;
+    assert_eq!(1, update_post(&post1).unwrap());
+    assert_eq!(30, get_post(&post1.board, post1.no).unwrap().unwrap().unique_ips);
+    assert_eq!(1, delete_post(&post1.board, post1.no).unwrap());
+    assert_eq!(None, get_post(&post1.board, post1.no).unwrap());
 }

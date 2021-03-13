@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::schema::posts;
 use crate::schema::images;
 
-#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset)]
+#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset, Eq, PartialEq)]
 #[table_name="posts"]
 #[primary_key((board, no))] 
 pub struct Post {
@@ -82,6 +82,43 @@ pub struct Post {
     pub archived: i64,
     #[serde(default)]
     pub archived_on: i64
+}
+#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset)]
+#[table_name="posts"]
+#[primary_key((board, no))] 
+pub struct PostUpdate {
+    pub board: String,
+    pub no: i64,
+    pub closed: i64,
+    pub sticky: i64,
+    pub filedeleted: i64,
+    pub replies: i64,
+    pub images: i64,
+    pub bumplimit: i64,
+    pub imagelimit: i64,
+    pub unique_ips: Option<i64>,
+    pub archived: i64,
+}
+impl From<&Post> for PostUpdate {
+    fn from(post: &Post) -> Self {
+        let unique_ips = match post.unique_ips > 0 {
+            true => Some(post.unique_ips),
+            false => None // Do not take update if update is 0
+        };
+        Self {
+            board: post.board.clone(),
+            no: post.no,
+            closed: post.closed,
+            sticky: post.sticky,
+            filedeleted: post.filedeleted,
+            replies: post.replies,
+            images: post.images,
+            bumplimit: post.bumplimit,
+            imagelimit: post.imagelimit,
+            unique_ips,
+            archived: post.archived,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
