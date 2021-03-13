@@ -1,12 +1,14 @@
 use std::time::Duration;
 
-use diesel::{Queryable, Insertable};
+use diesel::{Queryable, Insertable, AsChangeset};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::posts;
+use crate::schema::images;
 
-#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]
+#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset)]
 #[table_name="posts"]
+#[primary_key((board, no))] 
 pub struct Post {
     #[serde(default)]
     pub board: String,
@@ -107,9 +109,15 @@ pub struct ImageInfo {
     pub md5: String
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Queryable)]
 pub struct Board {
     pub name: String,
     pub wait_time: Duration,
     pub last_modified: i64
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]
+#[table_name="images"]
+pub struct Image {
+    pub md5: String
 }

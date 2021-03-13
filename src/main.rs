@@ -25,5 +25,9 @@ async fn main() {
     env_logger::init();
     let client = Archiver::new(HttpClient::new(nonzero!(120u32), nonzero!(10u32), 200, 800, 600));
 
-    client.run_archive_cycle("po".to_string(), Duration::from_secs(5)).await;
+    let h = client.run_archive_cycle("po".to_string(), Duration::from_secs(5));
+    h.await;
+    loop {
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
 }

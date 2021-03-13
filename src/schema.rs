@@ -1,4 +1,10 @@
 table! {
+    images (md5) {
+        md5 -> Text,
+    }
+}
+
+table! {
     posts (board, no) {
         board -> Varchar,
         no -> Int8,
@@ -40,3 +46,8 @@ table! {
         archived_on -> Int8,
     }
 }
+
+allow_tables_to_appear_in_same_query!(
+    images,
+    posts,
+);

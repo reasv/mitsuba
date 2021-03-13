@@ -1,0 +1,3 @@
+CREATE TABLE images (
+  md5 TEXT NOT NULL PRIMARY KEY
+)

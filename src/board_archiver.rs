@@ -2,11 +2,15 @@
 use std::time::Duration;
 use std::sync::Arc;
 
+#[allow(unused_imports)]
+use log::{info, warn, error, debug};
+
+use tokio::task::block_in_place;
+
 use crate::http::HttpClient;
 use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo};
 
-#[allow(unused_imports)]
-use log::{info, warn, error, debug};
+
 
 use crate::models::Post;
 use crate::db;
@@ -97,7 +101,8 @@ impl Archiver {
                             return (i.last_modified, None)
                         }
                     };
-                    match tokio::task::block_in_place(|| db::insert_posts(thread.posts.clone())) {
+                    let posts = thread.posts.clone().into_iter().map(|mut post|{post.board = b.clone(); post}).collect();
+                    match block_in_place(|| db::insert_posts(posts)) {
                         Ok(_) => (),
                         Err(e) => {
                             error!("Failed to insert thread /{}/{} into database: {}", b, i.no, e);
@@ -115,11 +120,13 @@ impl Archiver {
             
             match thread {
                 Some(t) => { // Thread fetched successfully
+                    // Collect image data
                     images.append(&mut t.posts.iter().filter_map(|p| self.get_post_image_info(&board, p)).collect::<Vec<ImageInfo>>());
                 },
                 None => { // Thread not fetched successfully
+
+                    // next time resume archiving from before earliest failed thread
                     if current_last_change > last_modified {
-                        // next time resume archiving from before earliest failed thread
                         current_last_change = last_modified - 1;
                     }
                 }
@@ -130,6 +137,8 @@ impl Archiver {
         current_last_change
     }
     pub async fn archive_images(&self, images: Vec<ImageInfo>) {
+        let missing_images = images.into_iter().filter(|i| block_in_place(|| !db::image_exists(&i.md5).unwrap_or_default())).collect::<Vec<ImageInfo>>();
+        //println!("{:?}", missing_images);
         // Todo: fetch images
     }
     pub async fn run_archive_cycle(&self, board: String, wait_time: Duration) -> tokio::task::JoinHandle<()>{
