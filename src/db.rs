@@ -112,6 +112,14 @@ impl DBClient {
             .execute(&connection)?;
         Ok(res)
     }
+    pub fn image_tim_to_md5(&self,board_name: &String, image_tim: i64) -> anyhow::Result<Option<String>> {
+        use crate::schema::posts::dsl::*;
+        let connection = self.pool.get()?;
+        match posts.filter(tim.eq(image_tim)).filter(board.eq(board_name)).first::<Post>(&connection).optional()? {
+            Some(p) => Ok(Some(p.md5)),
+            None => Ok(None)
+        }
+    }
     pub fn insert_board(&self, board: &Board) -> anyhow::Result<usize> {
         use crate::schema::boards::table;
         use crate::schema::boards::dsl::*;
