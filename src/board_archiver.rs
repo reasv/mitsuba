@@ -63,7 +63,7 @@ impl Archiver {
             }
         };
         let filename = format!("{}{}", md5_b32, post.ext);
-        let thumbnail_filename = format!("{}s.jpg", md5_b32);
+        let thumbnail_filename = format!("{}.jpg", md5_b32);
         Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone()})
     }
 
