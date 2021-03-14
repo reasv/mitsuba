@@ -64,7 +64,7 @@ impl Archiver {
         };
         let filename = format!("{}{}", md5_b32, post.ext);
         let thumbnail_filename = format!("{}.jpg", md5_b32);
-        Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone()})
+        Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone(), md5_base32: md5_b32})
     }
 
     pub async fn get_thread(&self, board: &String, tid: &String) -> anyhow::Result<Thread> {
@@ -162,7 +162,8 @@ impl Archiver {
             false => false
         };
         
-        match block_in_place(|| db::insert_image(&Image{md5: image_info.md5.clone(), thumbnail: thumb_success, full_image: full_success})) {
+        match block_in_place(|| db::insert_image(&Image{md5: image_info.md5.clone(), 
+            thumbnail: thumb_success, full_image: full_success, md5_base32: image_info.md5_base32.clone()})) {
             Ok(_) => (),
             Err(e) => {
                 error!("Failed to insert image {} into database: {}", image_info.md5, e);

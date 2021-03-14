@@ -11,6 +11,7 @@ table! {
 table! {
     images (md5) {
         md5 -> Text,
+        md5_base32 -> Text,
         thumbnail -> Bool,
         full_image -> Bool,
     }

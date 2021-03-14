@@ -146,7 +146,8 @@ pub struct ImageInfo {
     pub thumbnail_url: String,
     pub filename: String,
     pub thumbnail_filename: String,
-    pub md5: String
+    pub md5: String,
+    pub md5_base32: String
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]
@@ -163,6 +164,7 @@ pub struct Board {
 #[table_name="images"]
 pub struct Image {
     pub md5: String,
+    pub md5_base32: String,
     pub thumbnail: bool,
     pub full_image: bool
 }

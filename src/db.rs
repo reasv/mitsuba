@@ -118,7 +118,7 @@ pub fn get_all_boards() -> anyhow::Result<Vec<Board>> {
 fn image_operations() {
     let img_md5 = "test".to_string();
     assert_eq!(false, image_exists(&img_md5).unwrap());
-    assert_eq!(1, insert_image(&Image{ md5: img_md5.clone(), thumbnail: true, full_image: true}).unwrap());
+    assert_eq!(1, insert_image(&Image{ md5: img_md5.clone(), thumbnail: true, full_image: true, md5_base32:"test".to_string()}).unwrap());
     assert_eq!(true, image_exists(&img_md5).unwrap());
     assert_eq!(1, delete_image(&img_md5).unwrap());
     assert_eq!(false, image_exists(&img_md5).unwrap());
