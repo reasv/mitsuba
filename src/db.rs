@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-// use diesel::debug_query;
 use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use std::env;

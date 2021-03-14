@@ -8,11 +8,11 @@ use log::{info, warn, error, debug};
 
 use tokio::task::block_in_place;
 use tokio::fs::create_dir_all;
+use base64::decode;
+use base32::{Alphabet, encode};
 
 use crate::http::HttpClient;
 use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board};
-
-
 
 use crate::models::Post;
 use crate::db;
@@ -22,6 +22,11 @@ pub fn get_board_page_api_url(board: &String) -> String {
 }
 pub fn get_thread_api_url(board: &String, tid: &String) -> String {
     format!("https://a.4cdn.org/{}/thread/{}.json", board, tid)
+}
+fn base64_to_32(b64: String) -> anyhow::Result<String> {
+    let binary = decode(b64)?;
+    let s = encode(Alphabet::RFC4648{padding: false}, binary.as_slice());
+    Ok(s)
 }
 
 #[derive(Clone)]
@@ -50,8 +55,15 @@ impl Archiver {
         }
         let url = format!("https://i.4cdn.org/{}/{}{}", board, post.tim, post.ext);
         let thumbnail_url = format!("https://i.4cdn.org/{}/{}s.jpg", board, post.tim);
-        let filename = format!("{}{}", post.tim, post.ext);
-        let thumbnail_filename = format!("{}s.jpg", post.tim);
+        let md5_b32 = match base64_to_32(post.md5.clone()) {
+            Ok(b32) => b32,
+            Err(e) => {
+                error!("Error converting image to base32: {}", e);
+                return None
+            }
+        };
+        let filename = format!("{}{}", md5_b32, post.ext);
+        let thumbnail_filename = format!("{}s.jpg", md5_b32);
         Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone()})
     }
 
