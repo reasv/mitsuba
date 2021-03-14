@@ -177,7 +177,7 @@ pub struct BoardInfo {
     pub max_filesize: i64,
     pub max_webm_filesize: i64,
     pub max_comment_chars: i64,
-    pub max_web_duration: i64,
+    pub max_webm_duration: i64,
     pub bump_limit: i64,
     pub image_limit: i64,
     pub meta_description: String,
