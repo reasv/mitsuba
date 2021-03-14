@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::posts;
 use crate::schema::images;
+use crate::schema::boards;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset, Eq, PartialEq)]
 #[table_name="posts"]
@@ -148,11 +149,14 @@ pub struct ImageInfo {
     pub md5: String
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Queryable)]
+#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]
+#[table_name="boards"]
 pub struct Board {
     pub name: String,
-    pub wait_time: Duration,
-    pub last_modified: i64
+    pub wait_time: i64,
+    pub full_images: bool,
+    pub last_modified: i64,
+    pub archive: bool
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]

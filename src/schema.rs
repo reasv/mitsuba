@@ -1,4 +1,14 @@
 table! {
+    boards (name) {
+        name -> Text,
+        wait_time -> Int8,
+        full_images -> Bool,
+        last_modified -> Int8,
+        archive -> Bool,
+    }
+}
+
+table! {
     images (md5) {
         md5 -> Text,
         thumbnail -> Bool,
@@ -50,6 +60,7 @@ table! {
 }
 
 allow_tables_to_appear_in_same_query!(
+    boards,
     images,
     posts,
 );

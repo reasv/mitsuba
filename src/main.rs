@@ -15,9 +15,9 @@ pub mod schema;
 pub mod http;
 
 use board_archiver::{Archiver};
+use models::Board;
 use nonzero_ext::nonzero;
 use crate::http::HttpClient;
-
 
 #[tokio::main]
 async fn main() {
@@ -25,8 +25,9 @@ async fn main() {
     env_logger::init();
     let client = Archiver::new(HttpClient::new(nonzero!(120u32), nonzero!(10u32), 200, 800, 600));
 
-    let h = client.run_archive_cycle("po".to_string(), Duration::from_secs(5));
-    h.await;
+    client.add_board(Board{ name: "po".to_string(), wait_time: 10, full_images: true, last_modified: 0, archive: true}).await.unwrap();
+    
+    client.run_archivers().await.unwrap();
     loop {
         tokio::time::sleep(Duration::from_secs(5)).await;
     }

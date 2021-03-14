@@ -4,7 +4,7 @@ use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use std::env;
 
-use crate::models::{Post, Image, PostUpdate};
+use crate::models::{Post, Image, PostUpdate, Board};
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
@@ -74,6 +74,45 @@ pub fn delete_image(img_md5: &String) -> anyhow::Result<usize> {
         .execute(&connection)?;
     Ok(res)
 }
+pub fn insert_board(board: &Board) -> anyhow::Result<usize> {
+    use crate::schema::boards::table;
+    use crate::schema::boards::dsl::*;
+    let connection = establish_connection();
+    let res = diesel::insert_into(table)
+        .values(board)
+        .on_conflict(name)
+        .do_update().set(
+            (
+                wait_time.eq(board.wait_time),
+                full_images.eq(board.full_images),
+                last_modified.eq(board.last_modified)
+            )
+        )
+        .execute(&connection)?;
+    Ok(res)
+}
+pub fn delete_board(board_name: &String) -> anyhow::Result<usize> {
+    use crate::schema::boards::table;
+    use crate::schema::boards::dsl::*;
+    let connection = establish_connection();
+    let res = diesel::delete(
+        boards.filter(name.eq(board_name))
+        ).execute(&connection)?;
+    Ok(res)
+}
+pub fn get_board(board_name: &String) -> anyhow::Result<Option<Board>> {
+    use crate::schema::boards::dsl::*;
+    let connection = establish_connection();
+    let post = boards.filter(name.eq(board_name)).first::<Board>(&connection).optional()?;
+    Ok(post)
+}
+pub fn get_all_boards() -> anyhow::Result<Vec<Board>> {
+    use crate::schema::boards::dsl::*;
+    let connection = establish_connection();
+    let post = boards.load::<Board>(&connection)?;
+    Ok(post)
+}
+
 
 #[cfg(test)]
 #[test]
