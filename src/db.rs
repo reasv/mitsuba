@@ -80,7 +80,7 @@ pub fn delete_image(img_md5: &String) -> anyhow::Result<usize> {
 fn image_operations() {
     let img_md5 = "test".to_string();
     assert_eq!(false, image_exists(&img_md5).unwrap());
-    assert_eq!(1, insert_image(&Image{ md5: img_md5.clone() }).unwrap());
+    assert_eq!(1, insert_image(&Image{ md5: img_md5.clone(), thumbnail: true, full_image: true}).unwrap());
     assert_eq!(true, image_exists(&img_md5).unwrap());
     assert_eq!(1, delete_image(&img_md5).unwrap());
     assert_eq!(false, image_exists(&img_md5).unwrap());

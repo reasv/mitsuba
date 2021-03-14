@@ -1,4 +1,4 @@
-
+use std::path::Path;
 use std::time::Duration;
 use std::sync::Arc;
 
@@ -8,7 +8,7 @@ use log::{info, warn, error, debug};
 use tokio::task::block_in_place;
 
 use crate::http::HttpClient;
-use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo};
+use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image};
 
 
 
@@ -24,7 +24,7 @@ pub fn get_thread_api_url(board: &String, tid: &String) -> String {
 
 #[derive(Clone)]
 pub struct Archiver {
-    pub http_self: Arc<HttpClient>
+    pub http_client: Arc<HttpClient>
 }
 
 impl Default for Archiver {
@@ -36,23 +36,25 @@ impl Default for Archiver {
 impl Archiver {
     pub fn new(client: HttpClient) -> Archiver {
         Archiver {
-            http_self: Arc::new(client)
+            http_client: Arc::new(client)
         }
     }
     pub async fn get_board_pages(&self, board: &String) -> anyhow::Result<Vec<ThreadsPage>> {
-        self.http_self.fetch_json::<Vec<ThreadsPage>>(&get_board_page_api_url(board)).await
+        self.http_client.fetch_json::<Vec<ThreadsPage>>(&get_board_page_api_url(board)).await
     }
     pub fn get_post_image_info(&self, board: &String, post: &Post) -> Option<ImageInfo> {
         if post.tim == 0 {
             return None // no image
         }
         let url = format!("https://i.4cdn.org/{}/{}{}", board, post.tim, post.ext);
-        let filename = format!("{}{}", post.tim, post.ext);
-        Some(ImageInfo{url, filename, md5: post.md5.clone()})
+        let thumbnail_url = format!("https://i.4cdn.org/{}/{}s.jpg", board, post.tim);
+        let filename = format!("{}{}", post.md5, post.ext);
+        let thumbnail_filename = format!("{}s.jpg", post.md5);
+        Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone()})
     }
 
     pub async fn get_thread(&self, board: &String, tid: &String) -> anyhow::Result<Thread> {
-        match self.http_self.fetch_json::<Thread>(&get_thread_api_url(board, tid)).await {
+        match self.http_client.fetch_json::<Thread>(&get_thread_api_url(board, tid)).await {
             Ok(t) => Ok(t),
             Err(msg) => {
                 error!("Could not get thread /{}/{} (Error: {:?})", board, tid, msg);
@@ -136,10 +138,39 @@ impl Archiver {
 
         current_last_change
     }
+    pub async fn archive_image(&self, image_info: &ImageInfo, folder: &Path) -> (bool, bool) {
+        let thumb_success = self.http_client.download_file(&image_info.thumbnail_url, 
+            &folder.join("thumb").join(&image_info.thumbnail_filename)).await;
+
+        let full_success = self.http_client.download_file(&image_info.url, 
+            &folder.join("full").join(&image_info.filename)).await;
+        
+        match block_in_place(|| db::insert_image(&Image{md5: image_info.md5.clone(), thumbnail: thumb_success, full_image: full_success})) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Failed to insert image {} into database: {}", image_info.md5, e);
+            }
+        };
+        info!("Processed image {} successfully", image_info.md5);
+        (thumb_success, full_success)
+    }
     pub async fn archive_images(&self, images: Vec<ImageInfo>) {
         let missing_images = images.into_iter().filter(|i| block_in_place(|| !db::image_exists(&i.md5).unwrap_or_default())).collect::<Vec<ImageInfo>>();
-        //println!("{:?}", missing_images);
-        // Todo: fetch images
+        info!("Found {} missing images. Scheduling for archival...", missing_images.len());
+        let image_folder = Path::new("data/images");
+        let mut handles = Vec::new();
+        for info in missing_images {
+            let c = self.clone();
+            handles.push(tokio::task::spawn(
+                async move {
+                    c.archive_image(&info.clone(), image_folder.clone()).await
+                }
+            ))
+        }
+        for handle in handles {
+            handle.await.unwrap_or_default();
+        }
+        info!("Finished fetching images.");
     }
     pub async fn run_archive_cycle(&self, board: String, wait_time: Duration) -> tokio::task::JoinHandle<()>{
         let c = self.clone();

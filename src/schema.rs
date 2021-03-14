@@ -1,6 +1,8 @@
 table! {
     images (md5) {
         md5 -> Text,
+        thumbnail -> Bool,
+        full_image -> Bool,
     }
 }
 

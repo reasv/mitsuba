@@ -142,7 +142,9 @@ pub struct ThreadInfo {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ImageInfo {
     pub url: String,
+    pub thumbnail_url: String,
     pub filename: String,
+    pub thumbnail_filename: String,
     pub md5: String
 }
 
@@ -156,5 +158,7 @@ pub struct Board {
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]
 #[table_name="images"]
 pub struct Image {
-    pub md5: String
+    pub md5: String,
+    pub thumbnail: bool,
+    pub full_image: bool
 }
