@@ -166,3 +166,55 @@ pub struct Image {
     pub thumbnail: bool,
     pub full_image: bool
 }
+// From /boards.json endpoint
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
+pub struct BoardInfo {
+    pub board: String,
+    pub title: String,
+    pub ws_board: i64,
+    pub per_page: i64,
+    pub pages: i64,
+    pub max_filesize: i64,
+    pub max_webm_filesize: i64,
+    pub max_comment_chars: i64,
+    pub max_web_duration: i64,
+    pub bump_limit: i64,
+    pub image_limit: i64,
+    pub meta_description: String,
+    #[serde(default)]
+    pub spoilers: i64,
+    #[serde(default)]
+    pub custom_spoilers: i64,
+    #[serde(default)]
+    pub is_archived: i64,
+    #[serde(default)]
+    pub troll_flags: i64,
+    #[serde(default)]
+    pub country_flags: i64,
+    #[serde(default)]
+    pub user_ids: i64,
+    #[serde(default)]
+    pub oekaki: i64,
+    #[serde(default)]
+    pub sjis_tags: i64,
+    #[serde(default)]
+    pub code_tags: i64,
+    #[serde(default)]
+    pub math_tags: i64,
+    #[serde(default)]
+    pub text_only: i64,
+    #[serde(default)]
+    pub forced_anon: i64,
+    #[serde(default)]
+    pub webm_audio: i64,
+    #[serde(default)]
+    pub require_subject: i64,
+    #[serde(default)]
+    pub min_image_width: i64,
+    #[serde(default)]
+    pub min_image_height: i64
+}
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
+pub struct BoardsList {
+    pub boards: Vec<BoardInfo>,
+}

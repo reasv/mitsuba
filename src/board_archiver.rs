@@ -2,6 +2,7 @@ use std::path::Path;
 use std::time::Duration;
 use std::sync::Arc;
 use std::convert::TryInto;
+use std::collections::HashSet;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -12,7 +13,7 @@ use base64::decode;
 use base32::{Alphabet, encode};
 
 use crate::http::HttpClient;
-use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board};
+use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board, BoardsList};
 
 use crate::models::Post;
 use crate::db::DBClient;
@@ -251,6 +252,10 @@ impl Archiver {
             },
             None => board
         };
+        if !self.get_boards_set().await?.contains(&insert_board.name) {
+            error!("Board /{}/ does not exist, skipping", insert_board.name);
+            return Ok(0)
+        }
         block_in_place(|| self.db_client.insert_board(&insert_board))
     }
     #[allow(dead_code)]
@@ -264,5 +269,16 @@ impl Archiver {
             },
             None => Ok(0)
         }
+    }
+    pub async fn get_all_boards(&self) -> anyhow::Result<BoardsList> {
+        self.http_client.fetch_json::<BoardsList>("https://a.4cdn.org/boards.json").await
+    }
+    pub async fn get_boards_set(&self) -> anyhow::Result<HashSet<String>> {
+        let boardslist = self.get_all_boards().await?;
+        let mut name_set = HashSet::new();
+        for board in boardslist.boards {
+            name_set.insert(board.board);
+        }
+        Ok(name_set)
     }
 }
