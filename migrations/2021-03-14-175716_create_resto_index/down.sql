@@ -1,0 +1,1 @@
+DROP INDEX resto_index
