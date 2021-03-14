@@ -75,6 +75,14 @@ impl DBClient {
             None => Ok(false)
         }
     }
+    pub fn image_exists_full(&self, img_md5: &String, thumb_only_ok: bool) -> anyhow::Result<bool> {
+        use crate::schema::images::dsl::*;
+        let connection = self.pool.get()?;
+        match images.find(img_md5).get_result::<Image>(&connection).optional()? {
+            Some(i) => Ok(i.full_image || thumb_only_ok),
+            None => Ok(false)
+        }
+    }
     pub fn insert_image(&self, img: &Image) -> anyhow::Result<usize> {
         use crate::schema::images::table;
         let connection = self.pool.get()?;

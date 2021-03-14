@@ -24,7 +24,7 @@ pub fn get_board_page_api_url(board: &String) -> String {
 pub fn get_thread_api_url(board: &String, tid: &String) -> String {
     format!("https://a.4cdn.org/{}/thread/{}.json", board, tid)
 }
-fn base64_to_32(b64: String) -> anyhow::Result<String> {
+pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
     let binary = decode(b64)?;
     let s = encode(Alphabet::RFC4648{padding: false}, binary.as_slice());
     Ok(s)
@@ -95,23 +95,7 @@ impl Archiver {
         let last_modified = infos.iter().map(|i| i.last_modified).max().unwrap_or(last_modified_since);
         Ok((infos, last_modified))
     }
-    pub async fn archive_thread(&self, board: String, info: ThreadInfo) -> (i64, Option<Thread>) {
-        let thread = match self.get_thread(&board, &info.no.to_string()).await {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Failed to fetch thread /{}/{}: {}", b, info.no, e);
-                return (i.last_modified, None)
-            }
-        };
-        let posts = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
-        match block_in_place(|| self.db_client.insert_posts(posts)) {
-            Ok(_) => (),
-            Err(e) => {
-                error!("Failed to insert thread /{}/{} into database: {}", board, info.no, e);
-            }
-        };
-        (info.last_modified, Some(thread))
-    }
+    
     pub async fn archive_cycle(self: Archiver, board: String, last_change: i64, full_images: bool) -> i64 {
         info!("Fetching new thread changes for board /{}/", board);
         let (thread_infos, new_last_change) = match self.get_all_thread_info_since(&board, last_change).await {
@@ -121,7 +105,6 @@ impl Archiver {
                 return last_change;
             }
         };
-        
         info!("Thread info fetched for /{}/. {} threads have had changes or were created since {}", board, thread_infos.len(), last_change);
         let mut handles = Vec::new();
         for info in thread_infos {
@@ -130,21 +113,7 @@ impl Archiver {
             let i = info.clone();
             handles.push(
                 tokio::task::spawn(async move {
-                    let thread = match c.get_thread(&b, &i.no.to_string()).await {
-                        Ok(t) => t,
-                        Err(e) => {
-                            error!("Failed to fetch thread /{}/{}: {}", b, i.no, e);
-                            return (i.last_modified, None)
-                        }
-                    };
-                    let posts = thread.posts.clone().into_iter().map(|mut post|{post.board = b.clone(); post}).collect();
-                    match block_in_place(|| c.db_client.insert_posts(posts)) {
-                        Ok(_) => (),
-                        Err(e) => {
-                            error!("Failed to insert thread /{}/{} into database: {}", b, i.no, e);
-                        }
-                    };
-                    (i.last_modified, Some(thread))
+                    c.archive_thread(b, i).await
                 })
             );
         }
@@ -172,28 +141,25 @@ impl Archiver {
 
         current_last_change
     }
-    pub async fn archive_image(&self, image_info: &ImageInfo, folder: &Path, get_full: bool) -> (bool, bool) {
-        let thumb_success = self.http_client.download_file(&image_info.thumbnail_url, 
-            &folder.join("thumb").join(&image_info.thumbnail_filename)).await;
-
-        let full_success = match get_full { 
-            true => self.http_client.download_file(&image_info.url, 
-                &folder.join("full").join(&image_info.filename)).await,
-            false => false
-        };
-        
-        match block_in_place(|| self.db_client.insert_image(&Image{md5: image_info.md5.clone(), 
-            thumbnail: thumb_success, full_image: full_success, md5_base32: image_info.md5_base32.clone()})) {
-            Ok(_) => (),
+    pub async fn archive_thread(&self, board: String, info: ThreadInfo) -> (i64, Option<Thread>) {
+        let thread = match self.get_thread(&board, &info.no.to_string()).await {
+            Ok(t) => t,
             Err(e) => {
-                error!("Failed to insert image {} into database: {}", image_info.md5, e);
+                error!("Failed to fetch thread /{}/{}: {}", board, info.no, e);
+                return (info.last_modified, None)
             }
         };
-        info!("Processed image {} successfully", image_info.md5);
-        (thumb_success, full_success)
+        let posts = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
+        match block_in_place(|| self.db_client.insert_posts(posts)) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Failed to insert thread /{}/{} into database: {}", board, info.no, e);
+            }
+        };
+        (info.last_modified, Some(thread))
     }
     pub async fn archive_images(&self, images: Vec<ImageInfo>, get_full: bool) {
-        let missing_images = images.into_iter().filter(|i| block_in_place(|| !self.db_client.image_exists(&i.md5).unwrap_or_default())).collect::<Vec<ImageInfo>>();
+        let missing_images = images.into_iter().filter(|i| block_in_place(|| !self.db_client.image_exists_full(&i.md5, !get_full).unwrap_or_default())).collect::<Vec<ImageInfo>>();
         info!("Found {} missing images. Scheduling for archival...", missing_images.len());
 
         let image_folder = Path::new("data/images");
@@ -214,6 +180,27 @@ impl Archiver {
         }
         info!("Finished fetching images.");
     }
+    pub async fn archive_image(&self, image_info: &ImageInfo, folder: &Path, get_full: bool) -> (bool, bool) {
+        let thumb_success = self.http_client.download_file(&image_info.thumbnail_url, 
+            &folder.join("thumb").join(&image_info.thumbnail_filename)).await;
+
+        let full_success = match get_full { 
+            true => self.http_client.download_file(&image_info.url, 
+                &folder.join("full").join(&image_info.filename)).await,
+            false => false
+        };
+        
+        match block_in_place(|| self.db_client.insert_image(&Image{md5: image_info.md5.clone(), 
+            thumbnail: thumb_success, full_image: full_success, md5_base32: image_info.md5_base32.clone()})) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Failed to insert image {} into database: {}", image_info.md5, e);
+            }
+        };
+        info!("Processed image {} successfully", image_info.md5);
+        (thumb_success, full_success)
+    }
+    
     pub async fn run_archive_cycle(&self, board: &Board) -> tokio::task::JoinHandle<()>{
         let c = self.clone();
         let board_name = board.name.clone();
@@ -223,7 +210,7 @@ impl Archiver {
                     Ok(opt_board) => opt_board.unwrap(),
                     Err(e) => {
                         info!("Error getting board from database: {}", e);
-                        return;
+                        continue;
                     }
                 };
 
@@ -232,7 +219,7 @@ impl Archiver {
                     Ok(opt_board) => opt_board.unwrap(),
                     Err(e) => {
                         info!("Error getting board from database: {}", e);
-                        return;
+                        continue;
                     }
                 };
                 b.last_modified = last_modified;
