@@ -4,12 +4,11 @@ use std::sync::Arc;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use dotenv::dotenv;
-use diesel::r2d2::{ Pool, PooledConnection, ConnectionManager, PoolError };
+use diesel::r2d2::{ Pool, ConnectionManager, PoolError };
 
-use crate::models::{Post, Image, PostUpdate, Board};
+use crate::models::{Post, Image, PostUpdate, Board, Thread};
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
-pub type PgPooledConnection = PooledConnection<ConnectionManager<PgConnection>>;
 
 fn init_pool(database_url: &str) -> Result<PgPool, PoolError> {
        let manager = ConnectionManager::<PgConnection>::new(database_url);
@@ -53,6 +52,20 @@ impl DBClient {
         let target = posts.filter(board.eq(&entry.board)).filter(no.eq(&entry.no));
         let res = diesel::update(target).set(&PostUpdate::from(entry)).execute(&connection)?;
         Ok(res)
+    }
+    pub fn get_thread(&self, board_name: &String, post_no: i64) -> anyhow::Result<Option<Thread>> {
+        use crate::schema::posts::dsl::*;
+        let connection = self.pool.get()?;
+        let all_posts = posts
+            .filter(board.eq(board_name))
+            .filter(no.eq(&post_no).or(resto.eq(&post_no)))
+            .order(no.asc())
+            .load::<Post>(&connection)?;
+        if all_posts.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(Thread { posts: all_posts }))
+        }
     }
     pub fn get_post(&self, board_name: &String, post_no: i64) -> anyhow::Result<Option<Post>> {
         use crate::schema::posts::dsl::*;
