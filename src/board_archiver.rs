@@ -15,7 +15,6 @@ use crate::http::HttpClient;
 use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board};
 
 use crate::models::Post;
-use crate::db;
 use crate::db::DBClient;
 
 pub fn get_board_page_api_url(board: &String) -> String {
@@ -235,21 +234,35 @@ impl Archiver {
     pub async fn run_archivers(&self) -> anyhow::Result<()> {
         let boards = block_in_place(|| self.db_client.get_all_boards())?;
         for board in boards {
+            if !board.archive {continue};
             self.run_archive_cycle(&board).await;
         }
         Ok(())
     }
-    pub async fn add_board(&self, board: Board) -> anyhow::Result<usize> {
+    #[allow(dead_code)]
+    pub async fn set_board(&self, board: Board) -> anyhow::Result<usize> {
         let db_board = block_in_place(|| self.db_client.get_board(&board.name))?;
         let insert_board = match db_board {
-            Some(mut b) => {
-                b.wait_time = board.wait_time;
-                b.full_images = board.full_images;
-                b.archive = board.archive;
-                b
+            Some(prev_board) => {
+                // Don't overwrite last_modified
+                Board {name: board.name, wait_time: board.wait_time, 
+                    full_images: board.full_images, archive: board.archive,
+                    last_modified: prev_board.last_modified}
             },
             None => board
         };
         block_in_place(|| self.db_client.insert_board(&insert_board))
+    }
+    #[allow(dead_code)]
+    pub async fn reset_board_state(&self, board_name: &String) -> anyhow::Result<usize> {
+        let db_board = block_in_place(|| self.db_client.get_board(board_name))?;
+        match db_board {
+            Some(mut prev_board) => {
+                // Reset last_modified
+                prev_board.last_modified = 0;
+                block_in_place(|| self.db_client.insert_board(&prev_board))
+            },
+            None => Ok(0)
+        }
     }
 }
