@@ -26,6 +26,7 @@ async fn main() {
     let client = Archiver::new(HttpClient::new(nonzero!(120u32), nonzero!(10u32), 200, 800, 600));
 
     client.add_board(Board{ name: "po".to_string(), wait_time: 10, full_images: false, last_modified: 0, archive: true}).await.unwrap();
+    client.add_board(Board{ name: "vip".to_string(), wait_time: 10, full_images: false, last_modified: 0, archive: true}).await.unwrap();
     
     client.run_archivers().await.unwrap();
     loop {

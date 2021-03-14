@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use diesel::{Queryable, Insertable, AsChangeset};
 use serde::{Deserialize, Serialize};
 

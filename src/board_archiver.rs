@@ -16,6 +16,7 @@ use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board};
 
 use crate::models::Post;
 use crate::db;
+use crate::db::DBClient;
 
 pub fn get_board_page_api_url(board: &String) -> String {
     format!("https://a.4cdn.org/{}/threads.json", board)
@@ -31,7 +32,8 @@ fn base64_to_32(b64: String) -> anyhow::Result<String> {
 
 #[derive(Clone)]
 pub struct Archiver {
-    pub http_client: Arc<HttpClient>
+    pub http_client: Arc<HttpClient>,
+    db_client: DBClient
 }
 
 impl Default for Archiver {
@@ -43,7 +45,8 @@ impl Default for Archiver {
 impl Archiver {
     pub fn new(client: HttpClient) -> Archiver {
         Archiver {
-            http_client: Arc::new(client)
+            http_client: Arc::new(client),
+            db_client: DBClient::new()
         }
     }
     pub async fn get_board_pages(&self, board: &String) -> anyhow::Result<Vec<ThreadsPage>> {
@@ -92,6 +95,23 @@ impl Archiver {
         let last_modified = infos.iter().map(|i| i.last_modified).max().unwrap_or(last_modified_since);
         Ok((infos, last_modified))
     }
+    pub async fn archive_thread(&self, board: String, info: ThreadInfo) -> (i64, Option<Thread>) {
+        let thread = match self.get_thread(&board, &info.no.to_string()).await {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Failed to fetch thread /{}/{}: {}", b, info.no, e);
+                return (i.last_modified, None)
+            }
+        };
+        let posts = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
+        match block_in_place(|| self.db_client.insert_posts(posts)) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Failed to insert thread /{}/{} into database: {}", board, info.no, e);
+            }
+        };
+        (info.last_modified, Some(thread))
+    }
     pub async fn archive_cycle(self: Archiver, board: String, last_change: i64, full_images: bool) -> i64 {
         info!("Fetching new thread changes for board /{}/", board);
         let (thread_infos, new_last_change) = match self.get_all_thread_info_since(&board, last_change).await {
@@ -118,7 +138,7 @@ impl Archiver {
                         }
                     };
                     let posts = thread.posts.clone().into_iter().map(|mut post|{post.board = b.clone(); post}).collect();
-                    match block_in_place(|| db::insert_posts(posts)) {
+                    match block_in_place(|| c.db_client.insert_posts(posts)) {
                         Ok(_) => (),
                         Err(e) => {
                             error!("Failed to insert thread /{}/{} into database: {}", b, i.no, e);
@@ -162,7 +182,7 @@ impl Archiver {
             false => false
         };
         
-        match block_in_place(|| db::insert_image(&Image{md5: image_info.md5.clone(), 
+        match block_in_place(|| self.db_client.insert_image(&Image{md5: image_info.md5.clone(), 
             thumbnail: thumb_success, full_image: full_success, md5_base32: image_info.md5_base32.clone()})) {
             Ok(_) => (),
             Err(e) => {
@@ -173,7 +193,7 @@ impl Archiver {
         (thumb_success, full_success)
     }
     pub async fn archive_images(&self, images: Vec<ImageInfo>, get_full: bool) {
-        let missing_images = images.into_iter().filter(|i| block_in_place(|| !db::image_exists(&i.md5).unwrap_or_default())).collect::<Vec<ImageInfo>>();
+        let missing_images = images.into_iter().filter(|i| block_in_place(|| !self.db_client.image_exists(&i.md5).unwrap_or_default())).collect::<Vec<ImageInfo>>();
         info!("Found {} missing images. Scheduling for archival...", missing_images.len());
 
         let image_folder = Path::new("data/images");
@@ -199,7 +219,7 @@ impl Archiver {
         let board_name = board.name.clone();
         tokio::task::spawn(async move {
             loop {
-                let mut b = match block_in_place(|| db::get_board(&board_name)){
+                let mut b = match block_in_place(|| c.db_client.get_board(&board_name)){
                     Ok(opt_board) => opt_board.unwrap(),
                     Err(e) => {
                         info!("Error getting board from database: {}", e);
@@ -208,7 +228,7 @@ impl Archiver {
                 };
 
                 let last_modified = c.clone().archive_cycle(b.name.clone(), b.last_modified, b.full_images).await;
-                b = match block_in_place(|| db::get_board(&board_name)){
+                b = match block_in_place(|| c.db_client.get_board(&board_name)){
                     Ok(opt_board) => opt_board.unwrap(),
                     Err(e) => {
                         info!("Error getting board from database: {}", e);
@@ -216,7 +236,7 @@ impl Archiver {
                     }
                 };
                 b.last_modified = last_modified;
-                block_in_place(|| db::insert_board(&b)).unwrap_or_default();
+                block_in_place(|| c.db_client.insert_board(&b)).unwrap_or_default();
                 if !b.archive {
                     info!("Stopping archiver for {}", b.name);
                     return;
@@ -226,14 +246,14 @@ impl Archiver {
         })
     }
     pub async fn run_archivers(&self) -> anyhow::Result<()> {
-        let boards = block_in_place(|| db::get_all_boards())?;
+        let boards = block_in_place(|| self.db_client.get_all_boards())?;
         for board in boards {
             self.run_archive_cycle(&board).await;
         }
         Ok(())
     }
     pub async fn add_board(&self, board: Board) -> anyhow::Result<usize> {
-        let db_board = block_in_place(|| db::get_board(&board.name))?;
+        let db_board = block_in_place(|| self.db_client.get_board(&board.name))?;
         let insert_board = match db_board {
             Some(mut b) => {
                 b.wait_time = board.wait_time;
@@ -243,6 +263,6 @@ impl Archiver {
             },
             None => board
         };
-        block_in_place(|| db::insert_board(&insert_board))
+        block_in_place(|| self.db_client.insert_board(&insert_board))
     }
 }
