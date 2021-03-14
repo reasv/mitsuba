@@ -3,7 +3,7 @@ use std::num::NonZeroU32;
 
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
-use governor::{Quota, RateLimiter, Jitter, state::{NotKeyed, InMemoryState}, clock::QuantaClock};
+use governor::{Quota, RateLimiter, Jitter, state::{keyed::DashMapStateStore}, clock::QuantaClock};
 use nonzero_ext::nonzero;
 use backoff::{default, ExponentialBackoff};
 use tokio::fs::File;
@@ -17,7 +17,7 @@ async fn write_bytes_to_file(filename: &Path, file_bytes: bytes::Bytes) -> anyho
 }
 
 pub struct HttpClient {
-    limiter: RateLimiter<NotKeyed, InMemoryState, QuantaClock>,
+    limiter: RateLimiter<String, DashMapStateStore<String>, QuantaClock>,
     jitter: Jitter,
     max_time: u64,
     rclient: reqwest::Client,
@@ -32,7 +32,7 @@ impl Default for HttpClient {
 impl HttpClient {
     pub fn new(quota: NonZeroU32, burst: NonZeroU32, jitter_min: u64, jitter_interval: u64, max_time: u64) -> HttpClient {
         HttpClient {
-            limiter: RateLimiter::direct(Quota::per_minute(quota).allow_burst(burst)),
+            limiter: RateLimiter::dashmap(Quota::per_minute(quota).allow_burst(burst)),
             jitter: Jitter::new(Duration::from_millis(jitter_min), Duration::from_millis(jitter_interval)),
             max_time,
             rclient: reqwest::Client::new(),
@@ -53,9 +53,8 @@ impl HttpClient {
         }
     }
     
-    async fn fetch_url_bytes(&self, url: &str, attempt: u64) -> Result<bytes::Bytes, backoff::Error<reqwest::Error>> {
-
-        self.limiter.until_ready_with_jitter(self.jitter).await; // wait for rate limiter
+    async fn fetch_url_bytes(&self, url: &str, attempt: u64, rlimit_key: &String) -> Result<bytes::Bytes, backoff::Error<reqwest::Error>> {
+        self.limiter.until_key_ready_with_jitter(rlimit_key, self.jitter).await; // wait for rate limiter
         let resp = self.rclient.get(url).send().await.map_err(backoff::Error::Transient)?;
         info!("Fetching: {} (Attempt {})", url, attempt);
         match resp.status() {
@@ -71,23 +70,23 @@ impl HttpClient {
         }
     }
 
-    pub async fn fetch_url_backoff(&self, url: &str) -> Result<bytes::Bytes, reqwest::Error> {
+    pub async fn fetch_url_backoff(&self, url: &str, rlimit_key: &String) -> Result<bytes::Bytes, reqwest::Error> {
         let back = self.new_backoff();
         let mut attempt: u64 = 0;
         backoff::future::retry(back, || {
             debug!("Scheduling: {} (Attempt {})", url, attempt);
             attempt += 1;
-            self.fetch_url_bytes(url, attempt)
+            self.fetch_url_bytes(url, attempt, rlimit_key)
         }).await
     }
 
     pub async fn fetch_json<T: DeserializeOwned>(&self, url: &str) -> anyhow::Result<T> {
-        let bytes = self.fetch_url_backoff(url).await?;
+        let bytes = self.fetch_url_backoff(url, &"api".to_string()).await?;
         Ok(serde_json::from_slice(&bytes)?)
     }
 
     pub async fn download_file(&self, url: &String, filename: &Path) -> bool {
-        let bytes = match self.fetch_url_backoff(url).await {
+        let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
             Ok(b) => b,
             Err(msg) => {
                 error!("Failed to download {} Error: {}", url, msg);
