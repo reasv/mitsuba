@@ -47,6 +47,13 @@ async fn get_full_image(db: web::Data<DBClient>, info: web::Path<(String, i64, S
     get_image(db, board, tim, ext, false).await
 }
 
+#[get("/{board}/{tim}s.jpg")]
+async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<NamedFile> {
+    let (board, tim) = info.into_inner();
+    let b = board.clone();
+    get_image(db, board, tim, "".to_string(), false).await
+}
+
 async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile> {
     let b = board.clone();
     let image_md5_res: Result<Option<String>, actix_web::HttpResponse> = web::block(move || db.image_tim_to_md5(&b, tim)).await
@@ -70,29 +77,6 @@ async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String
     };
     Ok(NamedFile::open(path)?)
 }
-
-#[get("/{board}/{tim}s.jpg")]
-async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<NamedFile> {
-    let (board, tim) = info.into_inner();
-    let b = board.clone();
-    let image_md5_res: Result<Option<String>, actix_web::HttpResponse> = web::block(move || db.image_tim_to_md5(&b, tim)).await
-        .map_err(|e| {
-            error!("Error getting post from DB: {}", e);
-            HttpResponse::InternalServerError().finish()
-        });
-    
-    
-    let md5_base64 = match image_md5_res? {
-        Some(md5) => md5,
-        None => {
-            warn!("404 Not Found for /{}/{}s.jpg", board, tim);
-            return Err(actix_web::error::ErrorNotFound("Image Not Found"))
-        }
-    };
-    let md5_base32 = base64_to_32(md5_base64).unwrap();
-    let path = Path::new("data").join("images").join("thumb").join(format!("{}.jpg", md5_base32));
-    Ok(NamedFile::open(path)?)
-}
 #[actix_web::main]
 pub async fn web_main() -> std::io::Result<()> {
     
@@ -102,6 +86,7 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(get_thread)
         .service(get_post)
         .service(get_thumbnail_image)
+        .service(get_full_image)
         .service(actix_files::Files::new("/img", "data/images"))
     })
     .bind("127.0.0.1:8080")?
