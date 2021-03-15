@@ -126,7 +126,7 @@ impl DBClient {
         let connection = self.pool.get()?;
         let res = diesel::insert_into(table)
             .values(img)
-            .on_conflict(md5)
+            .on_conflict((board, md5))
             .do_update().set(
                 (
                     url.eq(&img.url),
@@ -136,10 +136,10 @@ impl DBClient {
             .execute(&connection)?;
         Ok(res)
     }
-    pub fn get_image_job(&self, img_md5: &String) -> anyhow::Result<Option<ImageJob>> {
+    pub fn get_image_job(&self, board_name: &String, img_md5: &String) -> anyhow::Result<Option<ImageJob>> {
         use crate::schema::image_backlog::dsl::*;
         let connection = self.pool.get()?;
-        match image_backlog.filter(md5.eq(img_md5)).first::<ImageJob>(&connection).optional()? {
+        match image_backlog.filter(md5.eq(img_md5).and(board.eq(board_name))).first::<ImageJob>(&connection).optional()? {
             Some(i) => Ok(Some(i)),
             None => Ok(None)
         }
@@ -150,10 +150,10 @@ impl DBClient {
         let jobs = image_backlog.order(id.asc()).load::<ImageJob>(&connection)?;
         Ok(jobs)
     }
-    pub fn delete_image_job(&self, img_md5: &String) -> anyhow::Result<usize> {
+    pub fn delete_image_job(&self, board_name: &String, img_md5: &String) -> anyhow::Result<usize> {
         use crate::schema::image_backlog::dsl::*;
         let connection = self.pool.get()?;
-        let res = diesel::delete(image_backlog.filter(md5.eq(img_md5)))
+        let res = diesel::delete(image_backlog.filter(md5.eq(img_md5).and(board.eq(board_name))))
             .execute(&connection)?;
         Ok(res)
     }
@@ -268,12 +268,21 @@ fn update_test(){
 fn job_test() {
     let dbc = DBClient::new();
     let mut img = ImageInfo::default();
+    img.board = "test_a".to_string();
     img.md5 = "test".to_string();
     img.md5_base32 = "test".to_string();
     img.url = "url1".to_string();
     assert_eq!(1, dbc.insert_image_job(&img).unwrap());
     img.url = "url2".to_string();
+    let mut img_b = ImageInfo::default();
+    img_b.board = "test_b".to_string();
+    img_b.md5 = "test".to_string();
+    img_b.md5_base32 = "test".to_string();
+    img_b.url = "urlB".to_string();
+    assert_eq!(1, dbc.insert_image_job(&img_b).unwrap());
     assert_eq!(1, dbc.insert_image_job(&img).unwrap());
-    assert_eq!("url2".to_string(), dbc.get_image_job(&img.md5).unwrap().unwrap().url);
-    assert_eq!(1, dbc.delete_image_job(&img.md5).unwrap());
+    assert_eq!("url2".to_string(), dbc.get_image_job(&img.board, &img.md5).unwrap().unwrap().url);
+    assert_eq!("urlB".to_string(), dbc.get_image_job(&img_b.board, &img_b.md5).unwrap().unwrap().url);
+    assert_eq!(1, dbc.delete_image_job(&img.board, &img.md5).unwrap());
+    assert_eq!(1, dbc.delete_image_job(&img_b.board, &img_b.md5).unwrap());
 }

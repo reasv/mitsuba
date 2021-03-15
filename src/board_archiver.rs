@@ -247,7 +247,7 @@ impl Archiver {
                 return
             }
         };
-        match block_in_place(|| self.db_client.delete_image_job(&job.md5)) {
+        match block_in_place(|| self.db_client.delete_image_job(&job.board, &job.md5)) {
             Ok(_) => (),
             Err(e) => {
                 error!("Failed to delete image {} from backlog: {}", job.md5, e);
