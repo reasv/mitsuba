@@ -3,7 +3,6 @@ use std::time::Duration;
 use std::sync::Arc;
 use std::convert::TryInto;
 use std::collections::HashSet;
-
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
@@ -13,7 +12,7 @@ use base64::decode;
 use base32::{Alphabet, encode};
 
 use crate::http::HttpClient;
-use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board, BoardsList};
+use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board, BoardsList, ImageJob};
 
 use crate::models::Post;
 use crate::db::DBClient;
@@ -67,7 +66,7 @@ impl Archiver {
         };
         let filename = format!("{}{}", md5_b32, post.ext);
         let thumbnail_filename = format!("{}.jpg", md5_b32);
-        Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone(), md5_base32: md5_b32})
+        Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone(), md5_base32: md5_b32, board: board.clone()})
     }
 
     pub async fn get_thread(&self, board: &String, tid: &String) -> anyhow::Result<Thread> {
@@ -96,7 +95,7 @@ impl Archiver {
         Ok((infos, last_modified))
     }
     
-    pub async fn archive_cycle(self: Archiver, board: String, last_change: i64, full_images: bool) -> i64 {
+    pub async fn archive_cycle(self: Archiver, board: String, last_change: i64) -> i64 {
         info!("Fetching new thread changes for board /{}/", board);
         let (thread_infos, new_last_change) = match self.get_all_thread_info_since(&board, last_change).await {
             Ok(t) => t,
@@ -137,7 +136,6 @@ impl Archiver {
                 }
             };
         }
-        self.archive_images(images, full_images).await;
 
         current_last_change
     }
@@ -149,58 +147,108 @@ impl Archiver {
                 return (info.last_modified, None)
             }
         };
-        let posts = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
+        let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
+        let image_infos = posts.iter().filter_map(|post| self.get_post_image_info(&board,post)).collect::<Vec<ImageInfo>>();
         match block_in_place(|| self.db_client.insert_posts(posts)) {
             Ok(_) => (),
             Err(e) => {
                 error!("Failed to insert thread /{}/{} into database: {}", board, info.no, e);
             }
         };
+        for info in image_infos {
+            match block_in_place(|| self.db_client.insert_image_job(&info)) {
+                Ok(_) => (),
+                Err(e) => {
+                    error!("Failed to insert image job /{}/{} into database: {}", board, info.md5.clone(), e);
+                }
+            };
+        }
         (info.last_modified, Some(thread))
     }
-    pub async fn archive_images(&self, images: Vec<ImageInfo>, get_full: bool) {
-        let missing_images = images.into_iter().filter(|i| block_in_place(|| !self.db_client.image_exists_full(&i.md5, !get_full).unwrap_or_default())).collect::<Vec<ImageInfo>>();
-        info!("Found {} missing images. Scheduling for archival...", missing_images.len());
-
+    pub async fn image_cycle(&self) {
+        let image_jobs = match block_in_place(|| self.db_client.get_image_jobs()) {
+            Ok(j) => j,
+            Err(e) => {
+                error!("Failed to get new image jobs from database: {}", e);
+                return
+            }
+        };
+        info!("Running image cycle for {} new jobs", image_jobs.len());
+        let boards = match block_in_place(|| self.db_client.get_all_boards()){
+            Ok(j) => j,
+            Err(e) => {
+                error!("Failed to get boards from database: {}", e);
+                return
+            }
+        };
+        let mut full_images = HashSet::new();
+        for board in boards {
+            if board.full_images{
+                full_images.insert(board.name);
+            }
+        }
+        
         let image_folder = Path::new("data/images");
         create_dir_all(image_folder.join("thumb")).await.unwrap_or_default();
         create_dir_all(image_folder.join("full")).await.unwrap_or_default();
-
         let mut handles = Vec::new();
-        for info in missing_images {
+        for job in image_jobs {
             let c = self.clone();
+            let need_full_image = full_images.contains(&job.board);
             handles.push(tokio::task::spawn(
                 async move {
-                    c.archive_image(&info.clone(), image_folder.clone(), get_full).await
+                    c.archive_image(&job.clone(), image_folder.clone(), need_full_image).await
                 }
             ))
         }
         for handle in handles {
             handle.await.unwrap_or_default();
         }
-        info!("Finished fetching images.");
     }
-    pub async fn archive_image(&self, image_info: &ImageInfo, folder: &Path, get_full: bool) -> (bool, bool) {
-        let thumb_success = self.http_client.download_file(&image_info.thumbnail_url, 
-            &folder.join("thumb").join(&image_info.thumbnail_filename)).await;
-
-        let full_success = match get_full { 
-            true => self.http_client.download_file(&image_info.url, 
-                &folder.join("full").join(&image_info.filename)).await,
+    pub async fn archive_image(&self, job: &ImageJob, folder: &Path, need_full_image: bool) {
+        let(thumb_exists, full_exists) = match block_in_place(|| self.db_client.image_exists_full(&job.md5)) {
+            Ok(j) => j,
+            Err(e) => {
+                error!("Failed to get image status from database: {}", e);
+                (false, false)
+            }
+        };
+        let thumb_success = match !thumb_exists {
+            true => self.http_client.download_file(&job.thumbnail_url, 
+                &folder.join("thumb").join(&job.thumbnail_filename)).await,
+            false => false
+        };
+        let full_success = match need_full_image && !full_exists { 
+            true => self.http_client.download_file(&job.url, 
+                &folder.join("full").join(&job.filename)).await,
             false => false
         };
         
-        match block_in_place(|| self.db_client.insert_image(&Image{md5: image_info.md5.clone(), 
-            thumbnail: thumb_success, full_image: full_success, md5_base32: image_info.md5_base32.clone()})) {
+        match block_in_place(|| self.db_client.insert_image(&Image{md5: job.md5.clone(), 
+            thumbnail: thumb_success, full_image: full_success, md5_base32: job.md5_base32.clone()})) {
             Ok(_) => (),
             Err(e) => {
-                error!("Failed to insert image {} into database: {}", image_info.md5, e);
+                error!("Failed to insert image {} into database: {}", job.md5, e);
+                return
             }
         };
-        info!("Processed image {} successfully", image_info.md5);
-        (thumb_success, full_success)
+        match block_in_place(|| self.db_client.delete_image_job(&job.md5)) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Failed to delete image {} from backlog: {}", job.md5, e);
+            }
+        };
+        info!("Processed image {} successfully", job.md5);
     }
-    
+    pub async fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {
+        let c = self.clone();
+        tokio::task::spawn(async move { 
+            loop {
+                c.image_cycle().await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
+            }
+        })
+    }
     pub async fn run_archive_cycle(&self, board: &Board) -> tokio::task::JoinHandle<()>{
         let c = self.clone();
         let board_name = board.name.clone();
@@ -214,7 +262,7 @@ impl Archiver {
                     }
                 };
 
-                let last_modified = c.clone().archive_cycle(b.name.clone(), b.last_modified, b.full_images).await;
+                let last_modified = c.clone().archive_cycle(b.name.clone(), b.last_modified).await;
                 b = match block_in_place(|| c.db_client.get_board(&board_name)){
                     Ok(opt_board) => opt_board.unwrap(),
                     Err(e) => {
@@ -238,6 +286,7 @@ impl Archiver {
             if !board.archive {continue};
             self.run_archive_cycle(&board).await;
         }
+        self.run_image_cycle().await;
         Ok(())
     }
     #[allow(dead_code)]

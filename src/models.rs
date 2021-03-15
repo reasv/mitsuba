@@ -1,9 +1,10 @@
-use diesel::{Queryable, Insertable, AsChangeset};
+use diesel::{Queryable, Insertable, AsChangeset, Identifiable};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::posts;
 use crate::schema::images;
 use crate::schema::boards;
+use crate::schema::image_backlog;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset, Eq, PartialEq)]
 #[table_name="posts"]
@@ -138,14 +139,28 @@ pub struct ThreadInfo {
     pub replies: i64
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Insertable)]
+#[table_name="image_backlog"]
 pub struct ImageInfo {
+    pub md5: String,
+    pub md5_base32: String,
+    pub board: String,
     pub url: String,
     pub thumbnail_url: String,
     pub filename: String,
     pub thumbnail_filename: String,
+}
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Identifiable)]
+#[table_name="image_backlog"]
+pub struct ImageJob {
+    pub id: i32,
     pub md5: String,
-    pub md5_base32: String
+    pub md5_base32: String,
+    pub board: String,
+    pub url: String,
+    pub thumbnail_url: String,
+    pub filename: String,
+    pub thumbnail_filename: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]

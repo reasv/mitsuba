@@ -9,6 +9,19 @@ table! {
 }
 
 table! {
+    image_backlog (id) {
+        id -> Int4,
+        md5 -> Text,
+        md5_base32 -> Text,
+        board -> Text,
+        url -> Text,
+        thumbnail_url -> Text,
+        filename -> Text,
+        thumbnail_filename -> Text,
+    }
+}
+
+table! {
     images (md5) {
         md5 -> Text,
         md5_base32 -> Text,
@@ -62,6 +75,7 @@ table! {
 
 allow_tables_to_appear_in_same_query!(
     boards,
+    image_backlog,
     images,
     posts,
 );

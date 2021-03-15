@@ -6,7 +6,7 @@ use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use diesel::r2d2::{ Pool, ConnectionManager, PoolError };
 
-use crate::models::{Post, Image, PostUpdate, Board, Thread};
+use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob};
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
@@ -88,12 +88,12 @@ impl DBClient {
             None => Ok(false)
         }
     }
-    pub fn image_exists_full(&self, img_md5: &String, thumb_only_ok: bool) -> anyhow::Result<bool> {
+    pub fn image_exists_full(&self, img_md5: &String) -> anyhow::Result<(bool, bool)> {
         use crate::schema::images::dsl::*;
         let connection = self.pool.get()?;
         match images.find(img_md5).get_result::<Image>(&connection).optional()? {
-            Some(i) => Ok(i.full_image || thumb_only_ok),
-            None => Ok(false)
+            Some(i) => Ok((i.thumbnail, i.full_image)),
+            None => Ok((false, false))
         }
     }
     pub fn insert_image(&self, img: &Image) -> anyhow::Result<usize> {
@@ -120,6 +120,43 @@ impl DBClient {
             None => Ok(None)
         }
     }
+    pub fn insert_image_job(&self, img: &ImageInfo) -> anyhow::Result<usize> {
+        use crate::schema::image_backlog::table;
+        use crate::schema::image_backlog::dsl::*;
+        let connection = self.pool.get()?;
+        let res = diesel::insert_into(table)
+            .values(img)
+            .on_conflict(md5)
+            .do_update().set(
+                (
+                    url.eq(&img.url),
+                    thumbnail_url.eq(&img.thumbnail_url)
+                )
+            )
+            .execute(&connection)?;
+        Ok(res)
+    }
+    pub fn get_image_job(&self, img_md5: &String) -> anyhow::Result<Option<ImageJob>> {
+        use crate::schema::image_backlog::dsl::*;
+        let connection = self.pool.get()?;
+        match image_backlog.filter(md5.eq(img_md5)).first::<ImageJob>(&connection).optional()? {
+            Some(i) => Ok(Some(i)),
+            None => Ok(None)
+        }
+    }
+    pub fn get_image_jobs(&self) -> anyhow::Result<Vec<ImageJob>> {
+        use crate::schema::image_backlog::dsl::*;
+        let connection = self.pool.get()?;
+        let jobs = image_backlog.order(id.asc()).load::<ImageJob>(&connection)?;
+        Ok(jobs)
+    }
+    pub fn delete_image_job(&self, img_md5: &String) -> anyhow::Result<usize> {
+        use crate::schema::image_backlog::dsl::*;
+        let connection = self.pool.get()?;
+        let res = diesel::delete(image_backlog.filter(md5.eq(img_md5)))
+            .execute(&connection)?;
+        Ok(res)
+    }
     pub fn insert_board(&self, board: &Board) -> anyhow::Result<usize> {
         use crate::schema::boards::table;
         use crate::schema::boards::dsl::*;
@@ -131,7 +168,8 @@ impl DBClient {
                 (
                     wait_time.eq(board.wait_time),
                     full_images.eq(board.full_images),
-                    last_modified.eq(board.last_modified)
+                    last_modified.eq(board.last_modified),
+                    archive.eq(board.archive)
                 )
             )
             .execute(&connection)?;
@@ -224,4 +262,18 @@ fn update_test(){
     assert_eq!(30, dbc.get_post(&post1.board, post1.no).unwrap().unwrap().unique_ips);
     assert_eq!(1, dbc.delete_post(&post1.board, post1.no).unwrap());
     assert_eq!(None, dbc.get_post(&post1.board, post1.no).unwrap());
+}
+
+#[test]
+fn job_test() {
+    let dbc = DBClient::new();
+    let mut img = ImageInfo::default();
+    img.md5 = "test".to_string();
+    img.md5_base32 = "test".to_string();
+    img.url = "url1".to_string();
+    assert_eq!(1, dbc.insert_image_job(&img).unwrap());
+    img.url = "url2".to_string();
+    assert_eq!(1, dbc.insert_image_job(&img).unwrap());
+    assert_eq!("url2".to_string(), dbc.get_image_job(&img.md5).unwrap().unwrap().url);
+    assert_eq!(1, dbc.delete_image_job(&img.md5).unwrap());
 }
