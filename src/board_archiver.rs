@@ -32,7 +32,7 @@ pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
 #[derive(Clone)]
 pub struct Archiver {
     pub http_client: Arc<HttpClient>,
-    db_client: DBClient
+    pub db_client: DBClient
 }
 
 impl Default for Archiver {
@@ -253,7 +253,7 @@ impl Archiver {
                 error!("Failed to delete image {} from backlog: {}", job.md5, e);
             }
         };
-        info!("Processed image {} successfully", job.md5);
+        info!("Processed image {} ({}) successfully", job.md5, job.filename);
     }
     pub async fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {
         let c = self.clone();

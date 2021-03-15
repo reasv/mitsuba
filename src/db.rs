@@ -23,7 +23,7 @@ pub fn establish_connection() -> PgPool {
 }
 #[derive(Clone)]
 pub struct DBClient {
-    pool: Arc<PgPool>,
+    pub pool: Arc<PgPool>,
 }
 impl DBClient {
     pub fn new() -> Self {
