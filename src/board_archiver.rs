@@ -228,19 +228,39 @@ impl Archiver {
                 (false, false)
             }
         };
+        let mut image = Image{
+            md5: job.md5.clone(), 
+            thumbnail: thumb_exists,
+            full_image: full_exists,
+            md5_base32: job.md5_base32.clone()
+        };
+        
         let thumb_success = match !thumb_exists {
             true => self.http_client.download_file(&job.thumbnail_url, 
                 &folder.join("thumb").join(&job.thumbnail_filename)).await,
-            false => false
+            false => thumb_exists
         };
+
+        image.thumbnail = thumb_success;
+
+        match block_in_place(|| self.db_client.insert_image(&image)) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Failed to insert image {} into database: {}", job.md5, e);
+                return
+            }
+        };
+        info!("Processed thumbnail {} ({})", job.md5, job.thumbnail_filename);
+
         let full_success = match need_full_image && !full_exists { 
             true => self.http_client.download_file(&job.url, 
                 &folder.join("full").join(&job.filename)).await,
-            false => false
+            false => full_exists
         };
-        
-        match block_in_place(|| self.db_client.insert_image(&Image{md5: job.md5.clone(), 
-            thumbnail: thumb_success, full_image: full_success, md5_base32: job.md5_base32.clone()})) {
+
+        image.full_image = full_success;
+
+        match block_in_place(|| self.db_client.insert_image(&image)) {
             Ok(_) => (),
             Err(e) => {
                 error!("Failed to insert image {} into database: {}", job.md5, e);
@@ -251,6 +271,7 @@ impl Archiver {
             Ok(_) => (),
             Err(e) => {
                 error!("Failed to delete image {} from backlog: {}", job.md5, e);
+                return
             }
         };
         info!("Processed image {} ({}) successfully", job.md5, job.filename);
