@@ -50,7 +50,7 @@ async fn get_full_image(db: web::Data<DBClient>, info: web::Path<(String, i64, S
 #[get("/{board}/{tim}s.jpg")]
 async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<NamedFile> {
     let (board, tim) = info.into_inner();
-    get_image(db, board, tim, "".to_string(), false).await
+    get_image(db, board, tim, "".to_string(), true).await
 }
 
 async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile> {
