@@ -252,7 +252,7 @@ impl Archiver {
         };
         info!("Processed thumbnail {} ({})", job.md5, job.thumbnail_filename);
 
-        let full_success = match need_full_image && !full_exists { 
+        let full_success = match need_full_image && !full_exists {
             true => self.http_client.download_file(&job.url, 
                 &folder.join("full").join(&job.filename)).await,
             false => full_exists
