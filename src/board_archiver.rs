@@ -95,13 +95,25 @@ impl Archiver {
         Ok((infos, last_modified))
     }
     
-    pub async fn archive_cycle(self: Archiver, board: String, last_change: i64) -> i64 {
+    pub async fn archive_cycle(self: Archiver, board: String) -> bool {
+        let board_object = match block_in_place(|| self.db_client.get_board(&board)){
+            Ok(opt_board) => opt_board.unwrap(),
+            Err(e) => {
+                info!("Error getting board from database: {}", e);
+                return true;
+            }
+        };
+        if !board_object.archive {
+            info!("Stopping archiver for {}", board_object.name);
+            return true;
+        }
+        let last_change = board_object.last_modified;
         info!("Fetching new thread changes for board /{}/", board);
         let (thread_infos, new_last_change) = match self.get_all_thread_info_since(&board, last_change).await {
             Ok(t) => t,
             Err(e) => {
                 error!("Failed to fetch thread changes for /{}/: {}", board, e);
-                return last_change;
+                return true;
             }
         };
         info!("Thread info fetched for /{}/. {} threads have had changes or were created since {}", board, thread_infos.len(), last_change);
@@ -117,18 +129,13 @@ impl Archiver {
             );
         }
         let mut current_last_change = new_last_change;
-        let mut images = Vec::new();
         for handle in handles {
             // The task returns the last modified of thread, plus thread if it succeeded, None if failed
             let (last_modified, thread) = handle.await.unwrap();
             
             match thread {
-                Some(t) => { // Thread fetched successfully
-                    // Collect image data
-                    images.append(&mut t.posts.iter().filter_map(|p| self.get_post_image_info(&board, p)).collect::<Vec<ImageInfo>>());
-                },
+                Some(_) =>(), // Thread fetched successfully
                 None => { // Thread not fetched successfully
-
                     // next time resume archiving from before earliest failed thread
                     if current_last_change > last_modified {
                         current_last_change = last_modified - 1;
@@ -136,8 +143,16 @@ impl Archiver {
                 }
             };
         }
-
-        current_last_change
+        let mut new_board_object = match block_in_place(|| self.db_client.get_board(&board)){
+            Ok(opt_board) => opt_board.unwrap(),
+            Err(e) => {
+                info!("Error getting board from database: {}", e);
+                return true;
+            }
+        };
+        new_board_object.last_modified = current_last_change;
+        block_in_place(|| self.db_client.insert_board(&new_board_object)).unwrap_or_default();
+        true
     }
     pub async fn archive_thread(&self, board: String, info: ThreadInfo) -> (i64, Option<Thread>) {
         let thread = match self.get_thread(&board, &info.no.to_string()).await {
@@ -252,31 +267,11 @@ impl Archiver {
     pub async fn run_archive_cycle(&self, board: &Board) -> tokio::task::JoinHandle<()>{
         let c = self.clone();
         let board_name = board.name.clone();
+        let wait_time = board.wait_time.clone();
         tokio::task::spawn(async move {
             loop {
-                let mut b = match block_in_place(|| c.db_client.get_board(&board_name)){
-                    Ok(opt_board) => opt_board.unwrap(),
-                    Err(e) => {
-                        info!("Error getting board from database: {}", e);
-                        continue;
-                    }
-                };
-
-                let last_modified = c.clone().archive_cycle(b.name.clone(), b.last_modified).await;
-                b = match block_in_place(|| c.db_client.get_board(&board_name)){
-                    Ok(opt_board) => opt_board.unwrap(),
-                    Err(e) => {
-                        info!("Error getting board from database: {}", e);
-                        continue;
-                    }
-                };
-                b.last_modified = last_modified;
-                block_in_place(|| c.db_client.insert_board(&b)).unwrap_or_default();
-                if !b.archive {
-                    info!("Stopping archiver for {}", b.name);
-                    return;
-                }
-                tokio::time::sleep(Duration::from_secs(b.wait_time.try_into().unwrap())).await;
+                c.clone().archive_cycle(board_name.clone()).await;
+                tokio::time::sleep(Duration::from_secs(wait_time.try_into().unwrap())).await;
             }
         })
     }
