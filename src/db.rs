@@ -10,6 +10,49 @@ use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob}
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
+#[allow(unused_macros)]
+macro_rules! do_async {
+    ($self:ident.$func_name:ident($($arg:ident),+)) => ({
+        // `stringify!` will convert the expression *as it is* into a string.
+        $( let $arg = $arg.clone(); )+
+        let self_ref = $self.clone();
+        // $self.$func_name($(&$arg),+);
+        tokio::task::spawn_blocking(move || {self_ref.$func_name($(&$arg),+)})
+    });
+}
+
+
+//gen_async!(get_user_asyc, get_user(&self, user_name: &String) -> anyhow::Result<Option<User>>)
+//pub fn get_thread(&self, board_name: &String, post_no: i64) -> anyhow::Result<Option<Thread>> {
+#[allow(unused_macros)]
+macro_rules! gen_async {
+    ($func_name:ident, pub fn $func:ident(&$self:ident, $(&(ref $ref_arg:ident) : $ref_typ: ty),+, $($arg:ident: $typ: ty),+) -> $ret:ty $b:block) => {
+        pub fn $func(&$self, $($ref_arg : $ref_typ),+, $($arg : $typ),+) -> $ret $b
+
+        pub fn $func_name(&$self, $($ref_arg: $ref_typ),+, $($arg: $typ),+,) -> tokio::task::JoinHandle<$ret> {
+            $( let $ref_arg = $ref_arg.clone(); )+
+            $( let $arg = $arg.clone(); )+
+            let self_ref = $self.clone();
+            tokio::task::spawn_blocking(move || {self_ref.$func($(&$ref_arg),+,$($arg),+)})
+        }
+        
+    };
+    ($func_name:ident, $func:ident(&$self:ident, $($arg:ident: &$typ: ty),+) -> $ret:ty) => {
+        pub fn $func_name(&$self, $($arg: &$typ),+) -> tokio::task::JoinHandle<$ret> {
+            $( let $arg = $arg.clone(); )+
+            let self_ref = $self.clone();
+            tokio::task::spawn_blocking(move || {self_ref.$func($(&$arg),+)})
+        }
+    };
+
+    ($func_name:ident, $func:ident(&$self:ident) -> $ret:ty) => {
+        pub fn $func_name(&$self) -> tokio::task::JoinHandle<$ret> {
+            let self_ref = $self.clone();
+            tokio::task::spawn_blocking(move || {self_ref.$func()})
+        }
+    };
+}
+
 fn init_pool(database_url: &str) -> Result<PgPool, PoolError> {
        let manager = ConnectionManager::<PgConnection>::new(database_url);
        Pool::builder().build(manager)
@@ -31,20 +74,22 @@ impl DBClient {
             pool: Arc::new(establish_connection())
         }
     }
-    pub fn insert_posts(&self, entries: Vec<Post>) -> anyhow::Result<usize> {
+    pub fn insert_posts(&self, entries: &Vec<Post>) -> anyhow::Result<usize> {
         use crate::schema::posts::table;
         let connection = self.pool.get()?;
         
         let res = diesel::insert_into(table)
-            .values(&entries)
+            .values(entries)
             .on_conflict_do_nothing()
             .execute(&connection)?;
         
-        for entry in &entries {
+        for entry in entries {
             self.update_post(entry)?;
         }
         Ok(res)
     }
+    gen_async!(insert_posts_async, insert_posts(&self, entries: &Vec<Post>) -> anyhow::Result<usize>);
+
     pub fn update_post(&self, entry: &Post) -> anyhow::Result<usize> {
         use crate::schema::posts::dsl::*;
         let connection = self.pool.get()?;
@@ -53,7 +98,10 @@ impl DBClient {
         let res = diesel::update(target).set(&PostUpdate::from(entry)).execute(&connection)?;
         Ok(res)
     }
-    pub fn get_thread(&self, board_name: &String, post_no: i64) -> anyhow::Result<Option<Thread>> {
+    gen_async!(update_post_async, update_post(&self, entry: &Post) -> anyhow::Result<usize>);
+
+    gen_async!(get_thread_async,
+    pub fn get_thread(&self, &(ref board_name): &String, post_no: i64) -> anyhow::Result<Option<Thread>> {
         use crate::schema::posts::dsl::*;
         let connection = self.pool.get()?;
         let all_posts = posts
@@ -66,21 +114,25 @@ impl DBClient {
         } else {
             Ok(Some(Thread { posts: all_posts }))
         }
-    }
-    pub fn get_post(&self, board_name: &String, post_no: i64) -> anyhow::Result<Option<Post>> {
+    });
+    gen_async!(get_post_async,
+    pub fn get_post(&self, &(ref board_name): &String, post_no: i64) -> anyhow::Result<Option<Post>> {
         use crate::schema::posts::dsl::*;
         let connection = self.pool.get()?;
         let post = posts.filter(board.eq(board_name)).filter(no.eq(&post_no)).first::<Post>(&connection).optional()?;
         Ok(post)
-    }
-    pub fn delete_post(&self, board_name: &String, post_no: i64) -> anyhow::Result<usize>{
+    });
+
+    gen_async!(delete_post_async,
+    pub fn delete_post(&self, &(ref board_name): &String, post_no: i64) -> anyhow::Result<usize> {
         use crate::schema::posts::dsl::*;
         let connection = self.pool.get()?;
         let res = diesel::delete(posts.filter(board.eq(board_name)).filter(no.eq(&post_no)))
             .execute(&connection)?;
         Ok(res)
-    }
-    pub fn image_exists(&self, img_md5: &String) -> anyhow::Result<bool>{
+    });
+    
+    pub fn image_exists(&self, img_md5: &String) -> anyhow::Result<bool> {
         use crate::schema::images::dsl::*;
         let connection = self.pool.get()?;
         match images.find(img_md5).get_result::<Image>(&connection).optional()? {
@@ -88,6 +140,8 @@ impl DBClient {
             None => Ok(false)
         }
     }
+    gen_async!(image_exists_async, image_exists(&self, img_md5: &String) -> anyhow::Result<bool>);
+
     pub fn image_exists_full(&self, img_md5: &String) -> anyhow::Result<(bool, bool)> {
         use crate::schema::images::dsl::*;
         let connection = self.pool.get()?;
@@ -96,6 +150,8 @@ impl DBClient {
             None => Ok((false, false))
         }
     }
+    gen_async!(image_exists_full_async, image_exists_full(&self, img_md5: &String) -> anyhow::Result<(bool, bool)>);
+
     pub fn insert_image(&self, img: &Image) -> anyhow::Result<usize> {
         use crate::schema::images::table;
         let connection = self.pool.get()?;
@@ -105,6 +161,8 @@ impl DBClient {
             .execute(&connection)?;
         Ok(res)
     }
+    gen_async!(insert_image_async, insert_image(&self, img: &Image) -> anyhow::Result<usize>);
+
     pub fn delete_image(&self, img_md5: &String) -> anyhow::Result<usize> {
         use crate::schema::images::dsl::*;
         let connection = self.pool.get()?;
@@ -112,14 +170,18 @@ impl DBClient {
             .execute(&connection)?;
         Ok(res)
     }
-    pub fn image_tim_to_md5(&self,board_name: &String, image_tim: i64) -> anyhow::Result<Option<String>> {
+    gen_async!(delete_image_async, delete_image(&self, img_md5: &String) -> anyhow::Result<usize>);
+
+    gen_async!(image_tim_to_md5_async,
+    pub fn image_tim_to_md5(&self, &(ref board_name): &String, image_tim: i64) -> anyhow::Result<Option<String>> {
         use crate::schema::posts::dsl::*;
         let connection = self.pool.get()?;
         match posts.filter(tim.eq(image_tim)).filter(board.eq(board_name)).first::<Post>(&connection).optional()? {
             Some(p) => Ok(Some(p.md5)),
             None => Ok(None)
         }
-    }
+    });
+
     pub fn insert_image_job(&self, img: &ImageInfo) -> anyhow::Result<usize> {
         use crate::schema::image_backlog::table;
         use crate::schema::image_backlog::dsl::*;
@@ -136,6 +198,8 @@ impl DBClient {
             .execute(&connection)?;
         Ok(res)
     }
+    gen_async!(insert_image_job_async, insert_image_job(&self, img: &ImageInfo) -> anyhow::Result<usize>);
+
     pub fn get_image_job(&self, board_name: &String, img_md5: &String) -> anyhow::Result<Option<ImageJob>> {
         use crate::schema::image_backlog::dsl::*;
         let connection = self.pool.get()?;
@@ -144,12 +208,16 @@ impl DBClient {
             None => Ok(None)
         }
     }
+    gen_async!(get_image_job_async, get_image_job(&self, board_name: &String, img_md5: &String) -> anyhow::Result<Option<ImageJob>>);
+
     pub fn get_image_jobs(&self) -> anyhow::Result<Vec<ImageJob>> {
         use crate::schema::image_backlog::dsl::*;
         let connection = self.pool.get()?;
         let jobs = image_backlog.order(id.asc()).load::<ImageJob>(&connection)?;
         Ok(jobs)
     }
+    gen_async!(get_image_jobs_async, get_image_jobs(&self) -> anyhow::Result<Vec<ImageJob>>);
+
     pub fn delete_image_job(&self, board_name: &String, img_md5: &String) -> anyhow::Result<usize> {
         use crate::schema::image_backlog::dsl::*;
         let connection = self.pool.get()?;
@@ -157,6 +225,8 @@ impl DBClient {
             .execute(&connection)?;
         Ok(res)
     }
+    gen_async!(delete_image_job_async, delete_image_job(&self, board_name: &String, img_md5: &String) -> anyhow::Result<usize>);
+    
     pub fn insert_board(&self, board: &Board) -> anyhow::Result<usize> {
         use crate::schema::boards::table;
         use crate::schema::boards::dsl::*;
@@ -175,6 +245,8 @@ impl DBClient {
             .execute(&connection)?;
         Ok(res)
     }
+    gen_async!(insert_board_async, insert_board(&self, board: &Board) -> anyhow::Result<usize>);
+
     pub fn delete_board(&self, board_name: &String) -> anyhow::Result<usize> {
         use crate::schema::boards::dsl::*;
         let connection = self.pool.get()?;
@@ -183,18 +255,23 @@ impl DBClient {
             ).execute(&connection)?;
         Ok(res)
     }
+    gen_async!(delete_board_async, delete_board(&self, board_name: &String) -> anyhow::Result<usize>);
+
     pub fn get_board(&self, board_name: &String) -> anyhow::Result<Option<Board>> {
         use crate::schema::boards::dsl::*;
         let connection = self.pool.get()?;
         let post = boards.filter(name.eq(board_name)).first::<Board>(&connection).optional()?;
         Ok(post)
     }
+    gen_async!(get_board_async, get_board(&self, board_name: &String) -> anyhow::Result<Option<Board>>);
+
     pub fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
         use crate::schema::boards::dsl::*;
         let connection = self.pool.get()?;
         let post = boards.load::<Board>(&connection)?;
         Ok(post)
     }
+    gen_async!(get_all_boards_async, get_all_boards(&self) -> anyhow::Result<Vec<Board>>);
 }
 
 #[cfg(test)]

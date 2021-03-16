@@ -6,7 +6,6 @@ use std::collections::HashSet;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
-use tokio::task::block_in_place;
 use tokio::fs::create_dir_all;
 use base64::decode;
 use base32::{Alphabet, encode};
@@ -95,27 +94,20 @@ impl Archiver {
         Ok((infos, last_modified))
     }
     
-    pub async fn archive_cycle(self: Archiver, board: String) -> bool {
-        let board_object = match block_in_place(|| self.db_client.get_board(&board)){
-            Ok(opt_board) => opt_board.unwrap(),
-            Err(e) => {
-                info!("Error getting board from database: {}", e);
-                return true;
-            }
-        };
+    pub async fn archive_cycle(&self, board: String) -> anyhow::Result<bool> {
+        let board_object = self.db_client.get_board_async(&board).await
+        .map_err(|e| {error!("Error getting board from database: {}", e); e})??.unwrap();
+
         if !board_object.archive {
             info!("Stopping archiver for {}", board_object.name);
-            return true;
+            return Ok(false);
         }
+
         let last_change = board_object.last_modified;
         info!("Fetching new thread changes for board /{}/", board);
-        let (thread_infos, new_last_change) = match self.get_all_thread_info_since(&board, last_change).await {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Failed to fetch thread changes for /{}/: {}", board, e);
-                return true;
-            }
-        };
+        let (thread_infos, new_last_change) = self.get_all_thread_info_since(&board, last_change).await
+        .map_err(|e| {error!("Failed to fetch thread changes for /{}/: {}", board, e); e})?;
+
         info!("Thread info fetched for /{}/. {} threads have had changes or were created since {}", board, thread_infos.len(), last_change);
         let mut handles = Vec::new();
         for info in thread_infos {
@@ -131,71 +123,46 @@ impl Archiver {
         let mut current_last_change = new_last_change;
         for handle in handles {
             // The task returns the last modified of thread, plus thread if it succeeded, None if failed
-            let (last_modified, thread) = handle.await.unwrap_or_default();
-            
-            match thread {
-                Some(_) =>(), // Thread fetched successfully
-                None => { // Thread not fetched successfully
-                    // next time resume archiving from before earliest failed thread
-                    if current_last_change > last_modified {
-                        current_last_change = last_modified - 1;
-                    }
+            let thread_res = handle.await?;
+            if thread_res.is_err() { // Thread not fetched successfully
+                let last_modified = thread_res.unwrap_err();
+                // next time resume archiving from before earliest failed thread
+                if current_last_change > last_modified {
+                    current_last_change = last_modified - 1;
                 }
-            };
+            }
         }
-        let mut new_board_object = match block_in_place(|| self.db_client.get_board(&board)){
-            Ok(opt_board) => opt_board.unwrap(),
-            Err(e) => {
-                info!("Error getting board from database: {}", e);
-                return true;
-            }
-        };
+        let mut new_board_object = self.db_client.get_board_async(&board).await?
+        .map_err(|e| {error!("Error getting board from database: {}", e); e})?.unwrap();
+       
         new_board_object.last_modified = current_last_change;
-        block_in_place(|| self.db_client.insert_board(&new_board_object)).unwrap_or_default();
-        true
+        self.db_client.insert_board_async(&new_board_object).await??;
+        Ok(true)
     }
-    pub async fn archive_thread(&self, board: String, info: ThreadInfo) -> (i64, Option<Thread>) {
-        let thread = match self.get_thread(&board, &info.no.to_string()).await {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Failed to fetch thread /{}/{}: {}", board, info.no, e);
-                return (info.last_modified, None)
-            }
-        };
+    pub async fn archive_thread(&self, board: String, info: ThreadInfo) -> Result<(), i64> {
+        let thread = self.get_thread(&board, &info.no.to_string()).await
+        .map_err(|e| {error!("Failed to fetch thread /{}/{}: {}", board, info.no, e); info.last_modified})?;
+
         let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
         let image_infos = posts.iter().filter_map(|post| self.get_post_image_info(&board,post)).collect::<Vec<ImageInfo>>();
-        match block_in_place(|| self.db_client.insert_posts(posts)) {
-            Ok(_) => (),
-            Err(e) => {
-                error!("Failed to insert thread /{}/{} into database: {}", board, info.no, e);
-            }
-        };
-        for info in image_infos {
-            match block_in_place(|| self.db_client.insert_image_job(&info)) {
-                Ok(_) => (),
-                Err(e) => {
-                    error!("Failed to insert image job /{}/{} into database: {}", board, info.md5.clone(), e);
-                }
-            };
+
+        self.db_client.insert_posts_async(&posts).await.unwrap()
+        .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", board, info.no, e); info.last_modified}).ok();
+
+        for image_info in image_infos {
+            self.db_client.insert_image_job_async(&image_info).await.unwrap()
+            .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", board, image_info.md5.clone(), e); info.last_modified}).ok();
         }
-        (info.last_modified, Some(thread))
+        Ok(())
     }
-    pub async fn image_cycle(&self) {
-        let image_jobs = match block_in_place(|| self.db_client.get_image_jobs()) {
-            Ok(j) => j,
-            Err(e) => {
-                error!("Failed to get new image jobs from database: {}", e);
-                return
-            }
-        };
+    pub async fn image_cycle(&self) -> Result<(),()> {
+        let image_jobs = self.db_client.get_image_jobs_async().await.unwrap()
+        .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
+
         info!("Running image cycle for {} new jobs", image_jobs.len());
-        let boards = match block_in_place(|| self.db_client.get_all_boards()){
-            Ok(j) => j,
-            Err(e) => {
-                error!("Failed to get boards from database: {}", e);
-                return
-            }
-        };
+        let boards = self.db_client.get_all_boards_async().await.unwrap()
+        .map_err(|e| {error!("Failed to get boards from database: {}", e);})?;
+
         let mut full_images = HashSet::new();
         for board in boards {
             if board.full_images{
@@ -218,11 +185,13 @@ impl Archiver {
             ))
         }
         for handle in handles {
-            handle.await.unwrap_or_default();
+            handle.await.ok();
         }
+        Ok(())
     }
-    pub async fn archive_image(&self, job: &ImageJob, folder: &Path, need_full_image: bool) {
-        let(thumb_exists, full_exists) = match block_in_place(|| self.db_client.image_exists_full(&job.md5)) {
+    pub async fn archive_image(&self, job: &ImageJob, folder: &Path, need_full_image: bool) -> Result<(),()> {
+        let (thumb_exists, full_exists) = match self.db_client.image_exists_full_async(&job.md5).await.unwrap()
+        {
             Ok(j) => j,
             Err(e) => {
                 error!("Failed to get image status from database: {}", e);
@@ -244,13 +213,9 @@ impl Archiver {
 
         image.thumbnail = thumb_success;
 
-        match block_in_place(|| self.db_client.insert_image(&image)) {
-            Ok(_) => (),
-            Err(e) => {
-                error!("Failed to insert image {} into database: {}", job.md5, e);
-                return
-            }
-        };
+        self.db_client.insert_image_async(&image).await.unwrap()
+        .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
+
         info!("Processed thumbnail {} ({})", job.md5, job.thumbnail_filename);
 
         let full_success = match need_full_image && !full_exists {
@@ -261,27 +226,19 @@ impl Archiver {
 
         image.full_image = full_success;
 
-        match block_in_place(|| self.db_client.insert_image(&image)) {
-            Ok(_) => (),
-            Err(e) => {
-                error!("Failed to insert image {} into database: {}", job.md5, e);
-                return
-            }
-        };
-        match block_in_place(|| self.db_client.delete_image_job(&job.board, &job.md5)) {
-            Ok(_) => (),
-            Err(e) => {
-                error!("Failed to delete image {} from backlog: {}", job.md5, e);
-                return
-            }
-        };
+        self.db_client.insert_image_async(&image).await.unwrap()
+        .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
+        self.db_client.delete_image_job_async(&job.board, &job.md5).await.unwrap()
+        .map_err(|e| {error!("Failed to delete image {} from backlog: {}", job.md5, e);})?;
+
         info!("Processed image {} ({}) successfully", job.md5, job.filename);
+        Ok(())
     }
     pub async fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {
         let c = self.clone();
         tokio::task::spawn(async move { 
             loop {
-                c.image_cycle().await;
+                c.image_cycle().await.ok();
                 tokio::time::sleep(Duration::from_secs(10)).await;
             }
         })
@@ -292,13 +249,16 @@ impl Archiver {
         let wait_time = board.wait_time.clone();
         tokio::task::spawn(async move {
             loop {
-                c.clone().archive_cycle(board_name.clone()).await;
+                let continue_res = c.clone().archive_cycle(board_name.clone()).await;
+                if continue_res.is_ok(){ // Always continue on error
+                    if !continue_res.unwrap() {break}; // We have received a stop signal
+                }
                 tokio::time::sleep(Duration::from_secs(wait_time.try_into().unwrap())).await;
             }
         })
     }
     pub async fn run_archivers(&self) -> anyhow::Result<()> {
-        let boards = block_in_place(|| self.db_client.get_all_boards())?;
+        let boards = self.db_client.get_all_boards_async().await??;
         for board in boards {
             if !board.archive {continue};
             self.run_archive_cycle(&board).await;
@@ -308,7 +268,7 @@ impl Archiver {
     }
     #[allow(dead_code)]
     pub async fn set_board(&self, board: Board) -> anyhow::Result<usize> {
-        let db_board = block_in_place(|| self.db_client.get_board(&board.name))?;
+        let db_board = self.db_client.get_board_async(&board.name).await??;
         let insert_board = match db_board {
             Some(prev_board) => {
                 // Don't overwrite last_modified
@@ -322,10 +282,10 @@ impl Archiver {
             error!("Board /{}/ does not exist, skipping", insert_board.name);
             return Ok(0)
         }
-        block_in_place(|| self.db_client.insert_board(&insert_board))
+        self.db_client.insert_board_async(&insert_board).await?
     }
     pub async fn stop_board(&self, board_name: &String) -> anyhow::Result<usize> {
-        let db_board = block_in_place(|| self.db_client.get_board(board_name))?;
+        let db_board = self.db_client.get_board_async(board_name).await??;
         let insert_board = match db_board {
             Some(mut prev_board) => {
                 prev_board.archive = false;
@@ -333,16 +293,16 @@ impl Archiver {
             },
             None => return Ok(0)
         };
-        block_in_place(|| self.db_client.insert_board(&insert_board))
+        self.db_client.insert_board_async(&insert_board).await?
     }
     #[allow(dead_code)]
     pub async fn reset_board_state(&self, board_name: &String) -> anyhow::Result<usize> {
-        let db_board = block_in_place(|| self.db_client.get_board(board_name))?;
+        let db_board = self.db_client.get_board_async(board_name).await??;
         match db_board {
             Some(mut prev_board) => {
                 // Reset last_modified
                 prev_board.last_modified = 0;
-                block_in_place(|| self.db_client.insert_board(&prev_board))
+                self.db_client.insert_board_async(&prev_board).await?
             },
             None => Ok(0)
         }
@@ -351,7 +311,7 @@ impl Archiver {
         self.http_client.fetch_json::<BoardsList>("https://a.4cdn.org/boards.json").await
     }
     pub async fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
-        block_in_place(|| self.db_client.get_all_boards())
+        self.db_client.get_all_boards_async().await.unwrap()
     }
     pub async fn get_boards_set(&self) -> anyhow::Result<HashSet<String>> {
         let boardslist = self.get_all_boards_api().await?;
