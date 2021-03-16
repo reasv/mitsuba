@@ -131,7 +131,7 @@ impl Archiver {
         let mut current_last_change = new_last_change;
         for handle in handles {
             // The task returns the last modified of thread, plus thread if it succeeded, None if failed
-            let (last_modified, thread) = handle.await.unwrap();
+            let (last_modified, thread) = handle.await.unwrap_or_default();
             
             match thread {
                 Some(_) =>(), // Thread fetched successfully
@@ -202,17 +202,18 @@ impl Archiver {
                 full_images.insert(board.name);
             }
         }
-        
-        let image_folder = Path::new("data/images");
+        let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
+        let image_folder = Path::new(&data_folder_str).join("images");
         create_dir_all(image_folder.join("thumb")).await.unwrap_or_default();
         create_dir_all(image_folder.join("full")).await.unwrap_or_default();
         let mut handles = Vec::new();
         for job in image_jobs {
             let c = self.clone();
             let need_full_image = full_images.contains(&job.board);
+            let folder = image_folder.clone();
             handles.push(tokio::task::spawn(
                 async move {
-                    c.archive_image(&job.clone(), image_folder.clone(), need_full_image).await
+                    c.archive_image(&job.clone(), &folder, need_full_image).await
                 }
             ))
         }
@@ -323,6 +324,17 @@ impl Archiver {
         }
         block_in_place(|| self.db_client.insert_board(&insert_board))
     }
+    pub async fn stop_board(&self, board_name: &String) -> anyhow::Result<usize> {
+        let db_board = block_in_place(|| self.db_client.get_board(board_name))?;
+        let insert_board = match db_board {
+            Some(mut prev_board) => {
+                prev_board.archive = false;
+                prev_board
+            },
+            None => return Ok(0)
+        };
+        block_in_place(|| self.db_client.insert_board(&insert_board))
+    }
     #[allow(dead_code)]
     pub async fn reset_board_state(&self, board_name: &String) -> anyhow::Result<usize> {
         let db_board = block_in_place(|| self.db_client.get_board(board_name))?;
@@ -335,11 +347,14 @@ impl Archiver {
             None => Ok(0)
         }
     }
-    pub async fn get_all_boards(&self) -> anyhow::Result<BoardsList> {
+    pub async fn get_all_boards_api(&self) -> anyhow::Result<BoardsList> {
         self.http_client.fetch_json::<BoardsList>("https://a.4cdn.org/boards.json").await
     }
+    pub async fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
+        block_in_place(|| self.db_client.get_all_boards())
+    }
     pub async fn get_boards_set(&self) -> anyhow::Result<HashSet<String>> {
-        let boardslist = self.get_all_boards().await?;
+        let boardslist = self.get_all_boards_api().await?;
         let mut name_set = HashSet::new();
         for board in boardslist.boards {
             name_set.insert(board.board);
