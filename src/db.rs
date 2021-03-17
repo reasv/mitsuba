@@ -21,38 +21,34 @@ macro_rules! do_async {
     });
 }
 
-
-//gen_async!(get_user_asyc, get_user(&self, user_name: &String) -> anyhow::Result<Option<User>>)
-//pub fn get_thread(&self, board_name: &String, post_no: i64) -> anyhow::Result<Option<Thread>> {
-#[allow(unused_macros)]
 macro_rules! gen_async {
     ($func_name:ident, pub fn $func:ident(&$self:ident, $(&(ref $ref_arg:ident) : $ref_typ: ty),+, $($arg:ident: $typ: ty),+) -> $ret:ty $b:block) => {
         pub fn $func(&$self, $($ref_arg : $ref_typ),+, $($arg : $typ),+) -> $ret $b
 
-        pub fn $func_name(&$self, $($ref_arg: $ref_typ),+, $($arg: $typ),+,) -> tokio::task::JoinHandle<$ret> {
+        pub async fn $func_name(&$self, $($ref_arg: $ref_typ),+, $($arg: $typ),+,) -> $ret {
             $( let $ref_arg = $ref_arg.clone(); )+
             $( let $arg = $arg.clone(); )+
             let self_ref = $self.clone();
-            tokio::task::spawn_blocking(move || {self_ref.$func($(&$ref_arg),+,$($arg),+)})
+            tokio::task::spawn_blocking(move || {self_ref.$func($(&$ref_arg),+,$($arg),+)}).await?
         }
         
     };
     ($func_name:ident, pub fn $func:ident(&$self:ident, $($ref_arg:ident : $ref_typ: ty),+) -> $ret:ty $b:block) => {
         pub fn $func(&$self, $($ref_arg : $ref_typ),+) -> $ret $b
 
-        pub fn $func_name(&$self, $($ref_arg: $ref_typ),+) -> tokio::task::JoinHandle<$ret> {
+        pub async fn $func_name(&$self, $($ref_arg: $ref_typ),+) -> $ret {
             $( let $ref_arg = $ref_arg.clone(); )+
             let self_ref = $self.clone();
-            tokio::task::spawn_blocking(move || {self_ref.$func($(&$ref_arg),+)})
+            tokio::task::spawn_blocking(move || {self_ref.$func($(&$ref_arg),+)}).await?
         }
         
     };
     ($func_name:ident, pub fn $func:ident(&$self:ident) -> $ret:ty $b:block) => {
         pub fn $func(&$self) -> $ret $b
 
-        pub fn $func_name(&$self) -> tokio::task::JoinHandle<$ret> {
+        pub async fn $func_name(&$self) -> $ret {
             let self_ref = $self.clone();
-            tokio::task::spawn_blocking(move || {self_ref.$func()})
+            tokio::task::spawn_blocking(move || {self_ref.$func()}).await?
         }
         
     };

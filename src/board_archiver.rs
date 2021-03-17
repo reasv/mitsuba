@@ -96,7 +96,7 @@ impl Archiver {
     
     pub async fn archive_cycle(&self, board: String) -> anyhow::Result<bool> {
         let board_object = self.db_client.get_board_async(&board).await
-        .map_err(|e| {error!("Error getting board from database: {}", e); e})??.unwrap();
+        .map_err(|e| {error!("Error getting board from database: {}", e); e})?.unwrap();
 
         if !board_object.archive {
             info!("Stopping archiver for {}", board_object.name);
@@ -132,11 +132,11 @@ impl Archiver {
                 }
             }
         }
-        let mut new_board_object = self.db_client.get_board_async(&board).await?
+        let mut new_board_object = self.db_client.get_board_async(&board).await
         .map_err(|e| {error!("Error getting board from database: {}", e); e})?.unwrap();
        
         new_board_object.last_modified = current_last_change;
-        self.db_client.insert_board_async(&new_board_object).await??;
+        self.db_client.insert_board_async(&new_board_object).await?;
         Ok(true)
     }
     pub async fn archive_thread(&self, board: String, info: ThreadInfo) -> Result<(), i64> {
@@ -146,21 +146,21 @@ impl Archiver {
         let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
         let image_infos = posts.iter().filter_map(|post| self.get_post_image_info(&board,post)).collect::<Vec<ImageInfo>>();
 
-        self.db_client.insert_posts_async(&posts).await.unwrap()
+        self.db_client.insert_posts_async(&posts).await
         .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", board, info.no, e); info.last_modified}).ok();
 
         for image_info in image_infos {
-            self.db_client.insert_image_job_async(&image_info).await.unwrap()
+            self.db_client.insert_image_job_async(&image_info).await
             .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", board, image_info.md5.clone(), e); info.last_modified}).ok();
         }
         Ok(())
     }
     pub async fn image_cycle(&self) -> Result<(),()> {
-        let image_jobs = self.db_client.get_image_jobs_async().await.unwrap()
+        let image_jobs = self.db_client.get_image_jobs_async().await
         .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
 
         info!("Running image cycle for {} new jobs", image_jobs.len());
-        let boards = self.db_client.get_all_boards_async().await.unwrap()
+        let boards = self.db_client.get_all_boards_async().await
         .map_err(|e| {error!("Failed to get boards from database: {}", e);})?;
 
         let mut full_images = HashSet::new();
@@ -171,8 +171,8 @@ impl Archiver {
         }
         let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
         let image_folder = Path::new(&data_folder_str).join("images");
-        create_dir_all(image_folder.join("thumb")).await.unwrap_or_default();
-        create_dir_all(image_folder.join("full")).await.unwrap_or_default();
+        create_dir_all(image_folder.join("thumb")).await.ok();
+        create_dir_all(image_folder.join("full")).await.ok();
         let mut handles = Vec::new();
         for job in image_jobs {
             let c = self.clone();
@@ -190,7 +190,7 @@ impl Archiver {
         Ok(())
     }
     pub async fn archive_image(&self, job: &ImageJob, folder: &Path, need_full_image: bool) -> Result<(),()> {
-        let (thumb_exists, full_exists) = match self.db_client.image_exists_full_async(&job.md5).await.unwrap()
+        let (thumb_exists, full_exists) = match self.db_client.image_exists_full_async(&job.md5).await
         {
             Ok(j) => j,
             Err(e) => {
@@ -213,7 +213,7 @@ impl Archiver {
 
         image.thumbnail = thumb_success;
 
-        self.db_client.insert_image_async(&image).await.unwrap()
+        self.db_client.insert_image_async(&image).await
         .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
 
         info!("Processed thumbnail {} ({})", job.md5, job.thumbnail_filename);
@@ -226,9 +226,9 @@ impl Archiver {
 
         image.full_image = full_success;
 
-        self.db_client.insert_image_async(&image).await.unwrap()
+        self.db_client.insert_image_async(&image).await
         .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
-        self.db_client.delete_image_job_async(&job.board, &job.md5).await.unwrap()
+        self.db_client.delete_image_job_async(&job.board, &job.md5).await
         .map_err(|e| {error!("Failed to delete image {} from backlog: {}", job.md5, e);})?;
 
         info!("Processed image {} ({}) successfully", job.md5, job.filename);
@@ -250,15 +250,15 @@ impl Archiver {
         tokio::task::spawn(async move {
             loop {
                 let continue_res = c.clone().archive_cycle(board_name.clone()).await;
-                if continue_res.is_ok(){ // Always continue on error
-                    if !continue_res.unwrap() {break}; // We have received a stop signal
+                if !continue_res.unwrap_or(true) { // We always continue on error
+                    break;
                 }
-                tokio::time::sleep(Duration::from_secs(wait_time.try_into().unwrap())).await;
+                tokio::time::sleep(Duration::from_secs(wait_time.try_into().unwrap_or(10u64))).await;
             }
         })
     }
     pub async fn run_archivers(&self) -> anyhow::Result<()> {
-        let boards = self.db_client.get_all_boards_async().await??;
+        let boards = self.db_client.get_all_boards_async().await?;
         for board in boards {
             if !board.archive {continue};
             self.run_archive_cycle(&board).await;
@@ -268,7 +268,7 @@ impl Archiver {
     }
     #[allow(dead_code)]
     pub async fn set_board(&self, board: Board) -> anyhow::Result<usize> {
-        let db_board = self.db_client.get_board_async(&board.name).await??;
+        let db_board = self.db_client.get_board_async(&board.name).await?;
         let insert_board = match db_board {
             Some(prev_board) => {
                 // Don't overwrite last_modified
@@ -282,10 +282,10 @@ impl Archiver {
             error!("Board /{}/ does not exist, skipping", insert_board.name);
             return Ok(0)
         }
-        self.db_client.insert_board_async(&insert_board).await?
+        self.db_client.insert_board_async(&insert_board).await
     }
     pub async fn stop_board(&self, board_name: &String) -> anyhow::Result<usize> {
-        let db_board = self.db_client.get_board_async(board_name).await??;
+        let db_board = self.db_client.get_board_async(board_name).await?;
         let insert_board = match db_board {
             Some(mut prev_board) => {
                 prev_board.archive = false;
@@ -293,16 +293,16 @@ impl Archiver {
             },
             None => return Ok(0)
         };
-        self.db_client.insert_board_async(&insert_board).await?
+        self.db_client.insert_board_async(&insert_board).await
     }
     #[allow(dead_code)]
     pub async fn reset_board_state(&self, board_name: &String) -> anyhow::Result<usize> {
-        let db_board = self.db_client.get_board_async(board_name).await??;
+        let db_board = self.db_client.get_board_async(board_name).await?;
         match db_board {
             Some(mut prev_board) => {
                 // Reset last_modified
                 prev_board.last_modified = 0;
-                self.db_client.insert_board_async(&prev_board).await?
+                self.db_client.insert_board_async(&prev_board).await
             },
             None => Ok(0)
         }
@@ -311,7 +311,7 @@ impl Archiver {
         self.http_client.fetch_json::<BoardsList>("https://a.4cdn.org/boards.json").await
     }
     pub async fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
-        self.db_client.get_all_boards_async().await.unwrap()
+        self.db_client.get_all_boards_async().await
     }
     pub async fn get_boards_set(&self) -> anyhow::Result<HashSet<String>> {
         let boardslist = self.get_all_boards_api().await?;
