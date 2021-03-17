@@ -82,6 +82,7 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(get_full_image)
         .service(thread_page)
         .service(actix_files::Files::new("/img", "data/images"))
+        .service(actix_files::Files::new("/static", "static"))
     })
     .bind("127.0.0.1:8080")?
     .run()

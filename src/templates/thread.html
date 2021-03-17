@@ -2,12 +2,131 @@
 <html>
 
 <head>
-    <title>Thread</title>
+    <meta charset="utf-8">
+    <meta name="robots" content="noarchive">
+    <!-- <meta name="description"
+        content="I finally got a 4chan pass - &quot;/{{op.board}}/ - Very Important Posts&quot; is 4chan's imageboard for Pass users."> -->
+    <meta name="keywords" content="imageboard,worksafe,random,finally,4chan,pass">
+    <meta name="referrer" content="origin">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="shortcut icon" href="/static/image/favicon-ws.ico">
+    <link rel="stylesheet" title="switch" href="/static/css/yotsubluenew.699.css">
+    <link rel="alternate stylesheet" style="text/css" href="/static/css/yotsubanew.699.css" title="Yotsuba New">
+    <link rel="alternate stylesheet" style="text/css" href="/static/css/yotsubluenew.699.css"
+        title="Yotsuba B New">
+    <link rel="alternate stylesheet" style="text/css" href="/static/css/futabanew.699.css" title="Futaba New">
+    <link rel="alternate stylesheet" style="text/css" href="/static/css/burichannew.699.css" title="Burichan New">
+    <link rel="alternate stylesheet" style="text/css" href="/static/css/photon.699.css" title="Photon">
+    <link rel="alternate stylesheet" style="text/css" href="/static/css/tomorrow.699.css" title="Tomorrow">
+    <link rel="stylesheet" href="/static/css/yotsubluemobile.699.css">
+    <link rel="canonical" href="/{{op.board}}/thread/{{op.no}}/{{op.semantic_url}}">
+    <!-- <link rel="alternate" title="RSS feed" href="/{{op.board}}/index.rss" type="application/rss+xml"> -->
+    <title>/{{op.board}}/ - {{op.com}} - Mitsuba Archive</title>
+    <!-- <script
+        type="text/javascript">var style_group = "ws_style", cssVersion = 699, jsVersion = 1051, comlen = 2000, maxFilesize = 4194304, maxLines = 100, clickable_ids = 1, cooldowns = { "thread": 600, "reply": 60, "image": 60 }; var maxWebmFilesize = 3145728; var board_archived = true; var sjis_tags = true; var spoilers = true; var check_for_block = 1;</script>
+    <script type="text/javascript" data-cfasync="false" src="//s.4cdn.org/js/core.min.1066.js"></script>
+    <script type="text/javascript" data-cfasync="false" src="//s.4cdn.org/js/extension.min.1131.js"></script>-->
+    <noscript>
+        <style type="text/css">
+            #postForm {
+                display: table !important;
+            }
+
+            #g-recaptcha {
+                display: none;
+            }
+        </style>
+    </noscript>
 </head>
 
-<body>
-    {{#each posts}}
-    <li>{{this.no}}</li>
-    {{/each}}
+<body class="is_thread board_{{op.board}}"><span id="id_css"></span>
+    <hr class="desktop" id="op">
+    <div class="navLinks desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a
+            href="#bottom">Bottom</a>]</div>
+    <hr>
+    <form name="delform" id="delform" method="post">
+        <div class="board">
+            <div class="thread" id="t{{op.no}}">
+                <div class="postContainer opContainer" id="pc{{op.no}}">
+                    <div id="p{{op.no}}" class="post op">
+                        <div class="postInfoM mobile" id="pim{{op.no}}">
+                            <span class="nameBlock">
+                                <span class="name">{{op.name}}</span><br><span class="subject">{{op.sub}}</span> 
+                            </span>
+                            <span class="dateTime postNum" data-utc="{{op.time}}">{{op.now}} <a href="#p{{op.no}}" title="Link to this post">No.</a><a href="javascript:quote('{{op.no}}');" title="Reply to this post">{{op.no}}</a>
+                            </span>
+                        </div>
+                        <div class="file" id="f{{op.no}}">
+                            <div class="fileText" id="fT{{op.no}}">File: 
+                                <a href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{op.filename}}{{op.ext}}</a> ({{op.fsize}} KB, {{op.w}}x{{op.h}})
+                            </div>
+                            <a class="fileThumb" href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">
+                                <img src="//i.4cdn.org/{{op.board}}/{{op.tim}}s.jpg" alt="{{op.fsize}} KB" data-md5="{{op.md5}}" 
+                                style="height: {{op.tn_h}}px; width: {{op.tn_w}}px;" loading="lazy">
+                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{op.fsize}} KB PNG</div>
+                            </a>
+                        </div>
+                        <div class="postInfo desktop" id="pi{{op.no}}"><input type="checkbox" name="{{op.no}}" value="delete">
+                            <span class="subject"></span>
+                            <span class="nameBlock">
+                                <span class="name">{{op.name}}</span>
+                            </span>
+                            <span class="dateTime" data-utc="{{op.time}}">{{op.now}}</span>
+                            <span class="postNum desktop"><a href="#p{{op.no}}" title="Link to this post">No.</a><a href="javascript:quote('{{op.no}}');" title="Reply to this post">{{op.no}}</a>
+                            </span>
+                        </div>
+                        <blockquote class="postMessage" id="m{{op.no}}">{{{op.com}}}</blockquote>
+                    </div>
+                </div>
+                {{#each posts}}
+                <div class="postContainer replyContainer" id="pc{{this.no}}">
+                    <div class="sideArrows" id="sa{{this.no}}">&gt;&gt;</div>
+
+                    <div id="p{{this.no}}" class="post reply">
+                        <div class="postInfoM mobile" id="pim{{this.no}}"> 
+                            <span class="nameBlock"><span class="name">{{this.name}}</span><br></span>
+                            <span class="dateTime postNum" data-utc="{{this.time}}">
+                                {{this.now}}<a href="#p{{this.no}}" title="Link to this post">No.</a><a href="javascript:quote('{{this.no}}');" title="Reply to this post">{{this.no}}</a>
+                            </span>
+                        </div>
+                        <div class="postInfo desktop" id="pi{{this.no}}">
+                            <input type="checkbox" name="{{this.no}}" value="delete">
+                            <span class="nameBlock"><span class="name">{{this.name}}</span> </span> 
+                            <span class="dateTime" data-utc="{{this.time}}">{{this.now}}</span> 
+                            <span class="postNum desktop">
+                                <a href="#p{{this.no}}" title="Link to this post">No.</a><a href="javascript:quote('{{this.no}}');" title="Reply to this post">{{this.no}}</a>
+                            </span>
+                        </div>
+                        {{#if this.tim}}
+                        <div class="file" id="f{{this.no}}">
+                            <div class="fileText" id="f{{this.no}}">
+                                File: <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{this.filename}}{{this.ext}}</a>
+                                 ({{this.fsize}}, {{this.w}}x{{this.h}})
+                            </div>
+                            <a class="fileThumb" href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">
+                                <img src="/{{this.board}}/{{this.tim}}s.jpg" 
+                                    alt="{{this.fsize}}" 
+                                    data-md5="{{this.md5}}" 
+                                    style="height: {{this.tn_h}}px; width: {{this.tn_w}}px;" 
+                                    loading="lazy">
+                                    
+                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{this.fsize}} {{this.ext}}</div>
+                            </a>
+                        </div>
+                        {{/if}}
+                        <blockquote class="postMessage" id="m{{this.no}}">
+                            {{{this.com}}}
+                        </blockquote>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            <hr>
+            <div class="navLinks navLinksBot desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a
+                    href="/{{op.board}}/catalog">Catalog</a>] [<a href="#top">Top</a>] </div>
+            <hr class="desktop">
+        </div>
+    </form>
+    <div id="bottom"></div>
 </body>
 </html>
