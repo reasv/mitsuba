@@ -69,13 +69,8 @@ impl Archiver {
     }
 
     pub async fn get_thread(&self, board: &String, tid: &String) -> anyhow::Result<Thread> {
-        match self.http_client.fetch_json::<Thread>(&get_thread_api_url(board, tid)).await {
-            Ok(t) => Ok(t),
-            Err(msg) => {
-                error!("Could not get thread /{}/{} (Error: {:?})", board, tid, msg);
-                return Err(msg);
-            }
-        }
+        self.http_client.fetch_json::<Thread>(&get_thread_api_url(board, tid)).await
+        .map_err(|e| {error!("Could not get thread /{}/{} (Error: {:?})", board, tid, e); e})
     }
 
     /// Get all ThreadInfo for threads on this board modified since `last_modified_since`
@@ -190,14 +185,10 @@ impl Archiver {
         Ok(())
     }
     pub async fn archive_image(&self, job: &ImageJob, folder: &Path, need_full_image: bool) -> Result<(),()> {
-        let (thumb_exists, full_exists) = match self.db_client.image_exists_full_async(&job.md5).await
-        {
-            Ok(j) => j,
-            Err(e) => {
-                error!("Failed to get image status from database: {}", e);
-                (false, false)
-            }
-        };
+        let (thumb_exists, full_exists) = self.db_client.image_exists_full_async(&job.md5).await
+        .map_err(|e| {error!("Failed to get image status from database: {}", e); e} )
+        .unwrap_or((false, false));
+        
         let mut image = Image{
             md5: job.md5.clone(), 
             thumbnail: thumb_exists,
