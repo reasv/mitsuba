@@ -18,6 +18,7 @@ mod models;
 mod schema;
 mod http;
 mod api;
+mod frontend;
 use api::web_main;
 use board_archiver::{Archiver};
 use http::HttpClient;
@@ -103,7 +104,7 @@ fn get_env(name: &str, def: u32) -> u32 {
     }
 }
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() {
     dotenv::dotenv().ok();
     env_logger::init();
@@ -147,11 +148,11 @@ async fn main() {
 
     match opts.subcmd {
         SubCommand::StartReadOnly(_) => {
-            web_main().unwrap();
+            web_main().await.unwrap();
         },
         SubCommand::Start(_) => {
             client.run_archivers().await.unwrap();
-            web_main().unwrap();
+            web_main().await.unwrap();
         },
         SubCommand::Remove(remove_opt) => {
             client.stop_board(&remove_opt.name).await.unwrap();

@@ -188,7 +188,7 @@ impl Archiver {
         let (thumb_exists, full_exists) = self.db_client.image_exists_full_async(&job.md5).await
         .map_err(|e| {error!("Failed to get image status from database: {}", e); e} )
         .unwrap_or((false, false));
-        
+
         let mut image = Image{
             md5: job.md5.clone(), 
             thumbnail: thumb_exists,
@@ -257,7 +257,7 @@ impl Archiver {
         self.run_image_cycle().await;
         Ok(())
     }
-    #[allow(dead_code)]
+    
     pub async fn set_board(&self, board: Board) -> anyhow::Result<usize> {
         let db_board = self.db_client.get_board_async(&board.name).await?;
         let insert_board = match db_board {
@@ -286,7 +286,7 @@ impl Archiver {
         };
         self.db_client.insert_board_async(&insert_board).await
     }
-    #[allow(dead_code)]
+    
     pub async fn reset_board_state(&self, board_name: &String) -> anyhow::Result<usize> {
         let db_board = self.db_client.get_board_async(board_name).await?;
         match db_board {
