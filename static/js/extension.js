@@ -9054,7 +9054,7 @@ Main.getDocTopOffset = function() {
     return 0;
   }
 };
-
+style_group = 'nws_style';
 Main.init = function() {
   var params;
   
@@ -9076,14 +9076,15 @@ Main.init = function() {
   if (Main.firstRun && Config.loadFromURL()) {
     Main.firstRun = false;
   }
-  
-  if (Main.stylesheet = Main.getCookie(style_group)) {
-    Main.stylesheet = Main.stylesheet.toLowerCase().replace(/ /g, '_');
-  }
-  else {
-    Main.stylesheet =
-      style_group == 'nws_style' ? 'yotsuba_new' : 'yotsuba_b_new';
-  }
+  Main.stylesheet = 'yotsuba_new';
+
+  // if (Main.stylesheet = Main.getCookie(style_group)) {
+  //   Main.stylesheet = Main.stylesheet.toLowerCase().replace(/ /g, '_');
+  // }
+  // else {
+  //   Main.stylesheet =
+  //     style_group == 'nws_style' ? 'yotsuba_new' : 'yotsuba_b_new';
+  // }
   
   QR.noCaptcha = QR.noCaptcha || window.passEnabled;
   
@@ -9158,7 +9159,7 @@ Main.run = function() {
   document.addEventListener('click', Main.onclick, false);
   
   $.id('settingsWindowLink').addEventListener('click', SettingsMenu.toggle, false);
-  $.id('settingsWindowLinkBot').addEventListener('click', SettingsMenu.toggle, false);
+  // $.id('settingsWindowLinkBot').addEventListener('click', SettingsMenu.toggle, false);
   $.id('settingsWindowLinkMobile').addEventListener('click', SettingsMenu.toggle, false);
   
   Main.isOekakiBoard = Main.board === 'i';

@@ -41,6 +41,16 @@
 </head>
 
 <body class="is_thread board_{{op.board}}"><span id="id_css"></span>
+
+    <span id="navtopright">[<a href="javascript:void(0);" id="settingsWindowLink">Settings</a>]</span>
+    <div id="boardNavMobile" class="mobile">
+        <div class="boardSelect"> <strong>Board</strong> <select id="boardSelectMobile"></select> </div>
+        <div class="pageJump"> <a href="#bottom">&#9660;</a> <a href="javascript:void(0);"
+                id="settingsWindowLinkMobile">Settings</a> <a href="//p.4chan.org/">Mobile</a> <a
+                href="//www.4channel.org" target="_top">Home</a> </div>
+    </div>
+
+
     <hr class="desktop" id="op">
     <div class="navLinks desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a
             href="#bottom">Bottom</a>]</div>
@@ -59,12 +69,12 @@
                         </div>
                         <div class="file" id="f{{op.no}}">
                             <div class="fileText" id="fT{{op.no}}">File: 
-                                <a href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{op.filename}}{{op.ext}}</a> ({{op.fsize}} KB, {{op.w}}x{{op.h}})
+                                <a href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{op.filename}}{{op.ext}}</a> ({{op.fsize}} B, {{op.w}}x{{op.h}})
                             </div>
                             <a class="fileThumb" href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">
-                                <img src="//i.4cdn.org/{{op.board}}/{{op.tim}}s.jpg" alt="{{op.fsize}} KB" data-md5="{{op.md5}}" 
+                                <img src="//i.4cdn.org/{{op.board}}/{{op.tim}}s.jpg" alt="{{op.fsize}} B" data-md5="{{op.md5}}" 
                                 style="height: {{op.tn_h}}px; width: {{op.tn_w}}px;" loading="lazy">
-                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{op.fsize}} KB PNG</div>
+                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{op.fsize}} B PNG</div>
                             </a>
                         </div>
                         <div class="postInfo desktop" id="pi{{op.no}}"><input type="checkbox" name="{{op.no}}" value="delete">
@@ -102,16 +112,16 @@
                         <div class="file" id="f{{this.no}}">
                             <div class="fileText" id="f{{this.no}}">
                                 File: <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{this.filename}}{{this.ext}}</a>
-                                 ({{this.fsize}}, {{this.w}}x{{this.h}})
+                                 ({{this.fsize}} B, {{this.w}}x{{this.h}})
                             </div>
                             <a class="fileThumb" href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">
                                 <img src="/{{this.board}}/{{this.tim}}s.jpg" 
-                                    alt="{{this.fsize}}" 
+                                    alt="{{this.fsize}} B" 
                                     data-md5="{{this.md5}}" 
                                     style="height: {{this.tn_h}}px; width: {{this.tn_w}}px;" 
                                     loading="lazy">
                                     
-                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{this.fsize}} {{this.ext}}</div>
+                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{this.fsize}} B {{this.ext}}</div>
                             </a>
                         </div>
                         {{/if}}
