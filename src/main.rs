@@ -19,6 +19,7 @@ mod schema;
 mod http;
 mod api;
 mod frontend;
+mod util;
 use api::web_main;
 use board_archiver::{Archiver};
 use http::HttpClient;

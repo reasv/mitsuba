@@ -20,6 +20,7 @@
     <link rel="alternate stylesheet" style="text/css" href="/static/css/tomorrow.699.css" title="Tomorrow">
     <link rel="stylesheet" href="/static/css/yotsubluemobile.699.css">
     <link rel="canonical" href="/{{op.board}}/thread/{{op.no}}/{{op.semantic_url}}">
+    {{#if op.id}}<style type="text/css">.posteruid .hand {padding: 0 5px; border-radius: 6px; font-size: 0.8em;}</style>{{/if}}
     <!-- <link rel="alternate" title="RSS feed" href="/{{op.board}}/index.rss" type="application/rss+xml"> -->
     {{#if op.sub}}
     <title>/{{op.board}}/ - {{shorten 25 op.sub}} - Mitsuba Archive</title>
@@ -70,32 +71,30 @@
                 <div class="postContainer opContainer" id="pc{{op.no}}">
                     <div id="p{{op.no}}" class="post op">
                         <div class="postInfoM mobile" id="pim{{op.no}}">
-                            <span class="nameBlock">
-                                <span class="name">{{op.name}}</span><br><span class="subject">{{op.sub}}</span> 
-                            </span>
-                            <span class="dateTime postNum" data-utc="{{op.time}}">{{op.now}} <a href="#p{{op.no}}" title="Link to this post">No.</a><a href="#p{{op.no}}" title="Reply to this post">{{op.no}}</a>
+                            <span class="nameBlock {{#if op.capcode}}capcodeMod{{/if}}">
+                                <span class="name">{{op.name}}</span>{{#if op.trip}}<span class="postertrip"> {{op.trip}}</span>{{/if}}{{#unless op.capcode}}{{#if op.id}} <span class="posteruid id_{{op.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color op.id}}">{{op.id}}</span>)</span>{{/if}}{{/unless}}{{#if op.capcode}}<strong class="capcode hand id_mod" title="Highlight posts by Moderators">## {{op.id}}</strong> <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina">{{/if}} {{#if op.since4pass}} <span title="Pass user since {{op.since4pass}}" class="n-pu"></span>{{/if}}<br><span class="subject">{{op.sub}}</span> </span><span class="dateTime postNum" data-utc="{{op.time}}">{{op.now}} <a href="#p{{op.no}}" title="Link to this post">No.</a><a href="#p{{op.no}}" title="Reply to this post">{{op.no}}</a>
                             </span>
                         </div>
                         <div class="file" id="f{{op.no}}">
-                            <div class="fileText" id="fT{{op.no}}">File: 
-                                <a href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{shorten 25 op.filename}}{{op.ext}}</a> ({{b_to_kb op.fsize}} KB, {{op.w}}x{{op.h}})
+                            <div class="fileText" id="fT{{op.no}}" {{#if op.spoiler}}title="{{shorten 25 op.filename}}{{op.ext}}"{{/if}}>File: 
+                                <a href="/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{#unless op.spoiler}}{{shorten 25 op.filename}}{{op.ext}}{{else}}Spoiler Image{{/unless}}</a> ({{b_to_kb op.fsize}} KB, {{op.w}}x{{op.h}})
                             </div>
-                            <a class="fileThumb" href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank"><img src="//i.4cdn.org/{{op.board}}/{{op.tim}}s.jpg" 
+                            <a class="fileThumb{{#if op.spoiler}} imgspoiler{{/if}}" href="/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{#unless op.spoiler}}<img src="/{{op.board}}/{{op.tim}}s.jpg" 
                                 alt="{{b_to_kb op.fsize}} KB" data-md5="{{op.md5}}" 
-                                style="height: {{op.tn_h}}px; width: {{op.tn_w}}px;" loading="lazy">
+                                style="height: {{op.tn_h}}px; width: {{op.tn_w}}px;" loading="lazy">{{else}}<img src="/static/image/spoiler.png" 
+                                alt="{{b_to_kb op.fsize}} KB" data-md5="{{op.md5}}" 
+                                style="height: 100px; width: 100px;" loading="lazy">{{/unless}}
                                 <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{b_to_kb op.fsize}} KB PNG</div>
                             </a>
                         </div>
                         <div class="postInfo desktop" id="pi{{op.no}}"><input type="checkbox" name="{{op.no}}" value="delete">
                             <span class="subject">{{op.sub}}</span>
-                            <span class="nameBlock">
-                                <span class="name">{{op.name}}</span>
-                            </span>
+                            <span class="nameBlock {{#if op.capcode}}capcodeMod{{/if}}"><span class="name">{{op.name}}</span> {{#if op.trip}}<span class="postertrip">{{op.trip}}</span>{{/if}}{{#unless op.capcode}}{{#if op.id}} <span class="posteruid id_{{op.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color op.id}}">{{op.id}}</span>)</span>{{/if}}{{/unless}}{{#if op.capcode}} <strong class="capcode hand id_mod" title="Highlight posts by Moderators">## {{op.id}}</strong> <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina">{{/if}}{{#if op.since4pass}} <span title="Pass user since {{op.since4pass}}" class="n-pu"></span>{{/if}}</span>
                             <span class="dateTime" data-utc="{{op.time}}">{{op.now}}</span>
                             <span class="postNum desktop"><a href="#p{{op.no}}" title="Link to this post">No.</a><a href="#p{{op.no}}" title="Reply to this post">{{op.no}}</a>
                             </span>
                         </div>
-                        <blockquote class="postMessage" id="m{{op.no}}">{{{op.com}}}</blockquote>
+                        <blockquote class="postMessage" id="m{{op.no}}">{{this.capcode}}{{{op.com}}}</blockquote>
                     </div>
                 </div>
                 {{#each posts}}
@@ -104,32 +103,27 @@
 
                     <div id="p{{this.no}}" class="post reply">
                         <div class="postInfoM mobile" id="pim{{this.no}}"> 
-                            <span class="nameBlock"><span class="name">{{this.name}}</span><br></span>
-                            <span class="dateTime postNum" data-utc="{{this.time}}">
-                                {{this.now}}<a href="#p{{this.no}}" title="Link to this post">No.</a><a href="#p{{this.no}}" title="Reply to this post">{{this.no}}</a>
-                            </span>
+                            <span class="nameBlock {{#if this.capcode}}capcodeMod{{/if}}"><span class="name {{#if this.capcode}}capcode{{/if}}">{{this.name}}</span>{{#if this.trip}}<span class="postertrip"> {{this.trip}}</span>{{/if}}{{#unless this.capcode}}{{#if this.id}} <span class="posteruid id_{{this.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color this.id}}">{{this.id}}</span>)</span>{{/if}}{{/unless}} {{#if this.capcode}}<strong class="capcode hand id_{{this.capcode}}" title="Highlight posts by Moderators">## {{this.id}}</strong> <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina">{{/if}}{{#if this.since4pass}} <span title="Pass user since {{this.since4pass}}" class="n-pu"></span>{{/if}}<br></span>
+                            <span class="dateTime postNum" data-utc="{{this.time}}">{{this.now}}<a href="#p{{this.no}}" title="Link to this post">No.</a><a href="#p{{this.no}}" title="Reply to this post">{{this.no}}</a></span>
                         </div>
                         <div class="postInfo desktop" id="pi{{this.no}}">
                             <input type="checkbox" name="{{this.no}}" value="delete">
-                            <span class="nameBlock"><span class="name">{{this.name}}</span> </span> 
+                            <span class="nameBlock {{#if this.capcode}}capcodeMod{{/if}}"><span class="name {{#if this.capcode}}capcode{{/if}}">{{this.name}}</span>{{#if this.trip}}<span class="postertrip"> {{this.trip}}</span>{{/if}}{{#unless this.capcode}}{{#if this.id}} <span class="posteruid id_{{this.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color this.id}}">{{this.id}}</span>)</span>{{/if}}{{/unless}} {{#if this.capcode}}<strong class="capcode hand id_{{this.capcode}}" title="Highlight posts by Moderators">## {{this.id}}</strong> <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina">{{/if}}{{#if this.since4pass}}<span title="Pass user since {{this.since4pass}}" class="n-pu"></span> {{/if}}</span> 
                             <span class="dateTime" data-utc="{{this.time}}">{{this.now}}</span> 
-                            <span class="postNum desktop">
-                                <a href="#p{{this.no}}" title="Link to this post">No.</a><a href="#p{{this.no}}" title="Reply to this post">{{this.no}}</a>
-                            </span>
+                            <span class="postNum desktop"><a href="#p{{this.no}}" title="Link to this post">No.</a><a href="#p{{this.no}}" title="Reply to this post">{{this.no}}</a></span>
                         </div>
                         {{#if this.tim}}
                         <div class="file" id="f{{this.no}}">
-                            <div class="fileText" id="f{{this.no}}">
-                                File: <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{shorten 25 this.filename}}{{this.ext}}</a>
-                                 ({{b_to_kb this.fsize}} KB, {{this.w}}x{{this.h}})
+                            <div class="fileText" id="fT{{this.no}}" {{#if this.spoiler}}title="{{shorten 25 this.filename}}{{this.ext}}"{{/if}}>File: 
+                                <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{#unless this.spoiler}}{{shorten 25 this.filename}}{{this.ext}}{{else}}Spoiler Image{{/unless}}</a> ({{b_to_kb this.fsize}} KB, {{this.w}}x{{this.h}})
                             </div>
-                            <a class="fileThumb" href="/{{this.board}}/{{this.tim}}{{this.ext}}" 
-                            target="_blank"><img src="/{{this.board}}/{{this.tim}}s.jpg" 
-                                    alt="{{b_to_kb this.fsize}} KB" 
-                                    data-md5="{{this.md5}}" 
-                                    style="height: {{this.tn_h}}px; width: {{this.tn_w}}px;" 
-                                    loading="lazy">
-                                    
+                            <a class="fileThumb{{#if this.spoiler}} imgspoiler{{/if}}" href="/{{this.board}}/{{this.tim}}{{this.ext}}" 
+                            target="_blank">{{#unless this.spoiler}}<img src="/{{this.board}}/{{this.tim}}s.jpg" 
+                            alt="{{b_to_kb this.fsize}} KB" data-md5="{{this.md5}}" 
+                            style="height: {{this.tn_h}}px; width: {{this.tn_w}}px;" loading="lazy">{{else}}<img src="/static/image/spoiler.png" 
+                            alt="{{b_to_kb this.fsize}} KB" data-md5="{{this.md5}}" 
+                            style="height: 100px; width: 100px;" loading="lazy">{{/unless}}
+
                                 <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{b_to_kb this.fsize}} KB {{this.ext}}</div>
                             </a>
                         </div>
