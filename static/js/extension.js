@@ -254,7 +254,7 @@ Parser.init = function() {
     this.needMsg = true;
   }
   
-  staticPath = '//s.4cdn.org/image/';
+  staticPath = '/static/image/'; //staticPath = '//s.4cdn.org/image/';
   
   tail = window.devicePixelRatio >= 2 ? '@2x.gif' : '.gif';
   
@@ -566,7 +566,7 @@ Parser.buildHTMLFromJSON = function(data, board, standalone, fromQuote) {
     }
   }
   else {*/
-    imgDir = '//i.4cdn.org/' + board;
+    imgDir = '/' + board; //imgDir = '//i.4cdn.org/' + board;
   //}
   
   if (!data.resto) {
@@ -687,7 +687,7 @@ Parser.buildHTMLFromJSON = function(data, board, standalone, fromQuote) {
   
   if (data.country_name) {
     if (data.troll_country) {
-      flag = ' <img src="//s.4cdn.org/image/country/troll/'
+      flag = ' <img src="/static/image/country/troll/' //flag = ' <img src="//s.4cdn.org/image/country/troll/'
         + data.troll_country.toLowerCase() + '.gif" alt="'
         + data.troll_country + '" title="' + data.country_name + '" class="countryFlag">';
     }
@@ -737,7 +737,7 @@ Parser.buildHTMLFromJSON = function(data, board, standalone, fromQuote) {
         fileSpoilerTip = '" title="' + longFile + '"';
         fileClass = ' imgspoiler';
         
-        fileThumb = '//s.4cdn.org/image/spoiler'
+        fileThumb = '/static/image/spoiler' //fileThumb = '//s.4cdn.org/image/spoiler'
           + (Parser.customSpoiler[board] || '') + '.png';
         data.tn_w = 100;
         data.tn_h = 100;
@@ -753,7 +753,7 @@ Parser.buildHTMLFromJSON = function(data, board, standalone, fromQuote) {
     }
     
     if (!fileThumb) {
-      fileThumb = '//i.4cdn.org/' + board + '/' + data.tim + 's.jpg';
+      fileThumb = '/' + board + '/' + data.tim + 's.jpg'; //fileThumb = '//i.4cdn.org/' + board + '/' + data.tim + 's.jpg';
     }
     
     fileDims = data.ext == '.pdf' ? 'PDF' : data.w + 'x' + data.h;
@@ -1162,7 +1162,8 @@ Parser.revealImageSpoiler = function(fileThumb) {
   img.removeAttribute('style');
   isOP = $.hasClass(fileThumb.parentNode.parentNode, 'op');
   img.style.maxWidth = img.style.maxHeight = isOP ? '250px' : '125px';
-  img.src = '//i.4cdn.org'
+  img.src = ''
+  // img.src = '//i.4cdn.org'
     + (fileThumb.pathname.replace(/\/([0-9]+).+$/, '/$1s.jpg'));
   
   filename = fileThumb.previousElementSibling;
@@ -1474,7 +1475,8 @@ PostMenu.open = function(btn) {
     el = $.cls('fileThumb', file.parentNode)[0];
     
     if (el) {
-      href = 'http://i.4cdn.org/' + Main.board + '/'
+      href = '/' + Main.board + '/'
+      // href = 'http://i.4cdn.org/' + Main.board + '/'
         + el.href.match(/\/([0-9]+)\..+$/)[1] + 's.jpg';
       
       if (Main.hasMobileLayout) {
@@ -2267,7 +2269,7 @@ Depager.depage = function() {
   
   Depager.isLoading = true;
   
-  $.get('//a.4cdn.org/' + Main.board + '/catalog.json', {
+  $.get('/' + Main.board + '/catalog.json', { // $.get('//a.4cdn.org/' + Main.board + '/catalog.json', {
     onload: Depager.onLoad,
     onerror: Depager.onError
   });
@@ -2450,7 +2452,7 @@ QuoteInline.inlineRemote = function(link, board, tid, pid) {
   
   link.setAttribute('data-loading', '1');
   
-  $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
+  $.get('/' + board + '/thread/' + tid + '.json', // $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
     {
       onload: onload,
       onerror: onerror
@@ -2645,7 +2647,7 @@ QuotePreview.showRemote = function(link, board, tid, pid) {
     link.style.cursor = '';
   };
   
-  $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
+  $.get('/' + board + '/thread/' + tid + '.json',// $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
     {
       onload: onload,
       onerror: onerror
@@ -2857,7 +2859,6 @@ ImageExpansion.contract = function(img) {
   if (!Main.tid && Config.threadHiding) {
     $.removeClass(p, 'image-expanded-anti');
   }
-  
   p.firstChild.style.display = '';
   
   p.removeChild(img);
@@ -4615,7 +4616,7 @@ ThreadHiding.purge = function() {
   }
   
   if (!lastPurged || lastPurged < Date.now() - this.threshold) {
-    $.get('//a.4cdn.org/' + Main.board + '/threads.json',
+    $.get('/' + Main.board + '/threads.json', // $.get('//a.4cdn.org/' + Main.board + '/threads.json',
     {
       onload: function() {
         var i, j, t, p, pages, threads, alive;
@@ -5333,7 +5334,8 @@ ThreadWatcher.fetchCatalog = function(board, catalogs, meta) {
   var xhr;
   
   xhr = new XMLHttpRequest();
-  xhr.open('GET', '//a.4cdn.org/' + board + '/catalog.json');
+  xhr.open('GET', '/' + board + '/catalog.json');
+  // xhr.open('GET', '//a.4cdn.org/' + board + '/catalog.json');
   xhr.onload = function() {
     meta.count--;
     catalogs[board] = Parser.parseCatalogJSON(this.responseText);
@@ -5517,7 +5519,8 @@ ThreadWatcher.fetch = function(key, img) {
   if (img) {
     xhr.onerror = xhr.onload;
   }
-  xhr.open('GET', '//a.4cdn.org/' + tuid[1] + '/thread/' + tuid[0] + '.json');
+  // xhr.open('GET', '//a.4cdn.org/' + tuid[1] + '/thread/' + tuid[0] + '.json');
+  xhr.open('GET', '/' + tuid[1] + '/thread/' + tuid[0] + '.json');
   xhr.send(null);
 };
 
@@ -5544,7 +5547,8 @@ ThreadExpansion.expandComment = function(link) {
   abbr = link.parentNode;
   abbr.textContent = 'Loading...';
   
-  $.get('//a.4cdn.org/' + Main.board + '/thread/' + tid + '.json',
+  // $.get('//a.4cdn.org/' + Main.board + '/thread/' + tid + '.json',
+  $.get('/' + Main.board + '/thread/' + tid + '.json',
     {
       onload: function() {
         var i, msg, post, posts;
@@ -5640,7 +5644,8 @@ ThreadExpansion.toggle = function(tid) {
 
 ThreadExpansion.fetch = function(tid) {
   ThreadExpansion.fetchXhr = $.get(
-    '//a.4cdn.org/' + Main.board + '/thread/' + tid + '.json',
+    '/' + Main.board + '/thread/' + tid + '.json',
+    // '//a.4cdn.org/' + Main.board + '/thread/' + tid + '.json',
     {
       onload: function() {
         var i, p, n, frag, thread, tail, posts, msg, metacap,
@@ -5764,7 +5769,8 @@ ThreadUpdater.init = function() {
   this.lastReply = null;
   
   this.currentIcon = null;
-  this.iconPath = '//s.4cdn.org/image/';
+  this.iconPath = '/static/image/';
+  // this.iconPath = '//s.4cdn.org/image/'; 
   this.iconNode = $.qs('link[rel="shortcut icon"]', document.head);
   this.iconNode.type = 'image/x-icon';
   this.defaultIcon = this.iconNode.getAttribute('href').replace(this.iconPath, '');
@@ -5774,7 +5780,8 @@ ThreadUpdater.init = function() {
   if (Config.updaterSound) {
     this.audioEnabled = false;
     this.audio = document.createElement('audio');
-    this.audio.src = '//s.4cdn.org/media/beep.ogg';
+    this.audio.src = '/static/media/beep.ogg';
+    // this.audio.src = '//s.4cdn.org/media/beep.ogg';
   }
   
   this.hidden = 'hidden';
@@ -6064,8 +6071,8 @@ ThreadUpdater.update = function(full) {
   self.setStatus('Updating...');
   
   isTail = !full && self.checkTailUpdate();
-  
-  $.get('//a.4cdn.org/' + Main.board + '/thread/' + Main.tid
+  $.get('/' + Main.board + '/thread/' + Main.tid
+  // $.get('//a.4cdn.org/' + Main.board + '/thread/' + Main.tid
     + (isTail ? '-tail' : '') + '.json',
     {
       onload: self.onload,
@@ -6548,12 +6555,14 @@ ThreadStats.update = function(replies, images, ips, isBumpFull, isImageFull) {
 };
 
 ThreadStats.updatePageNumber = function() {
-  $.get('//a.4cdn.org/' + Main.board + '/threads.json',
-    {
-      onload: ThreadStats.onCatalogLoad,
-      onerror: ThreadStats.onCatalogError
-    }
-  );
+  ThreadStats.pageNumber = 0;
+  // $.get('/' + Main.board + '/threads.json',
+  // // $.get('//a.4cdn.org/' + Main.board + '/threads.json',
+  //   {
+  //     onload: ThreadStats.onCatalogLoad,
+  //     onerror: ThreadStats.onCatalogError
+  //   }
+  // );
 };
 
 ThreadStats.onCatalogLoad = function() {
@@ -9054,7 +9063,7 @@ Main.getDocTopOffset = function() {
     return 0;
   }
 };
-style_group = 'nws_style';
+
 Main.init = function() {
   var params;
   
@@ -9076,15 +9085,15 @@ Main.init = function() {
   if (Main.firstRun && Config.loadFromURL()) {
     Main.firstRun = false;
   }
-  Main.stylesheet = 'yotsuba_new';
+  // Main.stylesheet = 'yotsuba_b_new';
 
-  // if (Main.stylesheet = Main.getCookie(style_group)) {
-  //   Main.stylesheet = Main.stylesheet.toLowerCase().replace(/ /g, '_');
-  // }
-  // else {
-  //   Main.stylesheet =
-  //     style_group == 'nws_style' ? 'yotsuba_new' : 'yotsuba_b_new';
-  // }
+  if (Main.stylesheet = Main.getCookie(style_group)) {
+    Main.stylesheet = Main.stylesheet.toLowerCase().replace(/ /g, '_');
+  }
+  else {
+    Main.stylesheet =
+      style_group == 'nws_style' ? 'yotsuba_new' : 'yotsuba_b_new';
+  }
   
   QR.noCaptcha = QR.noCaptcha || window.passEnabled;
   
@@ -9409,7 +9418,8 @@ Main.initIcons = function() {
     photon: 'photon/'
   };
   
-  url = '//s.4cdn.org/image/';
+  // url = '//s.4cdn.org/image/';
+  url = '/static/image/';
   
   if (window.devicePixelRatio >= 2) {
     for (key in Main.icons) {
@@ -9765,7 +9775,8 @@ Main.onThreadMouseOver = function(e) {
   else if (Config.imageHover && (
     (t.hasAttribute('data-md5') && !$.hasClass(t.parentNode, 'deleted'))
     ||
-    (t.href && !$.hasClass(t.parentNode, 'fileText') && /(i\.4cdn|is\.4chan)\.org\/[a-z0-9]+\/[0-9]+\.(gif|jpg|png|webm)$/.test(t.href))
+    (t.href && !$.hasClass(t.parentNode, 'fileText') && /\/[a-z0-9]+\/[0-9]+\.(gif|jpg|png|webm)$/.test(t.href))
+    // (t.href && !$.hasClass(t.parentNode, 'fileText') && /(i\.4cdn|is\.4chan)\.org\/[a-z0-9]+\/[0-9]+\.(gif|jpg|png|webm)$/.test(t.href))
     )
   ) {
     ImageHover.show(t);
@@ -9793,7 +9804,8 @@ Main.onThreadMouseOut = function(e) {
   }
   else if (Config.imageHover &&
     (t.hasAttribute('data-md5')
-    || (t.href && !$.hasClass(t.parentNode, 'fileText') && /(i\.4cdn|is\.4chan)\.org\/[a-z0-9]+\/[0-9]+\.(gif|jpg|png|webm)$/.test(t.href))
+    || (t.href && !$.hasClass(t.parentNode, 'fileText') && /\/[a-z0-9]+\/[0-9]+\.(gif|jpg|png|webm)$/.test(t.href))
+    // || (t.href && !$.hasClass(t.parentNode, 'fileText') && /(i\.4cdn|is\.4chan)\.org\/[a-z0-9]+\/[0-9]+\.(gif|jpg|png|webm)$/.test(t.href))
     )
   ) {
     ImageHover.hide();
@@ -10888,7 +10900,7 @@ div.post div.postInfoM span.nameBlock { clear: none }\
 }\
 .m-dark .button {\
   background-color: rgb(27,28,30);\
-  background-image: url("//s.4cdn.org/image/buttonfade-dark.png");\
+  background-image: url("/static/image/buttonfade-dark.png");\
   background-repeat: repeat-x;\
   border: 1px solid #282A2E;\
 }\
@@ -10901,7 +10913,7 @@ div.post div.postInfoM span.nameBlock { clear: none }\
 body.m-dark { background: #1D1F21 none; color: #C5C8C6; }\
 .m-dark #globalToggle {\
   background-color: #FFADAD;\
-  background-image: url("//s.4cdn.org/image/buttonfade-red.png");\
+  background-image: url("/static/image/buttonfade-red.png");\
   border: 1px solid #C45858;\
   color: #880000 !important;\
 }\
