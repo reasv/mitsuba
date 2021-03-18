@@ -12,22 +12,7 @@
             <span class="dateTime" data-utc="{{this.time}}">{{this.now}}</span> 
             <span class="postNum desktop"><a href="#p{{this.no}}" title="Link to this post">No.</a><a href="#p{{this.no}}" title="Reply to this post">{{this.no}}</a></span>
         </div>
-        {{#if this.tim}}
-        <div class="file" id="f{{this.no}}">
-            <div class="fileText" id="fT{{this.no}}" {{#if this.spoiler}}title="{{shorten 25 this.filename}}{{this.ext}}"{{/if}}>File: 
-                <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{#unless this.spoiler}}{{shorten 25 this.filename}}{{this.ext}}{{else}}Spoiler Image{{/unless}}</a> ({{b_to_kb this.fsize}} KB, {{this.w}}x{{this.h}})
-            </div>
-            <a class="fileThumb{{#if this.spoiler}} imgspoiler{{/if}}" href="/{{this.board}}/{{this.tim}}{{this.ext}}" 
-            target="_blank">{{#unless this.spoiler}}<img src="/{{this.board}}/{{this.tim}}s.jpg" 
-            alt="{{b_to_kb this.fsize}} KB" data-md5="{{this.md5}}" 
-            style="height: {{this.tn_h}}px; width: {{this.tn_w}}px;" loading="lazy">{{else}}<img src="/static/image/spoiler.png" 
-            alt="{{b_to_kb this.fsize}} KB" data-md5="{{this.md5}}" 
-            style="height: 100px; width: 100px;" loading="lazy">{{/unless}}
-
-                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{b_to_kb this.fsize}} KB {{this.ext}}</div>
-            </a>
-        </div>
-        {{/if}}
+        {{> post_file this}}
         <blockquote class="postMessage" id="m{{this.no}}">
             {{{this.com}}}
         </blockquote>
