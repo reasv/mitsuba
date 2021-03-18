@@ -1,89 +1,39 @@
 <!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta name="robots" content="noarchive">
-    <!-- <meta name="description"
-        content="I finally got a 4chan pass - &quot;/{{op.board}}/ - Very Important Posts&quot; is 4chan's imageboard for Pass users."> -->
-    <meta name="keywords" content="imageboard,worksafe,random,finally,4chan,pass">
-    <meta name="referrer" content="origin">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="shortcut icon" href="/static/image/favicon-ws.ico">
-    <link rel="stylesheet" title="switch" href="/static/css/yotsubluenew.699.css">
-    <link rel="alternate stylesheet" style="text/css" href="/static/css/yotsubanew.699.css" title="Yotsuba New">
-    <link rel="alternate stylesheet" style="text/css" href="/static/css/yotsubluenew.699.css"
-        title="Yotsuba B New">
-    <link rel="alternate stylesheet" style="text/css" href="/static/css/futabanew.699.css" title="Futaba New">
-    <link rel="alternate stylesheet" style="text/css" href="/static/css/burichannew.699.css" title="Burichan New">
-    <link rel="alternate stylesheet" style="text/css" href="/static/css/photon.699.css" title="Photon">
-    <link rel="alternate stylesheet" style="text/css" href="/static/css/tomorrow.699.css" title="Tomorrow">
-    <link rel="stylesheet" href="/static/css/yotsubluemobile.699.css">
-    <link rel="canonical" href="/{{op.board}}/thread/{{op.no}}/{{op.semantic_url}}">
-    {{#if op.id}}<style type="text/css">.posteruid .hand {padding: 0 5px; border-radius: 6px; font-size: 0.8em;}</style>{{/if}}
-    <!-- <link rel="alternate" title="RSS feed" href="/{{op.board}}/index.rss" type="application/rss+xml"> -->
-    {{#if op.sub}}
-    <title>/{{op.board}}/ - {{shorten 25 op.sub}} - Mitsuba Archive</title>
-    {{else}}
-    <title>/{{op.board}}/ - {{shorten 25 op.com}} - Mitsuba Archive</title>
-    {{/if}}
-
-    <script type="text/javascript">
-        var mitsuba_board = "{{op.board}}";
-
-        var style_group = "ws_style", cssVersion = 699, jsVersion = 1051, comlen = 2000, maxFilesize = 4194304, maxLines = 100, 
-        clickable_ids = 1, cooldowns = { "thread": 600, "reply": 60, "image": 60 }; var maxWebmFilesize = 3145728; 
-        var board_archived = true; var sjis_tags = true; var spoilers = true; var check_for_block = 1;</script>
-    <script type="text/javascript" data-cfasync="false" src="/static/js/core.1066.js"></script>
-    <script type="text/javascript" data-cfasync="false" src="/static/js/extension.js"></script>
-    
-    <noscript>
-        <style type="text/css">
-            #postForm {
-                display: table !important;
-            }
-
-            #g-recaptcha {
-                display: none;
-            }
-        </style>
-    </noscript>
-</head>
-
-<body class="is_thread board_{{op.board}}"><span id="id_css"></span>
-
-    <span id="navtopright">[<a href="javascript:void(0);" id="settingsWindowLink">Settings</a>]</span>
-    <div id="boardNavMobile" class="mobile">
-        <div class="boardSelect"> <strong>Board</strong> <select id="boardSelectMobile"></select> </div>
-        <div class="pageJump"> <a href="#bottom">&#9660;</a> <a href="javascript:void(0);"
-                id="settingsWindowLinkMobile">Settings</a> <a
-                href="/" target="_top">Home</a> </div>
-    </div>
-    <div class="boardBanner">
-        <div id="bannerCnt" class="title desktop" data-src="1.png"></div>
-        <div class="boardTitle">/{{op.board}}/ - Mitsuba Archive</div>
-    </div>
-
-
-    <hr class="desktop" id="op">
-    <div class="navLinks desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a
-            href="#bottom">Bottom</a>]<div class="thread-stats"><span class="ts-replies" data-tip="Replies">{{op.replies}}</span> / <span class="ts-images" data-tip="Images">{{op.images}}</span> / <span data-tip="Posters" class="ts-ips">{{op.unique_ips}}</span></div>
+    <head>
+        {{#*inline "page_title"}}/{{op.board}}/ - {{#if op.sub}}{{shorten 25 op.sub}}{{else}}{{shorten 25 op.com}}{{/if}}{{/inline}}
+        {{#*inline "page_content"}}{{shorten 25 op.sub}} - /{{op.board}}/{{/inline}}
+        {{#*inline "page_board"}}{{op.board}}{{/inline}}
+        {{> head}}
+    </head>
+    <body class="is_thread board_{{op.board}}">
+        <span id="id_css"></span>
+        <span id="navtopright">[<a href="javascript:void(0);" id="settingsWindowLink">Settings</a>]</span>
+        <div id="boardNavMobile" class="mobile">
+            <div class="boardSelect"> <strong>Board</strong> <select id="boardSelectMobile"></select> </div>
+            <div class="pageJump"> <a href="#bottom">&#9660;</a> <a href="javascript:void(0);" id="settingsWindowLinkMobile">Settings</a> <a href="/" target="_top">Home</a> </div>
         </div>
-    <hr>
-    <form name="delform" id="delform" method="post">
-        <div class="board">
-            <div class="thread" id="t{{op.no}}">
-                {{> op_post}}
-                {{#each posts}}
-                {{> post}}
-                {{/each}}
+        <div class="boardBanner">
+            <div id="bannerCnt" class="title desktop" data-src="1.png"></div>
+            <div class="boardTitle">/{{op.board}}/ - Mitsuba Archive</div>
+        </div>
+        <hr class="desktop" id="op">
+        <div class="navLinks desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a href="#bottom">Bottom</a>]<div class="thread-stats"><span class="ts-replies" data-tip="Replies">{{op.replies}}</span> / <span class="ts-images" data-tip="Images">{{op.images}}</span> / <span data-tip="Posters" class="ts-ips">{{op.unique_ips}}</span></div>
             </div>
-            <hr>
-            <div class="navLinks navLinksBot desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a
-                    href="/{{op.board}}/catalog">Catalog</a>] [<a href="#top">Top</a>] </div>
-            <hr class="desktop">
-        </div>
-    </form>
-    <div id="bottom"></div>
-</body>
+        <hr>
+        <form name="delform" id="delform" method="post">
+            <div class="board">
+                <div class="thread" id="t{{op.no}}">
+                    {{> op_post}}
+                    {{#each posts}}
+                    {{> post}}
+                    {{/each}}
+                </div>
+                <hr>
+                <div class="navLinks navLinksBot desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a href="#top">Top</a>] </div>
+                <hr class="desktop">
+            </div>
+        </form>
+        <div id="bottom"></div>
+    </body>
 </html>
