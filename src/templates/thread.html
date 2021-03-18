@@ -21,7 +21,11 @@
     <link rel="stylesheet" href="/static/css/yotsubluemobile.699.css">
     <link rel="canonical" href="/{{op.board}}/thread/{{op.no}}/{{op.semantic_url}}">
     <!-- <link rel="alternate" title="RSS feed" href="/{{op.board}}/index.rss" type="application/rss+xml"> -->
-    <title>/{{op.board}}/ - {{op.com}} - Mitsuba Archive</title>
+    {{#if op.sub}}
+    <title>/{{op.board}}/ - {{shorten 25 op.sub}} - Mitsuba Archive</title>
+    {{else}}
+    <title>/{{op.board}}/ - {{shorten 25 op.com}} - Mitsuba Archive</title>
+    {{/if}}
 
     <script type="text/javascript">
         var mitsuba_board = "{{op.board}}";
@@ -74,12 +78,12 @@
                         </div>
                         <div class="file" id="f{{op.no}}">
                             <div class="fileText" id="fT{{op.no}}">File: 
-                                <a href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{op.filename}}{{op.ext}}</a> ({{op.fsize}} B, {{op.w}}x{{op.h}})
+                                <a href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank">{{shorten 25 op.filename}}{{op.ext}}</a> ({{b_to_kb op.fsize}} KB, {{op.w}}x{{op.h}})
                             </div>
                             <a class="fileThumb" href="//i.4cdn.org/{{op.board}}/{{op.tim}}{{op.ext}}" target="_blank"><img src="//i.4cdn.org/{{op.board}}/{{op.tim}}s.jpg" 
-                                alt="{{op.fsize}} B" data-md5="{{op.md5}}" 
+                                alt="{{b_to_kb op.fsize}} KB" data-md5="{{op.md5}}" 
                                 style="height: {{op.tn_h}}px; width: {{op.tn_w}}px;" loading="lazy">
-                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{op.fsize}} B PNG</div>
+                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{b_to_kb op.fsize}} KB PNG</div>
                             </a>
                         </div>
                         <div class="postInfo desktop" id="pi{{op.no}}"><input type="checkbox" name="{{op.no}}" value="delete">
@@ -116,17 +120,17 @@
                         {{#if this.tim}}
                         <div class="file" id="f{{this.no}}">
                             <div class="fileText" id="f{{this.no}}">
-                                File: <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{this.filename}}{{this.ext}}</a>
-                                 ({{this.fsize}} B, {{this.w}}x{{this.h}})
+                                File: <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{shorten 25 this.filename}}{{this.ext}}</a>
+                                 ({{b_to_kb this.fsize}} KB, {{this.w}}x{{this.h}})
                             </div>
                             <a class="fileThumb" href="/{{this.board}}/{{this.tim}}{{this.ext}}" 
                             target="_blank"><img src="/{{this.board}}/{{this.tim}}s.jpg" 
-                                    alt="{{this.fsize}} B" 
+                                    alt="{{b_to_kb this.fsize}} KB" 
                                     data-md5="{{this.md5}}" 
                                     style="height: {{this.tn_h}}px; width: {{this.tn_w}}px;" 
                                     loading="lazy">
                                     
-                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{this.fsize}} B {{this.ext}}</div>
+                                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{b_to_kb this.fsize}} KB {{this.ext}}</div>
                             </a>
                         </div>
                         {{/if}}

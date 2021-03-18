@@ -1,10 +1,11 @@
+use std::path::Path;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 use actix_web::{get, web, App, HttpResponse, HttpServer, Result};
 use actix_files::NamedFile;
-use std::path::Path;
-
-use handlebars::Handlebars;
+use unicode_truncate::UnicodeTruncateStr;
+use handlebars::{Handlebars, HelperDef, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
+use handlebars::handlebars_helper;
 
 use crate::db::DBClient;
 use crate::board_archiver::base64_to_32;
@@ -62,13 +63,36 @@ async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String
     };
     Ok(NamedFile::open(path)?)
 }
-
+fn shorten_string(maxlen: usize, s: String) -> String {
+    if s.len() > maxlen {
+        let (ss, w) = s.unicode_truncate(maxlen);
+        ss.to_string() + &"(...)".to_string()
+    } else {
+        s
+    }
+}
 // #[actix_web::main]
 pub async fn web_main() -> std::io::Result<()> {
     let mut handlebars = Handlebars::new();
     handlebars
         .register_templates_directory(".html", "./src/templates")
         .unwrap();
+    
+
+    handlebars_helper!(b_to_kb: |b: i64|  b/1024i64);
+    handlebars.register_helper("b_to_kb", Box::new(b_to_kb));
+
+    handlebars.register_helper("shorten",
+        Box::new(|h: &Helper, r: &Handlebars, _: &Context, rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+            let length = h.param(0).ok_or(RenderError::new("Length not found"))?;
+            let text = h.param(1).ok_or(RenderError::new("String not found"))?.value().render();
+            let sz = length.value().as_u64().unwrap_or_default();
+            out.write(shorten_string(sz as usize, text).as_ref())?;
+            Ok(())
+        }));
+
+    // handlebars_helper!(shorten: |v: String| format!("{}", v));
+    // handlebars.register_helper("shorten", Box::new(shorten));
     let handlebars_ref = web::Data::new(handlebars);
     
     HttpServer::new(move || {
