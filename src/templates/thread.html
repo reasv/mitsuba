@@ -1,39 +1,28 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        {{#*inline "page_title"}}/{{op.board}}/ - {{#if op.sub}}{{shorten 25 op.sub}}{{else}}{{shorten 25 op.com}}{{/if}}{{/inline}}
-        {{#*inline "page_content"}}{{shorten 25 op.sub}} - /{{op.board}}/{{/inline}}
-        {{#*inline "page_board"}}{{op.board}}{{/inline}}
-        {{> head}}
-    </head>
-    <body class="is_thread board_{{op.board}}">
-        <span id="id_css"></span>
-        <span id="navtopright">[<a href="javascript:void(0);" id="settingsWindowLink">Settings</a>]</span>
-        <div id="boardNavMobile" class="mobile">
-            <div class="boardSelect"> <strong>Board</strong> <select id="boardSelectMobile"></select> </div>
-            <div class="pageJump"> <a href="#bottom">&#9660;</a> <a href="javascript:void(0);" id="settingsWindowLinkMobile">Settings</a> <a href="/" target="_top">Home</a> </div>
-        </div>
-        <div class="boardBanner">
-            <div id="bannerCnt" class="title desktop" data-src="1.png"></div>
-            <div class="boardTitle">/{{op.board}}/ - Mitsuba Archive</div>
-        </div>
-        <hr class="desktop" id="op">
-        <div class="navLinks desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a href="#bottom">Bottom</a>]<div class="thread-stats"><span class="ts-replies" data-tip="Replies">{{op.replies}}</span> / <span class="ts-images" data-tip="Images">{{op.images}}</span> / <span data-tip="Posters" class="ts-ips">{{op.unique_ips}}</span></div>
+{{#*inline "page_title"}}/{{op.board}}/ - {{#if op.sub}}{{shorten 25 op.sub}}{{else}}{{shorten 25 op.com}}{{/if}}{{/inline}}
+{{#*inline "page_content"}}{{shorten 25 op.sub}} - /{{op.board}}/{{/inline}}
+{{#*inline "page_board"}}{{op.board}}{{/inline}}
+{{#*inline "page_body"}}
+<body class="is_thread board_{{op.board}}">
+    {{> board_header}}
+    <hr class="desktop" id="op">
+    <div class="navLinks desktop">
+        [<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a href="#bottom">Bottom</a>]<div class="thread-stats"><span class="ts-replies" data-tip="Replies">{{op.replies}}</span> / <span class="ts-images" data-tip="Images">{{op.images}}</span> / <span data-tip="Posters" class="ts-ips">{{op.unique_ips}}</span></div>
+    </div>
+    <hr>
+    <form name="delform" id="delform" method="post">
+        <div class="board">
+            <div class="thread" id="t{{op.no}}">
+                {{> op_post}}
+                {{#each posts}}
+                {{> post}}
+                {{/each}}
             </div>
-        <hr>
-        <form name="delform" id="delform" method="post">
-            <div class="board">
-                <div class="thread" id="t{{op.no}}">
-                    {{> op_post}}
-                    {{#each posts}}
-                    {{> post}}
-                    {{/each}}
-                </div>
-                <hr>
-                <div class="navLinks navLinksBot desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a href="#top">Top</a>] </div>
-                <hr class="desktop">
-            </div>
-        </form>
-        <div id="bottom"></div>
-    </body>
-</html>
+            <hr>
+            <div class="navLinks navLinksBot desktop">[<a href="/{{op.board}}/" accesskey="a">Return</a>] [<a href="/{{op.board}}/catalog">Catalog</a>] [<a href="#top">Top</a>] </div>
+            <hr class="desktop">
+        </div>
+    </form>
+    <div id="bottom"></div>
+</body>
+{{/inline}}
+{{> root}}
