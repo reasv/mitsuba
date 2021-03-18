@@ -36,18 +36,18 @@ async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Re
 }
 
 #[get("/{board}/{tim}.{ext}")]
-async fn get_full_image(db: web::Data<DBClient>, info: web::Path<(String, i64, String)>) -> Result<NamedFile> {
+async fn get_full_image(db: web::Data<DBClient>, info: web::Path<(String, i64, String)>) -> Result<NamedFile, HttpResponse> {
     let (board, tim, ext) = info.into_inner();
     get_image(db, board, tim, ext, false).await
 }
 
 #[get("/{board}/{tim}s.jpg")]
-async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<NamedFile> {
+async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<NamedFile, HttpResponse> {
     let (board, tim) = info.into_inner();
     get_image(db, board, tim, "".to_string(), true).await
 }
 
-async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile> {
+async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile, HttpResponse> {
     let md5_base64 = db.image_tim_to_md5_async(&board, tim).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
@@ -60,7 +60,10 @@ async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String
         true => Path::new("data").join("images").join("thumb").join(format!("{}.jpg", md5_base32)),
         false => Path::new("data").join("images").join("full").join(format!("{}.{}", md5_base32, ext))
     };
-    Ok(NamedFile::open(path)?)
+    NamedFile::open(path).map_err(|e| {
+        error!("Error getting image from filesystem: {}", e);
+        HttpResponse::NotFound().finish()
+    })
 }
 
 // #[actix_web::main]
@@ -86,6 +89,12 @@ pub async fn web_main() -> std::io::Result<()> {
         Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
             let id_text = h.param(0).ok_or(RenderError::new("ID not found"))?.value().render();
             out.write(string_to_idcolor(id_text).as_ref())?;
+            Ok(())
+        }));
+    handlebars.register_helper("base64_to_32",
+        Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+            let b64_text = h.param(0).ok_or(RenderError::new("base64 not found"))?.value().render();
+            out.write(base64_to_32(b64_text).unwrap_or_default().as_ref())?;
             Ok(())
         }));
 
