@@ -75,7 +75,7 @@ pub async fn web_main() -> std::io::Result<()> {
     handlebars.register_helper("b_to_kb", Box::new(b_to_kb));
 
     handlebars.register_helper("shorten",
-        Box::new(|h: &Helper, r: &Handlebars, _: &Context, rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+        Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
             let length = h.param(0).ok_or(RenderError::new("Length not found"))?;
             let text = h.param(1).ok_or(RenderError::new("String not found"))?.value().render();
             let sz = length.value().as_u64().unwrap_or_default();
@@ -83,15 +83,12 @@ pub async fn web_main() -> std::io::Result<()> {
             Ok(())
         }));
     handlebars.register_helper("id_color",
-    Box::new(|h: &Helper, r: &Handlebars, _: &Context, rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
-        let id_text = h.param(0).ok_or(RenderError::new("ID not found"))?.value().render();
-        out.write(string_to_idcolor(id_text).as_ref())?;
-        Ok(())
-    }));
+        Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+            let id_text = h.param(0).ok_or(RenderError::new("ID not found"))?.value().render();
+            out.write(string_to_idcolor(id_text).as_ref())?;
+            Ok(())
+        }));
 
-
-    // handlebars_helper!(shorten: |v: String| format!("{}", v));
-    // handlebars.register_helper("shorten", Box::new(shorten));
     let handlebars_ref = web::Data::new(handlebars);
     
     HttpServer::new(move || {
