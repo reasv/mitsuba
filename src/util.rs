@@ -24,7 +24,7 @@ pub fn string_to_idcolor(s: String) -> String {
 }
 pub fn shorten_string(maxlen: usize, s: String) -> String {
     if s.len() > maxlen {
-        let (ss, w) = s.unicode_truncate(maxlen);
+        let (ss, _) = s.unicode_truncate(maxlen);
         ss.to_string() + &"(...)".to_string()
     } else {
         s

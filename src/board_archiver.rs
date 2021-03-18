@@ -5,10 +5,7 @@ use std::convert::TryInto;
 use std::collections::HashSet;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
-
 use tokio::fs::create_dir_all;
-use base64::decode;
-use base32::{Alphabet, encode};
 
 use crate::http::HttpClient;
 use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board, BoardsList, ImageJob, Post};
