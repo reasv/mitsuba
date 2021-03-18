@@ -1,29 +1,8 @@
 <div class="postContainer opContainer" id="pc{{op.no}}">
     <div id="p{{op.no}}" class="post op">
-        <div class="postInfoM mobile" id="pim{{op.no}}">
-            <span class="nameBlock {{#if op.capcode}}capcodeMod{{/if}}"
-            ><span class="name{{#if op.capcode}} capcode{{/if}}">{{op.name}}</span
-            >{{#if op.trip}}<span class="postertrip"> {{op.trip}}</span
-            >{{/if}}{{#unless op.capcode}}{{#if op.id}} <span class="posteruid id_{{op.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color op.id}}">{{op.id}}</span>)</span
-            >{{/if}}{{/unless}}{{#if op.capcode}}<strong class="capcode hand id_mod" title="Highlight posts by Moderators">## {{op.id}}</strong
-            > <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina"
-            >{{/if}} {{#if op.since4pass}} <span title="Pass user since {{op.since4pass}}" class="n-pu"></span
-            >{{/if}}<br>{{#if op.sub}}<span class="subject">{{op.sub}}</span>{{/if}} </span
-            ><span class="dateTime postNum" data-utc="{{op.time}}">{{op.now}} <a href="#p{{op.no}}" title="Link to this post">No.</a><a href="#p{{op.no}}" title="Reply to this post">{{op.no}}</a></span>
-        </div>
+        {{> post_info_mobile op}}
         {{> post_file op}}
-        <div class="postInfo desktop" id="pi{{op.no}}"><input type="checkbox" name="{{op.no}}" value="delete">
-            {{#if op.sub}}<span class="subject">{{op.sub}}</span>{{/if}}
-            <span class="nameBlock {{#if op.capcode}}capcodeMod{{/if}}"
-            ><span class="name{{#if this.capcode}} capcode{{/if}}">{{op.name}}</span
-            >{{#if op.trip}}<span class="postertrip"> {{op.trip}}</span
-            >{{/if}}{{#unless op.capcode}}{{#if op.id}} <span class="posteruid id_{{op.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color op.id}}">{{op.id}}</span>)</span
-            >{{/if}}{{/unless}}{{#if op.capcode}} <strong class="capcode hand id_mod" title="Highlight posts by Moderators">## {{op.id}}</strong
-            > <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina"
-            >{{/if}}{{#if op.since4pass}} <span title="Pass user since {{op.since4pass}}" class="n-pu"></span>{{/if}}</span>
-            <span class="dateTime" data-utc="{{op.time}}">{{op.now}}</span>
-            <span class="postNum desktop"><a href="#p{{op.no}}" title="Link to this post">No.</a><a href="#p{{op.no}}" title="Reply to this post">{{op.no}}</a></span>
-        </div>
+        {{> post_info_desktop op}}
         <blockquote class="postMessage" id="m{{op.no}}">{{{op.com}}}</blockquote>
     </div>
 </div>
