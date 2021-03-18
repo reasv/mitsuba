@@ -1,3 +1,5 @@
+use base64::decode;
+use base32::{Alphabet, encode};
 use unicode_truncate::UnicodeTruncateStr;
 
 fn bad_hash(s: String) -> i64 {
@@ -27,4 +29,15 @@ pub fn shorten_string(maxlen: usize, s: String) -> String {
     } else {
         s
     }
+}
+pub fn get_board_page_api_url(board: &String) -> String {
+    format!("https://a.4cdn.org/{}/threads.json", board)
+}
+pub fn get_thread_api_url(board: &String, tid: &String) -> String {
+    format!("https://a.4cdn.org/{}/thread/{}.json", board, tid)
+}
+pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
+    let binary = decode(b64)?;
+    let s = encode(Alphabet::RFC4648{padding: false}, binary.as_slice());
+    Ok(s)
 }

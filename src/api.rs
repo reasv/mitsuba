@@ -7,9 +7,8 @@ use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperR
 use handlebars::handlebars_helper;
 
 use crate::db::DBClient;
-use crate::board_archiver::base64_to_32;
 use crate::frontend::thread_page;
-use crate::util::{shorten_string, string_to_idcolor};
+use crate::util::{shorten_string, string_to_idcolor,base64_to_32};
 
 #[get("/{board}/thread/{no}.json")]
 async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {

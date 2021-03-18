@@ -218,7 +218,7 @@ var $L = {
       return;
     }
     
-    cnt.innerHTML = '<img alt="4chan" src="//s.4cdn.org/image/title/'
+    cnt.innerHTML = '<img alt="4chan" src="/static/image/title/'
       + cnt.getAttribute('data-src') + '">';
   }
   

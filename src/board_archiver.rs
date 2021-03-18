@@ -11,22 +11,9 @@ use base64::decode;
 use base32::{Alphabet, encode};
 
 use crate::http::HttpClient;
-use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board, BoardsList, ImageJob};
-
-use crate::models::Post;
+use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board, BoardsList, ImageJob, Post};
 use crate::db::DBClient;
-
-pub fn get_board_page_api_url(board: &String) -> String {
-    format!("https://a.4cdn.org/{}/threads.json", board)
-}
-pub fn get_thread_api_url(board: &String, tid: &String) -> String {
-    format!("https://a.4cdn.org/{}/thread/{}.json", board, tid)
-}
-pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
-    let binary = decode(b64)?;
-    let s = encode(Alphabet::RFC4648{padding: false}, binary.as_slice());
-    Ok(s)
-}
+use crate::util::{get_board_page_api_url,get_thread_api_url,base64_to_32};
 
 #[derive(Clone)]
 pub struct Archiver {
