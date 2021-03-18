@@ -1,0 +1,35 @@
+<div class="postContainer replyContainer" id="pc{{this.no}}">
+    <div class="sideArrows" id="sa{{this.no}}">&gt;&gt;</div>
+
+    <div id="p{{this.no}}" class="post reply">
+        <div class="postInfoM mobile" id="pim{{this.no}}"> 
+            <span class="nameBlock {{#if this.capcode}}capcodeMod{{/if}}"><span class="name {{#if this.capcode}}capcode{{/if}}">{{this.name}}</span>{{#if this.trip}}<span class="postertrip"> {{this.trip}}</span>{{/if}}{{#unless this.capcode}}{{#if this.id}} <span class="posteruid id_{{this.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color this.id}}">{{this.id}}</span>)</span>{{/if}}{{/unless}} {{#if this.capcode}}<strong class="capcode hand id_{{this.capcode}}" title="Highlight posts by Moderators">## {{this.id}}</strong> <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina">{{/if}}{{#if this.since4pass}} <span title="Pass user since {{this.since4pass}}" class="n-pu"></span>{{/if}}<br></span>
+            <span class="dateTime postNum" data-utc="{{this.time}}">{{this.now}}<a href="#p{{this.no}}" title="Link to this post">No.</a><a href="#p{{this.no}}" title="Reply to this post">{{this.no}}</a></span>
+        </div>
+        <div class="postInfo desktop" id="pi{{this.no}}">
+            <input type="checkbox" name="{{this.no}}" value="delete">
+            <span class="nameBlock {{#if this.capcode}}capcodeMod{{/if}}"><span class="name {{#if this.capcode}}capcode{{/if}}">{{this.name}}</span>{{#if this.trip}}<span class="postertrip"> {{this.trip}}</span>{{/if}}{{#unless this.capcode}}{{#if this.id}} <span class="posteruid id_{{this.id}}">(ID: <span class="hand" title="Highlight posts by this ID" style="{{id_color this.id}}">{{this.id}}</span>)</span>{{/if}}{{/unless}} {{#if this.capcode}}<strong class="capcode hand id_{{this.capcode}}" title="Highlight posts by Moderators">## {{this.id}}</strong> <img src="/static/image/modicon.gif" alt="Mod Icon" title="This user is a 4chan Moderator." class="identityIcon retina">{{/if}}{{#if this.since4pass}}<span title="Pass user since {{this.since4pass}}" class="n-pu"></span> {{/if}}</span> 
+            <span class="dateTime" data-utc="{{this.time}}">{{this.now}}</span> 
+            <span class="postNum desktop"><a href="#p{{this.no}}" title="Link to this post">No.</a><a href="#p{{this.no}}" title="Reply to this post">{{this.no}}</a></span>
+        </div>
+        {{#if this.tim}}
+        <div class="file" id="f{{this.no}}">
+            <div class="fileText" id="fT{{this.no}}" {{#if this.spoiler}}title="{{shorten 25 this.filename}}{{this.ext}}"{{/if}}>File: 
+                <a href="/{{this.board}}/{{this.tim}}{{this.ext}}" target="_blank">{{#unless this.spoiler}}{{shorten 25 this.filename}}{{this.ext}}{{else}}Spoiler Image{{/unless}}</a> ({{b_to_kb this.fsize}} KB, {{this.w}}x{{this.h}})
+            </div>
+            <a class="fileThumb{{#if this.spoiler}} imgspoiler{{/if}}" href="/{{this.board}}/{{this.tim}}{{this.ext}}" 
+            target="_blank">{{#unless this.spoiler}}<img src="/{{this.board}}/{{this.tim}}s.jpg" 
+            alt="{{b_to_kb this.fsize}} KB" data-md5="{{this.md5}}" 
+            style="height: {{this.tn_h}}px; width: {{this.tn_w}}px;" loading="lazy">{{else}}<img src="/static/image/spoiler.png" 
+            alt="{{b_to_kb this.fsize}} KB" data-md5="{{this.md5}}" 
+            style="height: 100px; width: 100px;" loading="lazy">{{/unless}}
+
+                <div data-tip data-tip-cb="mShowFull" class="mFileInfo mobile">{{b_to_kb this.fsize}} KB {{this.ext}}</div>
+            </a>
+        </div>
+        {{/if}}
+        <blockquote class="postMessage" id="m{{this.no}}">
+            {{{this.com}}}
+        </blockquote>
+    </div>
+</div>
