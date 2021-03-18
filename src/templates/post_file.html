@@ -1,10 +1,10 @@
 {{#if tim}}
 <div class="file" id="f{{no}}">
     <div class="fileText" id="fT{{no}}" {{#if spoiler}}title="{{shorten 25 filename}}{{ext}}"{{/if}}>File: <a 
-        href="/{{board}}/{{tim}}{{ext}}" 
+        href="/img/full/{{base64_to_32 md5}}{{ext}}" 
         target="_blank">{{#unless spoiler}}{{shorten 25 filename}}{{ext}}{{else}}Spoiler Image{{/unless}}</a> ({{b_to_kb fsize}} KB, {{w}}x{{h}})</div>
-    <a class="fileThumb{{#if spoiler}} imgspoiler{{/if}}" href="/{{board}}/{{tim}}{{ext}}" 
-    target="_blank">{{#unless spoiler}}<img src="/{{board}}/{{tim}}s.jpg" 
+    <a class="fileThumb{{#if spoiler}} imgspoiler{{/if}}" href="/img/full/{{base64_to_32 md5}}{{ext}}" 
+    target="_blank">{{#unless spoiler}}<img src="/img/thumb/{{base64_to_32 md5}}.jpg" 
     alt="{{b_to_kb fsize}} KB" data-md5="{{md5}}" 
     style="height: {{tn_h}}px; width: {{tn_w}}px;" loading="lazy">{{else}}<img src="/static/image/spoiler.png" 
     alt="{{b_to_kb fsize}} KB" data-md5="{{md5}}" 
