@@ -5,16 +5,18 @@ use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 
 use crate::db::DBClient;
-use crate::models::{IndexPage, IndexThread, Post, IndexPost};
+use crate::models::{IndexPage, IndexThread, Post, IndexPost, Board};
 // use crate::board_archiver::base64_to_32;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThread {
+    pub boards: Vec<Board>,
     pub op: Post,
     pub posts: Vec<Post>
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThreadIndex {
+    pub boards: Vec<Board>,
     pub next: i64,
     pub prev: i64,
     pub current: i64,
@@ -30,6 +32,12 @@ struct TemplateThreadIndexThread {
 pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
 -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
+    let boards = db.get_all_boards_async().await
+        .map_err(|e| {
+            error!("Error getting boards from DB: {}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+    
     let thread = db.get_thread_async(&board, no).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
@@ -38,6 +46,7 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
         .ok_or(HttpResponse::NotFound().finish())?;
     
     let body = hb.render("thread", &TemplateThread{
+        boards,
         op: thread.posts[0].clone(),
         posts: thread.posts[1..].to_vec()
     }).unwrap();
@@ -52,6 +61,11 @@ pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars
     if index > 0 {
         nonzero_index = index;
     }
+    let boards = db.get_all_boards_async().await
+        .map_err(|e| {
+            error!("Error getting boards from DB: {}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
     let threads = db.get_thread_index_async(&board, nonzero_index, 15).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
@@ -66,6 +80,7 @@ pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars
         false=> nonzero_index-1
     };
     let body = hb.render("index_page", &TemplateThreadIndex {
+        boards,
         next: nonzero_index+1,
         current: nonzero_index,
         prev,

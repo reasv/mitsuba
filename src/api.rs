@@ -6,9 +6,10 @@ use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperR
 use handlebars::handlebars_helper;
 use handlebars_misc_helpers::register;
 use crate::db::DBClient;
-use crate::frontend::{{thread_page, index_page}};
+use crate::frontend::{thread_page, index_page};
 use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_folder, get_image_url};
-use crate::models::IndexPage;
+use crate::models::{IndexPage, BoardsStatus};
+
 #[get("/{board}/thread/{no}.json")]
 async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
@@ -58,6 +59,15 @@ async fn get_full_image(db: web::Data<DBClient>, info: web::Path<(String, i64, S
 async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<NamedFile, HttpResponse> {
     let (board, tim) = info.into_inner();
     get_image(db, board, tim, "".to_string(), true).await
+}
+#[get("/boards-status.json")]
+async fn get_boards_status(db: web::Data<DBClient>) -> Result<HttpResponse, HttpResponse> {
+    let boards = db.get_all_boards_async().await
+        .map_err(|e| {
+            error!("Error getting boards from DB: {}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+    Ok(HttpResponse::Ok().json(BoardsStatus{boards}))
 }
 
 async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile, HttpResponse> {
@@ -133,6 +143,7 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(get_full_image)
         .service(thread_page)
         .service(index_page)
+        .service(get_boards_status)
         .service(actix_files::Files::new("/img", "data/images"))
         .service(actix_files::Files::new("/static", "static"))
     })

@@ -163,7 +163,7 @@ pub struct ImageJob {
     pub thumbnail_filename: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize, Queryable, Insertable)]
 #[table_name="boards"]
 pub struct Board {
     pub name: String,
@@ -303,4 +303,9 @@ impl From<Thread> for IndexThread {
             posts: index_posts
         }
     }
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub struct BoardsStatus {
+    pub boards: Vec<Board>,
 }
