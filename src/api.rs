@@ -5,7 +5,7 @@ use actix_web::{get, web, App, HttpResponse, HttpServer, Result};
 use actix_files::NamedFile;
 use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
 use handlebars::handlebars_helper;
-
+use handlebars_misc_helpers::register;
 use crate::db::DBClient;
 use crate::frontend::thread_page;
 use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_folder, get_image_url};
@@ -73,7 +73,7 @@ pub async fn web_main() -> std::io::Result<()> {
         .register_templates_directory(".html", "./src/templates")
         .unwrap();
     
-
+    register(&mut handlebars);
     handlebars_helper!(b_to_kb: |b: i64|  b/1024i64);
     handlebars.register_helper("b_to_kb", Box::new(b_to_kb));
 
