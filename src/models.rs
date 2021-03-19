@@ -1,4 +1,4 @@
-use diesel::{Queryable, Insertable, AsChangeset, Identifiable};
+use diesel::{Queryable, Insertable, AsChangeset, Identifiable, QueryableByName, sql_types::BigInt};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::posts;
@@ -121,7 +121,7 @@ impl From<&Post> for PostUpdate {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct Thread {
     pub posts: Vec<Post>,
 }
@@ -232,4 +232,75 @@ pub struct BoardInfo {
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
 pub struct BoardsList {
     pub boards: Vec<BoardInfo>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq, QueryableByName)]
+pub struct ThreadNo {
+    #[sql_type = "BigInt"]
+    pub resto: i64
+}
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
+pub struct IndexPage {
+    pub threads: Vec<IndexThread>
+}
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
+pub struct IndexThread {
+    pub posts: Vec<IndexPost>
+}
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub struct IndexPost {
+    #[serde(flatten)]
+    pub inner_post: Post,
+    pub omitted_posts: i64,
+    pub omitted_images: i64,
+    pub last_modified: i64
+}
+
+impl From<Thread> for IndexThread {
+    fn from(thread: Thread) -> Self {
+        if thread.posts.len() < 1 {
+            return Self {
+                posts: Vec::new()
+            }
+        }
+        // safe because we checked length to be 1 or gt
+        let last_modified = thread.posts.last().unwrap().time;
+        
+        let (op, mut thread_posts): (Post, Vec<Post>) = match thread.posts.clone().split_first_mut() {
+            Some((opref, postsref)) => (opref.clone(), postsref.to_vec()),
+            None => return Self {posts: Vec::new()}
+        };
+        // let op = thread_posts[0].clone();
+        let mut kept_posts = Vec::new();
+        for _ in 0..4 {
+            match thread_posts.pop() {
+                Some(post) =>  kept_posts.push(post),
+                None => continue
+            }
+        }
+        let omitted_posts = thread_posts.len() as i64;
+        let omitted_images: i64 = thread_posts.iter().filter(|p| p.tim != 0).count() as i64;
+        let mut index_posts = Vec::new();
+        index_posts.push(
+            IndexPost {
+                inner_post: op,
+                omitted_posts,
+                omitted_images,
+                last_modified
+            }
+        );
+        for post in kept_posts.into_iter().rev() {
+            index_posts.push(
+                IndexPost {
+                    inner_post: post,
+                    omitted_posts,
+                    omitted_images,
+                    last_modified
+                }
+            )
+        }
+        Self {
+            posts: index_posts
+        }
+    }
 }

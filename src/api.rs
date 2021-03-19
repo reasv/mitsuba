@@ -8,7 +8,7 @@ use handlebars_misc_helpers::register;
 use crate::db::DBClient;
 use crate::frontend::thread_page;
 use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_folder, get_image_url};
-
+use crate::models::IndexPage;
 #[get("/{board}/thread/{no}.json")]
 async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
@@ -32,6 +32,20 @@ async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Re
         })?
         .ok_or(HttpResponse::NotFound().finish())?;
     Ok(HttpResponse::Ok().json(post))
+}
+#[get("/{category}/{idx}.json")]
+async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
+    let (board, index) = info.into_inner();
+    let mut nonzero_index = 1;
+    if index > 0 {
+        nonzero_index = index;
+    }
+    let threads = db.get_thread_index_async(&board, nonzero_index, 15).await
+        .map_err(|e| {
+            error!("Error getting post from DB: {}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+    Ok(HttpResponse::Ok().json(IndexPage {threads: threads.into_iter().map(|t| t.into()).collect()}))
 }
 
 #[get("/{board}/{tim}.{ext}")]
@@ -111,6 +125,7 @@ pub async fn web_main() -> std::io::Result<()> {
         let dbc: DBClient = DBClient::new();
         App::new()
         .data(dbc)
+        .service(get_index)
         .app_data(handlebars_ref.clone())
         .service(get_thread)
         .service(get_post)
