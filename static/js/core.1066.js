@@ -228,7 +228,7 @@ var $L = {
     board = this.options[this.selectedIndex].value;
     page = (board !== 'f' && /\/catalog$/.test(location.pathname)) ? 'catalog' : '';
     
-    window.location = '//boards.' + $L.d(board) + '/' + board + '/' + page;
+    window.location = '/' + board + '/1';
   }
   
   function buildMobileNav() {
