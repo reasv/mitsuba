@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use base64::decode;
 use base32::{Alphabet, encode};
 use unicode_truncate::UnicodeTruncateStr;
@@ -40,4 +41,24 @@ pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
     let binary = decode(b64)?;
     let s = encode(Alphabet::RFC4648{padding: false}, binary.as_slice());
     Ok(s)
+}
+
+pub fn get_image_folder(md5_b64: &String, is_thumb: bool) -> PathBuf {
+    let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
+    let image_folder = Path::new(&data_folder_str).join("images");
+    let folder = match is_thumb {
+        true => image_folder.join("thumb"),
+        false => image_folder.join("full")
+    };
+    let md5_b32 = base64_to_32(md5_b64.to_string()).unwrap_or("99invalid_md5_placeholder".to_string());
+    folder.join(&md5_b32[0..2])
+}
+
+pub fn get_image_url(md5_b64: &String, is_thumb: bool) -> String {
+    let folder = match is_thumb {
+        true => "thumb",
+        false => "full"
+    };
+    let md5_b32 = base64_to_32(md5_b64.to_string()).unwrap_or("invalid_md5_placeholder".to_string());
+    format!("/img/{}/{}/{}", folder, &md5_b32[0..2], md5_b32)
 }

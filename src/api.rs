@@ -8,7 +8,7 @@ use handlebars::handlebars_helper;
 
 use crate::db::DBClient;
 use crate::frontend::thread_page;
-use crate::util::{shorten_string, string_to_idcolor,base64_to_32};
+use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_folder, get_image_url};
 
 #[get("/{board}/thread/{no}.json")]
 async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
@@ -55,10 +55,10 @@ async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String
         })?
         .ok_or(HttpResponse::NotFound().finish())?;
 
-    let md5_base32 = base64_to_32(md5_base64).unwrap();
+    let md5_base32 = base64_to_32(md5_base64.clone()).unwrap();
     let path = match is_thumb { 
-        true => Path::new("data").join("images").join("thumb").join(format!("{}.jpg", md5_base32)),
-        false => Path::new("data").join("images").join("full").join(format!("{}.{}", md5_base32, ext))
+        true => get_image_folder(&md5_base64, true).join(format!("{}.jpg", md5_base32)),
+        false => get_image_folder(&md5_base64, false).join(format!("{}.{}", md5_base32, ext))
     };
     NamedFile::open(path).map_err(|e| {
         error!("Error getting image from filesystem: {}", e);
@@ -97,6 +97,14 @@ pub async fn web_main() -> std::io::Result<()> {
             out.write(base64_to_32(b64_text).unwrap_or_default().as_ref())?;
             Ok(())
         }));
+    handlebars.register_helper("get_image_url",
+    Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+        let b64_text = h.param(0).ok_or(RenderError::new("base64 not found"))?.value().render();
+        let is_thumb = h.param(1).ok_or(RenderError::new("Boolan not found"))?;
+        let is_thumb_bool = is_thumb.value().as_bool().unwrap_or_default();
+        out.write(get_image_url(&b64_text, is_thumb_bool).as_ref())?;
+        Ok(())
+    }));
 
     let handlebars_ref = web::Data::new(handlebars);
     

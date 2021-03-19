@@ -10,7 +10,7 @@ use tokio::fs::create_dir_all;
 use crate::http::HttpClient;
 use crate::models::{Thread, ThreadInfo, ThreadsPage, ImageInfo, Image, Board, BoardsList, ImageJob, Post};
 use crate::db::DBClient;
-use crate::util::{get_board_page_api_url,get_thread_api_url,base64_to_32};
+use crate::util::{get_board_page_api_url,get_thread_api_url,base64_to_32, get_image_folder};
 
 #[derive(Clone)]
 pub struct Archiver {
@@ -148,18 +148,18 @@ impl Archiver {
                 full_images.insert(board.name);
             }
         }
-        let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
-        let image_folder = Path::new(&data_folder_str).join("images");
-        create_dir_all(image_folder.join("thumb")).await.ok();
-        create_dir_all(image_folder.join("full")).await.ok();
+        // let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
+        // let image_folder = Path::new(&data_folder_str).join("images");
+        // create_dir_all(image_folder.join("thumb")).await.ok();
+        // create_dir_all(image_folder.join("full")).await.ok();
         let mut handles = Vec::new();
         for job in image_jobs {
             let c = self.clone();
             let need_full_image = full_images.contains(&job.board);
-            let folder = image_folder.clone();
+            // let folder = image_folder.clone();
             handles.push(tokio::task::spawn(
                 async move {
-                    c.archive_image(&job.clone(), &folder, need_full_image).await
+                    c.archive_image(&job.clone(), need_full_image).await
                 }
             ))
         }
@@ -168,7 +168,12 @@ impl Archiver {
         }
         Ok(())
     }
-    pub async fn archive_image(&self, job: &ImageJob, folder: &Path, need_full_image: bool) -> Result<(),()> {
+    pub async fn archive_image(&self, job: &ImageJob, need_full_image: bool) -> Result<(),()> {
+        let thumbnail_folder = get_image_folder(&job.md5, true);
+        let full_folder = get_image_folder(&job.md5, false);
+        create_dir_all(&thumbnail_folder).await.ok();
+        create_dir_all(&full_folder).await.ok();
+
         let (thumb_exists, full_exists) = self.db_client.image_exists_full_async(&job.md5).await
         .map_err(|e| {error!("Failed to get image status from database: {}", e); e} )
         .unwrap_or((false, false));
@@ -182,7 +187,7 @@ impl Archiver {
         
         let thumb_success = match !thumb_exists {
             true => self.http_client.download_file(&job.thumbnail_url, 
-                &folder.join("thumb").join(&job.thumbnail_filename)).await,
+                &thumbnail_folder.join(&job.thumbnail_filename)).await,
             false => thumb_exists
         };
 
@@ -195,7 +200,7 @@ impl Archiver {
 
         let full_success = match need_full_image && !full_exists {
             true => self.http_client.download_file(&job.url, 
-                &folder.join("full").join(&job.filename)).await,
+                &full_folder.join(&job.filename)).await,
             false => full_exists
         };
 
