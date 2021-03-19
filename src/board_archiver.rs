@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::time::Duration;
 use std::sync::Arc;
 use std::convert::TryInto;

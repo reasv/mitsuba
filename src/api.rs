@@ -1,4 +1,3 @@
-use std::path::Path;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 use actix_web::{get, web, App, HttpResponse, HttpServer, Result};
