@@ -1,0 +1,29 @@
+<input type="text" id="go-box" placeholder="Go to Post/Thread ID"><select name="go-board-choice" id="go-board-choice">
+    {{#each boards}}
+        <option {{#if (eq this.name ../op.board)}}selected{{/if}} value="{{name}}">/{{name}}/</option>
+    {{/each}}
+</select>
+<script>
+    function goPost(e){
+        if (e.keyCode != 13) {
+            return
+        }
+        let id = document.getElementById('go-box').value.replace(/\s/g, '');
+        let board = document.getElementById('go-board-choice').value;
+        fetch('/'+board+'/post/'+id+'.json')
+        .then(response => response.json())
+        .then(data => {
+            let thread_id;
+            if (data.resto != 0){
+                thread_id = data.resto;
+            } else {
+                thread_id = data.no;
+            }
+            console.log(thread_id);
+            window.location = "/"+board+"/thread/"+thread_id
+        });
+    }
+    let el = document.getElementById('go-box');
+    el.addEventListener('keydown', goPost, false);
+    
+</script>
