@@ -5,14 +5,27 @@ use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 
 use crate::db::DBClient;
+use crate::models::{IndexPage, IndexThread, Post, IndexPost};
 // use crate::board_archiver::base64_to_32;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThread {
-    pub op: crate::models::Post,
-    pub posts: Vec<crate::models::Post>
+    pub op: Post,
+    pub posts: Vec<Post>
 }
-
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct TemplateThreadIndex {
+    pub next: i64,
+    pub prev: i64,
+    pub current: i64,
+    pub op: Post,
+    pub threads: Vec<TemplateThreadIndexThread>,
+}
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct TemplateThreadIndexThread {
+    pub op: IndexPost,
+    pub posts: Vec<IndexPost>
+}
 #[get("/{board}/thread/{no}")]
 pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
 -> Result<HttpResponse, HttpResponse> {
@@ -27,6 +40,37 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
     let body = hb.render("thread", &TemplateThread{
         op: thread.posts[0].clone(),
         posts: thread.posts[1..].to_vec()
+    }).unwrap();
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[get("/{board}/{idx}")]
+pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
+-> Result<HttpResponse, HttpResponse> {
+    let (board, index) = info.into_inner();
+    let mut nonzero_index = 1;
+    if index > 0 {
+        nonzero_index = index;
+    }
+    let threads = db.get_thread_index_async(&board, nonzero_index, 15).await
+        .map_err(|e| {
+            error!("Error getting post from DB: {}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+    if threads.len() == 0 {
+        return Err(HttpResponse::NotFound().finish())
+    }
+    let index_threads: Vec<IndexThread> = threads.clone().into_iter().map(|t| t.into()).collect();
+    let prev = match nonzero_index == 1 {
+        true => nonzero_index,
+        false=> nonzero_index-1
+    };
+    let body = hb.render("index_page", &TemplateThreadIndex {
+        next: nonzero_index+1,
+        current: nonzero_index,
+        prev,
+        op: threads[0].posts[0].clone(),
+        threads: index_threads.into_iter().map(|t| TemplateThreadIndexThread{op: t.posts[0].clone(), posts: t.posts[1..].to_vec()}).collect()
     }).unwrap();
     Ok(HttpResponse::Ok().body(body))
 }

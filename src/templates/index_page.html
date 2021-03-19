@@ -1,0 +1,36 @@
+{{#*inline "page_title"}}/{{op.board}}/ - {{#if op.sub}}{{shorten 25 op.sub}}{{else}}{{shorten 25 op.com}}{{/if}}{{/inline}}
+{{#*inline "page_content"}}{{shorten 25 op.sub}} - /{{op.board}}/{{/inline}}
+{{#*inline "page_board"}}{{op.board}}{{/inline}}
+{{#*inline "page_body"}}
+{{#*inline "extra_head"}}{{> index_css}}{{/inline}}
+<body class="is_index board_{{op.board}} yotsuba_b_new ws">
+    {{> board_header}}
+
+    <div id="ctrl-top" class="desktop"><hr>
+        <input type="text" id="search-box" placeholder="Search OPs…">
+    </div>
+    <hr>
+    <form name="delform" id="delform" method="post">
+        <div class="board">
+            {{#each threads}}
+            <div class="thread" id="t{{this.op.no}}">
+                {{> op_post}}
+                {{#if this.op.omitted_posts}}
+                <span class="summary desktop">{{this.op.omitted_posts}} reply and {{this.op.omitted_images}} image omitted. <a 
+                    href="thread/{{this.op.no}}" class="replylink">Click here</a> to view.</span>
+                {{/if}}
+                {{#each posts}}
+                {{> post}}
+                {{/each}}
+            </div>
+            <hr>
+            {{/each}}
+        </div>
+    </form>
+    {{> index_page_selector}}
+    <div id="absbot" class="absBotText"><div class="mobile"><span id="disable-mobile">[<a href="javascript:disableMobile();">Disable Mobile View / Use Desktop Site</a>]<br><br></span><span id="enable-mobile">[<a href="javascript:enableMobile();">Enable Mobile View / Use Mobile Site</a>]<br><br></span></div><span class="absBotDisclaimer">All trademarks and copyrights on this page are owned by their respective parties. Images uploaded are the responsibility of the Poster. Comments are owned by the Poster.</span>
+    </div>
+    <div id="bottom"></div>
+</body>
+{{/inline}}
+{{> root}}

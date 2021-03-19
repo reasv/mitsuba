@@ -2451,7 +2451,10 @@ QuoteInline.inlineRemote = function(link, board, tid, pid) {
   };
   
   link.setAttribute('data-loading', '1');
-  
+  if (!tid) {
+    console.log("no thread");
+    return
+  }
   $.get('/' + board + '/thread/' + tid + '.json', // $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
     {
       onload: onload,
@@ -2646,13 +2649,41 @@ QuotePreview.showRemote = function(link, board, tid, pid) {
   onerror = function() {
     link.style.cursor = '';
   };
-  
-  $.get('/' + board + '/thread/' + tid + '.json',// $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
+  // Handle index page
+  onloadpost = function(){
+    if (this.status === 200 || this.status === 304 || this.status === 0) {
+      post = JSON.parse(this.responseText);
+      if (post.resto) {
+        tid = post.resto
+      } else {
+        tid = post.no
+      }
+      $.get('/' + board + '/thread/' + tid + '.json',// $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
+      {
+        onload: onload,
+        onerror: onerror
+      });
+    } else if (this.status === 404) {
+      $.addClass(link, 'deadlink');
+    }
+  }
+  if (!tid) {
+    console.log("no thread", pid);
+    $.get('/' + board + '/post/' + pid + '.json',
     {
-      onload: onload,
+      onload: onloadpost,
       onerror: onerror
     }
   );
+  } else {
+    $.get('/' + board + '/thread/' + tid + '.json',// $.get('//a.4cdn.org/' + board + '/thread/' + tid + '.json',
+    {
+      onload: onload,
+      onerror: onerror
+    });
+  }
+  //
+  
 };
 
 QuotePreview.show = function(link, post, remote) {

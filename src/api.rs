@@ -6,7 +6,7 @@ use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperR
 use handlebars::handlebars_helper;
 use handlebars_misc_helpers::register;
 use crate::db::DBClient;
-use crate::frontend::thread_page;
+use crate::frontend::{{thread_page, index_page}};
 use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_folder, get_image_url};
 use crate::models::IndexPage;
 #[get("/{board}/thread/{no}.json")]
@@ -132,6 +132,7 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(get_thumbnail_image)
         .service(get_full_image)
         .service(thread_page)
+        .service(index_page)
         .service(actix_files::Files::new("/img", "data/images"))
         .service(actix_files::Files::new("/static", "static"))
     })

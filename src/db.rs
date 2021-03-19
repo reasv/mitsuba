@@ -2,11 +2,10 @@ use std::env;
 use std::sync::Arc;
 
 use diesel::prelude::*;
-use diesel::pg::{PgConnection, Pg};
+use diesel::pg::{PgConnection};
 use dotenv::dotenv;
 use diesel::r2d2::{ Pool, ConnectionManager, PoolError};
-use diesel::{sql_query, debug_query, sql_types::{BigInt, Varchar}, query_builder::{DebugQuery, SqlQuery} };
-use diesel::expression::UncheckedBind;
+use diesel::{sql_query, sql_types::{BigInt, Varchar} };
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadNo};
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
@@ -32,7 +31,6 @@ macro_rules! gen_async {
             let self_ref = $self.clone();
             tokio::task::spawn_blocking(move || {self_ref.$func($(&$ref_arg),+,$($arg),+)}).await?
         }
-        
     };
     ($func_name:ident, pub fn $func:ident(&$self:ident, $($ref_arg:ident : $ref_typ: ty),+) -> $ret:ty $b:block) => {
         pub fn $func(&$self, $($ref_arg : $ref_typ),+) -> $ret $b
