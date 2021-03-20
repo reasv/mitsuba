@@ -29,9 +29,7 @@ use http::HttpClient;
 #[clap(version = "1.0", about="High performance board archiver software. Add boards with `add`, then start with `start` command. See `help add` and `help start`")]
 struct Opts {
     #[clap(subcommand)]
-    subcmd: SubCommand,
-
-   
+    subcmd: SubCommand
 }
 
 #[derive(Clap, Clone)]
