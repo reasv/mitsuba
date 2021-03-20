@@ -129,7 +129,8 @@ pub async fn web_main() -> std::io::Result<()> {
     }));
 
     let handlebars_ref = web::Data::new(handlebars);
-    
+    let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
+    let image_folder = format!("{}/images", data_folder_str);
     HttpServer::new(move || {
         let dbc: DBClient = DBClient::new();
         App::new()
@@ -144,7 +145,7 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(thread_page)
         .service(index_page)
         .service(get_boards_status)
-        .service(actix_files::Files::new("/img", "data/images"))
+        .service(actix_files::Files::new("/img", image_folder.clone()))
         .service(actix_files::Files::new("/static", "static"))
     })
     .bind("127.0.0.1:8080")?
