@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
-use actix_web::{get, web, App, HttpResponse, HttpServer, Result};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Result, middleware::NormalizePath};
 use actix_files::NamedFile;
 use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
 use handlebars::handlebars_helper;
@@ -135,8 +135,9 @@ pub async fn web_main() -> std::io::Result<()> {
         let dbc: DBClient = DBClient::new();
         App::new()
         .data(dbc)
-        .service(get_index)
         .app_data(handlebars_ref.clone())
+        .wrap(NormalizePath::default())
+        .service(get_index)
         .service(get_thread)
         .service(get_post)
         .service(get_thumbnail_image)

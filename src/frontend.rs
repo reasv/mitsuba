@@ -5,8 +5,7 @@ use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 
 use crate::db::DBClient;
-use crate::models::{IndexPage, IndexThread, Post, IndexPost, Board};
-// use crate::board_archiver::base64_to_32;
+use crate::models::{IndexThread, Post, IndexPost, Board};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThread {
