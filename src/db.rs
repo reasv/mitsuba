@@ -85,11 +85,16 @@ impl DBClient {
             .execute(&connection)?;
         
         for entry in entries {
-            self.update_post(entry)?;
+            self.update_post_with_conn(&connection, entry)?;
         }
         Ok(res)
     });
-
+    pub fn update_post_with_conn(&self, connection: &PgConnection, entry: &Post) -> anyhow::Result<usize> {
+        use crate::schema::posts::dsl::*;
+        let target = posts.filter(board.eq(&entry.board)).filter(no.eq(&entry.no));
+        let res = diesel::update(target).set(&PostUpdate::from(entry)).execute(connection)?;
+        Ok(res)
+    }
     gen_async!(update_post_async,
     pub fn update_post(&self, entry: &Post) -> anyhow::Result<usize> {
         use crate::schema::posts::dsl::*;

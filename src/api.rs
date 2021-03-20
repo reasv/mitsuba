@@ -34,7 +34,7 @@ async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Re
         .ok_or(HttpResponse::NotFound().finish())?;
     Ok(HttpResponse::Ok().json(post))
 }
-#[get("/{category}/{idx}.json")]
+#[get("/{board}/{idx}.json")]
 async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, index) = info.into_inner();
     let mut nonzero_index = 1;
