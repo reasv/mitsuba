@@ -52,6 +52,8 @@ enum SubCommand {
 
 #[derive(Clap, Default, Debug, Clone)]
 struct StartArc {
+    #[clap(long, long_about = "(Optional) If true, will only run the archiver and not the web ui or the web API. If false, run everything. Default is false.")]
+    archiver_only: Option<bool>,
     #[clap(long, long_about = "(Optional) Max requests per minute. Default is 60.")]
     rpm: Option<NonZeroU32>,
 
@@ -105,8 +107,19 @@ fn get_env(name: &str, def: u32) -> u32 {
     }
 }
 
-#[actix_web::main]
-async fn main() {
+fn main() {
+    actix_web::rt::System::with_tokio_rt(||
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+    ).block_on(async {
+        real_main().await
+    })
+}
+
+// #[tokio::main(flavor = "current_thread")]
+async fn real_main() {
     dotenv::dotenv().ok();
     env_logger::init();
 
@@ -151,9 +164,13 @@ async fn main() {
         SubCommand::StartReadOnly(_) => {
             web_main().await.unwrap();
         },
-        SubCommand::Start(_) => {
-            client.run_archivers().await.unwrap();
-            web_main().await.unwrap();
+        SubCommand::Start(arcopts) => {
+            let handle = client.run_archivers().await.unwrap();
+            if arcopts.archiver_only.unwrap_or_default() {
+                handle.await.ok();
+            } else {
+                web_main().await.unwrap();
+            }
         },
         SubCommand::Remove(remove_opt) => {
             client.stop_board(&remove_opt.name).await.unwrap();

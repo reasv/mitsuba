@@ -89,7 +89,6 @@ async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String
     })
 }
 
-// #[actix_web::main]
 pub async fn web_main() -> std::io::Result<()> {
     let mut handlebars = Handlebars::new();
     handlebars

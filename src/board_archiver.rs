@@ -227,7 +227,7 @@ impl Archiver {
             }
         })
     }
-    pub async fn run_archive_cycle(&self, board: &Board) -> tokio::task::JoinHandle<()>{
+    pub fn run_archive_cycle(&self, board: &Board) -> tokio::task::JoinHandle<()>{
         let c = self.clone();
         let board_name = board.name.clone();
         let wait_time = board.wait_time.clone();
@@ -241,14 +241,13 @@ impl Archiver {
             }
         })
     }
-    pub async fn run_archivers(&self) -> anyhow::Result<()> {
+    pub async fn run_archivers(&self) -> anyhow::Result<tokio::task::JoinHandle<()>> {
         let boards = self.db_client.get_all_boards_async().await?;
         for board in boards {
             if !board.archive {continue};
-            self.run_archive_cycle(&board).await;
+            self.run_archive_cycle(&board);
         }
-        self.run_image_cycle();
-        Ok(())
+        Ok(self.run_image_cycle())
     }
     
     pub async fn set_board(&self, board: Board) -> anyhow::Result<usize> {
