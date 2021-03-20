@@ -273,7 +273,7 @@ impl DBClient {
     pub fn get_image_jobs(&self) -> anyhow::Result<Vec<ImageJob>> {
         use crate::schema::image_backlog::dsl::*;
         let connection = self.pool.get()?;
-        let jobs = image_backlog.order(id.asc()).load::<ImageJob>(&connection)?;
+        let jobs = image_backlog.order(id.asc()).limit(250).load::<ImageJob>(&connection)?;
         Ok(jobs)
     });
 

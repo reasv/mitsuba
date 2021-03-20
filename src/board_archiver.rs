@@ -133,9 +133,14 @@ impl Archiver {
         }
         Ok(())
     }
-    pub async fn image_cycle(&self) -> Result<(),()> {
-        let image_jobs = self.db_client.get_image_jobs_async().await
-        .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
+    pub async fn image_cycle(&self, previous_remaining: Vec<ImageJob>) -> Result<Vec<ImageJob>,()> {
+        let image_jobs;
+        if previous_remaining.len() == 0 {
+            image_jobs = self.db_client.get_image_jobs_async().await
+            .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
+        } else {
+            image_jobs = previous_remaining;
+        }
 
         info!("Running image cycle for {} new jobs", image_jobs.len());
         let boards = self.db_client.get_all_boards_async().await
@@ -147,15 +152,10 @@ impl Archiver {
                 full_images.insert(board.name);
             }
         }
-        // let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
-        // let image_folder = Path::new(&data_folder_str).join("images");
-        // create_dir_all(image_folder.join("thumb")).await.ok();
-        // create_dir_all(image_folder.join("full")).await.ok();
         let mut handles = Vec::new();
         for job in image_jobs {
             let c = self.clone();
             let need_full_image = full_images.contains(&job.board);
-            // let folder = image_folder.clone();
             handles.push(tokio::task::spawn(
                 async move {
                     c.archive_image(&job.clone(), need_full_image).await
@@ -165,7 +165,9 @@ impl Archiver {
         for handle in handles {
             handle.await.ok();
         }
-        Ok(())
+        let remaining_image_jobs = self.db_client.get_image_jobs_async().await
+        .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
+        Ok(remaining_image_jobs)
     }
     pub async fn archive_image(&self, job: &ImageJob, need_full_image: bool) -> Result<(),()> {
         let thumbnail_folder = get_image_folder(&job.md5, true);
@@ -213,12 +215,15 @@ impl Archiver {
         info!("Processed image {} ({}) successfully", job.md5, job.filename);
         Ok(())
     }
-    pub async fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {
+    pub fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {
         let c = self.clone();
-        tokio::task::spawn(async move { 
+        tokio::task::spawn(async move {
+            let mut remaining = Vec::new();
             loop {
-                c.image_cycle().await.ok();
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                remaining = c.image_cycle(remaining).await.ok().unwrap_or(Vec::new());
+                if remaining.len() == 0 {
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                }
             }
         })
     }
@@ -242,7 +247,7 @@ impl Archiver {
             if !board.archive {continue};
             self.run_archive_cycle(&board).await;
         }
-        self.run_image_cycle().await;
+        self.run_image_cycle();
         Ok(())
     }
     
