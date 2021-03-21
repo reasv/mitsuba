@@ -5,6 +5,8 @@ use actix_files::NamedFile;
 use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
 use handlebars::handlebars_helper;
 use handlebars_misc_helpers::register;
+use tokio::fs::create_dir_all;
+
 use crate::db::DBClient;
 use crate::frontend::{thread_page, index_page};
 use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_folder, get_image_url};
@@ -36,12 +38,11 @@ async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Re
 }
 #[get("/{board}/{idx}.json")]
 async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
-    let (board, index) = info.into_inner();
-    let mut nonzero_index = 1;
+    let (board, mut index) = info.into_inner();
     if index > 0 {
-        nonzero_index = index;
+        index -= 1;
     }
-    let threads = db.get_thread_index_async(&board, nonzero_index, 15).await
+    let threads = db.get_thread_index_async(&board, index, 15).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -133,6 +134,7 @@ pub async fn web_main() -> std::io::Result<()> {
     let image_folder = format!("{}/images", data_folder_str);
     let port = std::env::var("WEB_PORT").unwrap_or("8080".to_string());
     let ip = std::env::var("WEB_IP").unwrap_or("0.0.0.0".to_string());
+    create_dir_all(std::path::Path::new(&image_folder)).await.ok();
     HttpServer::new(move || {
         let dbc: DBClient = DBClient::new();
         App::new()
