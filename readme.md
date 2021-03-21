@@ -28,7 +28,7 @@ There are some important features missing:
 ## Dependencies
 You need to have Postgresql running on your system, the client libraries must be available on your path.
 
-## Quick Setup (with no explanations)
+## Quick Setup (with little explanation)
 ```
 export DATABASE_URL="postgres://user:password@127.0.0.1/mitsuba"
 export RUST_LOG="info"
@@ -330,3 +330,6 @@ Some features that might be added:
 - `hide ID` command, to hide a particular post from being served by the API, or an entire thread if the ID is of a thread OP. Would simply mark the post as "hidden" on the database, without deleting, it, but it would no longer be publically visible. Mainly meant in cases where someone was doxxed and asked to have the info taken down. This would also have an option to delete the images associated with the post or thread that aren't present on other posts, while still keeping them marked as downloaded, so they would not be downloaded again.
 - `check` command, to check the image store for corruption or missing images. This would first scan the database to see all images that are marked as downloaded, and then ensure that they exist on disk, hash the files to compare MD5s to make sure they are not corrupted. If an image is missing or corrupted, it would correct the database, and mark it as absent. Might also delete images that are on disk but aren't tracked in the database.
 - Object storage (S3 compatible) option to store images. This is not very difficult to implement by itself, but it requires handling more error cases, for example retrying when an upload to the object storage provider fails. Right now if an image fails to be saved to disk, it is dropped immediately and no retries are made. But with a remote storage provider more things can fail, and they might only fail temporarily.
+
+At the moment a full imageboard engine with posting and administration is considered out of scope, however if you are interested in working on that, you should make an issue to discuss it.
+
