@@ -27,10 +27,14 @@ There are some important features missing:
 
 ## Dependencies
 You need to have Postgresql running on your system, the client libraries must be available on your path.
-
+To install the libraries on Ubuntu:
+```
+sudo apt install libpq-dev libpq5
+```
+Your Postgresql server needs to be configured to accept at least 500 connections (`max_connections=500`) for mitsuba to work.
 ## Quick Setup (with little explanation)
 ```
-export DATABASE_URL="postgres://user:password@127.0.0.1/mitsuba"
+export DATABASE_URI="postgres://user:password@127.0.0.1/mitsuba"
 export RUST_LOG="info"
 mitsuba add po
 mitsuba start
@@ -57,14 +61,14 @@ Some options need to be passed as environment variables. Mitsuba uses `dotenv`, 
 You will find an `example.env` file in this repository. Copy it and rename it to just `.env`, then edit its configuration as needed.
 A full explanation of the settings and their effect is included in this readme file in a dedicated section, but there are a couple of values that you need to be aware of right now:
 
-- DATABASE_URL: you need to specify the connection URI for your Postgresql instance here. In the example file it's `postgres://user:password@127.0.0.1/mitsuba` .
-   Replace with the correct username and password, as well as address, port and database name. The user needs to either be the owner of the specified database (in this case called `mitsuba`) if it already exists, or you need to give the user the right to create new databases. Mitsuba will create the database if necessary and the tables on the first run as needed.
+- DATABASE_URI: you need to specify the connection URI for your Postgresql instance here. In the example file it's `postgres://user:password@127.0.0.1/mitsuba` .
+   Replace with the correct username and password, as well as address, port and database name. The user needs to either be the owner of the specified database (in this case called `mitsuba`) if it already exists, or you need to create it yourself.
 
 - DATA_ROOT: the directory in which to save the image files. This is an optional setting. If you leave it out entirely, Mitsuba will just create a "data" folder in the current working directory, and use that.
 
 - RUST_LOG: the recommended setting for this is "info". This controls the mitsuba's log output. For now mitsuba uses `env_logger` which just prints the log information to standard output (the console). If this is not set, you will only see errors and warnings and no other feedback. 
   
-The only required setting is DATABASE_URL but RUST_LOG="info" is also recommended. Just use the `example.env` file contents and change the database URI.
+The only required setting is DATABASE_URI but RUST_LOG="info" is also recommended. Just use the `example.env` file contents and change the database URI.
 
 We will refer to the executable as `mitsuba` in this guide from now on, but on Windows® it is of course called `mitsuba.exe` .
 
@@ -215,7 +219,12 @@ These posts are extremely rare anyways (besides, Moderator, which is displayed c
 Might be fixed eventually.
 
 The Flash board also has some features we haven't implemented but Flash is dead anyway.
+### Note:
+Currently the web UI is very inflexible when it comes to URLs. For example for a thread, you have to visit `/[board]/thread/[id]` , something like `/po/thread/570368/welcome-to-po` will get you a 404 because of the trailing `welcome-to-po`.
 
+Index pages need to have the index number in the URL explicitly, so `/po/1` for example works, but `/po/` by itself returns 404.
+This is WIP.
+Also, there is no homepage `/` whatsoever.
 ## API
 Mitsuba features a read-only JSON API that is designed to be compatible with 4chan's [official API](https://github.com/4chan/4chan-API).
 Because of that, we will not fully document it here, since that would be redundant. You can read their documentation, because the URIs and data returned are mostly the same. There are a few (non-breaking) differences that are explained below (of course, besides the difference that this API is not served from 4chan's domains, but instead from your own server).
