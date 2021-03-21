@@ -7,6 +7,24 @@ The intended usage is self-hosting an archive on a low budget, however the Actix
 
 Mitsuba does not support "ghost posting" as it's not an imageboard engine. This could be supported in the future with some work (mostly on the front-end) but it requires actual administration tools and an accounts system, neither of which are actually present. What few options Mitsuba has are set through the CLI.
 
+## Features
+- Very quick and easy to set up
+- Few dependencies, just Postgresql for now.
+- Extremely lightweight, can run on a very small VPS.
+- Fully integrated, archiving boards, serving them through a JSON API and Web UI all in one.
+- Easy administration with a few CLI commands
+- Configurable rate limiter
+- Optional full image download setting per-board
+- Web UI has a field that lets you jump to any post by typing its ID and selecting the board
+
+There are some important features missing:
+- No "ghost posting" or posting of any kind. Read only archive.
+- No full text search, or any search really. Can only get to a post or thread from the ID. We want to have search eventually.
+- No admin UI, CLI only (but there are few things to change anyways)
+- No administration tools to delete individual posts or images (but you can safely delete an image file from the folder if necessary)
+- No account system whatsoever (however this also makes it inherently secure)
+- No tools to delete a board's posts or images if you don't want to have them anymore (This is a planned feature, for now you could just run one instance per board)
+
 ## Dependencies
 You need to have Postgresql running on your system, the client libraries must be available on your path.
 
@@ -190,17 +208,27 @@ In the future, we want to customize the theme with different colors at least, to
 
 The Web UI **also works with Javascript disabled**, just like 4chan's UI does.
 
+Most of 4chan's features are correctly displayed in the Web UI. One limitation is that currently only real country flags are supported, and "troll flags" (eg. "Anarcho Capitalist" flag) are simply not displayed in the UI. However, these are only enabled on one board (/pol/).
+
+Also all capcode posts (Mod, Admin, Manager, etc) will be displayed the same as "Moderator" with no distinction between roles. 
+These posts are extremely rare anyways (besides, Moderator, which is displayed correctly), and I don't think there are even any up currently, and the distinction doesn't seem super important.
+Might be fixed eventually.
+
+The Flash board also has some features we haven't implemented but Flash is dead anyway.
+
 ## API
 Mitsuba features a read-only JSON API that is designed to be compatible with 4chan's [official API](https://github.com/4chan/4chan-API).
 Because of that, we will not fully document it here, since that would be redundant. You can read their documentation, because the URIs and data returned are mostly the same. There are a few (non-breaking) differences that are explained below (of course, besides the difference that this API is not served from 4chan's domains, but instead from your own server).
 
-First, only parts of this API are implemented. Currently, the [Threads](https://github.com/4chan/4chan-API/blob/master/pages/Threads.md) and [Indexes](https://github.com/4chan/4chan-API/blob/master/pages/Indexes.md) endpoints have been implemented.
-In addition, we added an endpoint to serve individual posts as well.
+First, currently, only the [Threads](https://github.com/4chan/4chan-API/blob/master/pages/Threads.md) and [Indexes](https://github.com/4chan/4chan-API/blob/master/pages/Indexes.md) endpoints have been implemented.
+In addition to that, we added an endpoint to serve individual posts.
 
 - Threads: `/[board]/thread/[op ID].json` Serves a full 4chan thread, in the same format the official API uses.
 - Indexes: `/[board]/[1-...].json` Serves the content of a board's index page. This is the default page you see when you visit a board, for example https://boards.4channel.org/po/ . On 4chan there are normally only 15 index pages, going for example from  `/po/1.json` to `/po/15.json`. On Mitsuba, since old threads are never deleted, there are as many pages as are needed to list all of the threads currently on the archive. Once there are no more threads, higher index numbers will return a 404 status code. This means you can easily scrape a mitsuba archive getting progressively higher indexes until it 404s. However note that the order is the same as on 4chan, so it's not guaranteed to remain consistent. The order is based on which thread has had the most recent new post, not when the thread was first archived. Also pages don't contain full threads, but only the OP and a few posts.
 
-In addition to these endpoints, we have implemented a `/[board]/post/[ID].json` endpoint that just serves a single post by itself. So you can get a post even if you only know its ID and not the OP ID.
+In addition to these endpoints, we have implemented a `/[board]/post/[ID].json` endpoint that just serves a single post by itself. Using this, you can get a post even if you only know its own ID and not the OP's.
+
+There's also one extra endpoint that's entirely specific to Mitsuba: `/boards-status.json`, this returns the same data as the CLI's `list` command, but in JSON format.
 
 ### Differences with 4chan API
 The main difference with 4chan's API is that every post also contains a `board` field with the name of the board it is in.
@@ -215,7 +243,8 @@ In practice this should not cause any issues with existing code targeting 4chan'
 
 ### Images
 In addition to the API being compatible, we also support getting the images from the same paths 4chan uses.
-For example, if an image on 4chan is served from https://i.4cdn.org/po/1546293948883.png, mitsuba will also serve it under `/po/1546293948883.png` and its corresponding thumbnail will be `/po/1546293948883s.jpg` just like on the original site.
+
+For example, if an image on 4chan is served from https://i.4cdn.org/po/1546293948883.png, Mitsuba will serve it under `/po/1546293948883.png` and its corresponding thumbnail will be `/po/1546293948883s.jpg` just like on the original site.
 
 This allows you to get an image from the archive *even if you only have the original link* (which might be dead now) and don't know the post or thread ID.
 
@@ -225,4 +254,79 @@ You can see the correct link for static images being used on the web UI. The URL
 
 For example, for the previous image, the link to the full image would be `/img/full/XG/XGKR4ZPAOXQFKUPYY43ETQPPKQ.png` , the thumbnail is at `/img/thumb/XG/XGKR4ZPAOXQFKUPYY43ETQPPKQ.jpg` .
 
-The `/img/` path serves all images directly from disk. Mitsuba looks in your `DATA_ROOT` folder, which is `data` by default, and serves the `images` folder within to this path (`/img/`). So you can find all the images in there. 
+The `/img/` path serves all images directly from disk. Mitsuba looks in your `DATA_ROOT` folder, which is `data` by default, and serves the `images` folder within from this path (`/img/`). So you can find all the images in there.
+
+## Commands
+Use `mitsuba help` to get a list of commands and their descriptions, `mitsuba help COMMAND` to see the options specific to each command.
+
+### List
+`mitsuba list`
+
+Returns the list of boards currently known to the archiver. Includes "removed" boards that are not being archived, which are set as Enabled: False.
+
+### Add
+`mitsuba add BOARD [options]`
+
+Adds a board to the database if not present, and sets it to enabled. Next time the archiver is started it will archive this board as well.
+If the board was not present or disabled when this command was run, and Mitsuba's archiver is currently running, you need to restart it before the board actually starts being archived.
+
+You can set some options for the board, which are stored in the database. `help add` to get more information on the options.
+If you don't specify an option, it will be set to the default value. Even if the board was already in the database, and the setting was different, if you use `add`, the setting will be reset to the default value unless you specify a different value.
+
+### Remove
+`mitsuba remove BOARD`
+
+Does *not* remove a board from the database, does *not* delete any of its data, posts or images, and does *not* reset the board (see `reset` command for the latter).
+
+What it *does* do is **disable** a board. That is, it stops being archived. The archiver for this board will complete its current cycle if it's in the middle of one, and then shut down. Other boards will not be affected.
+
+This also does not affect the Web UI or the API. Data that was already archived for this board is still served like normal, just it won't be updated.
+
+You can enable a board again by using `add`, however this doesn't apply until you restart mitsuba.
+
+### Reset
+`mitsuba reset BOARD`
+
+Does *not* remove a board from the database, does *not* delete any of its data, posts or images, and does *not* stop a board from being archived (see `remove` command for the latter).
+
+This command only sets the `Last Change` value for the board to 0, as it is when a board is first added.
+
+This value is a timestamp, which corresponds to the most recent post on this board that we have archived. On each archive cycle, the archiver only fetches threads that have had changes (such as new posts) since this timestamp. This means that a thread that hasn't gotten new replies or other changes, will not be fetched again or checked in any way.
+
+Resetting this value to 0 means that on the next run, the archiver will fetch all threads that are currently on the board.
+It won't download an image a second time if it's already present. But for example if last time a full image was not fetched, and now full-images is set to true for this board, the full image will be fetched if not present. Therefore resetting a board after enabling full images is recommended. Otherwise you will only get the full images for threads once they change.
+
+### Start
+`mitsuba start`
+
+Starts the archivers and the web UI and web API server. There are various settings you can check with `help start`, most of them are settings for the rate limiter.
+
+The option `--archiver-only=true` will only start the archiver without the API or web UI. This is useful if you want to start the web UI/API separately using `start-read-only`, this setup allows you to restart or stop the archiver without causing any disruption to the public facing website.
+
+### Start Read Only
+
+Starts the web UI and API, without the archivers. You can run as many instances of Mitsuba in this read-only mode as you wish.
+
+## Administration
+Mitsuba does not come with any admin UI besides the CLI commands above.
+
+There are no commands to purge a board from the database or delete its images.
+
+Images are stored in the same folders for all boards so you can't easily remove all the images just for one board, and some images might have been posted on multiple boards.
+
+Thumbnails and full images **are** stored in different folders (`full` and `thumb`) so you can delete all full images (for all boards) by just deleting that entire folder if you want to.
+
+However, if you really need to delete a particular image, you can just delete the file. The images on disk are never read, and whether an image has been downloaded or not is tracked in the database. So Mitsuba doesn't know that the image was removed from disk, and will never download it again, because it would be marked as already present.
+
+It's safe to delete any of the images on disk, but of course they will return 404s if someone tries to access them.
+
+We want to eventually have some convenient CLI tools for administration. Maybe a web UI in the future, but that's a bigger endeavour.
+
+## Future
+
+Some features that might be added:
+- Search: this is by far the biggest missing feature. I wanted to have this in 1.0 but I didn't have the time. Ideally, we should have full text search for post content and titles, names and such, plus all the advanced search options foolfuuka has. There are multiple ways to go about this, right now I am considering two. The first option is to use Postgresql full text search. This is limited, but it actually does have all the features realistically needed for our use case, and it doesn't add any external dependencies. This would ensure search is always available. The second option is using `meilisearch` which is a rust full text search engine that is both lightweight and easy to set up, it works well out of the box. This would give us more capabilities, it is very flexible. But it's an external dependency that users would have to download and run separately like Postgresql itself. So I am hesitant to add it, and it would have to be optional, making search not always available. On the other hand, using something like elasticsearch would be a huge dependency that I'm not willing to take, and it requires a lot more configuration. Also it's the opposite of lightweight among web servers.
+- `purge BOARD` command, to delete all archived data relative to a particular board. Would delete all posts, and all images that were only posted on that board, while preserving images also present on others. Would have option to only delete full images and preserve thumbnails and post data.
+- `hide ID` command, to hide a particular post from being served by the API, or an entire thread if the ID is of a thread OP. Would simply mark the post as "hidden" on the database, without deleting, it, but it would no longer be publically visible. Mainly meant in cases where someone was doxxed and asked to have the info taken down. This would also have an option to delete the images associated with the post or thread that aren't present on other posts, while still keeping them marked as downloaded, so they would not be downloaded again.
+- `check` command, to check the image store for corruption or missing images. This would first scan the database to see all images that are marked as downloaded, and then ensure that they exist on disk, hash the files to compare MD5s to make sure they are not corrupted. If an image is missing or corrupted, it would correct the database, and mark it as absent. Might also delete images that are on disk but aren't tracked in the database.
+- Object storage (S3 compatible) option to store images. This is not very difficult to implement by itself, but it requires handling more error cases, for example retrying when an upload to the object storage provider fails. Right now if an image fails to be saved to disk, it is dropped immediately and no retries are made. But with a remote storage provider more things can fail, and they might only fail temporarily.
