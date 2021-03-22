@@ -252,7 +252,10 @@ impl DBClient {
                 .values(tinfo)
                 .on_conflict((board, no, last_modified))
                 .do_update().set(
-                        replies.eq(&tinfo.replies)
+                        (
+                            replies.eq(&tinfo.replies),
+                            page.eq(tinfo.page)
+                        )
                 )
                 .execute(&connection)?;
             Ok(res)

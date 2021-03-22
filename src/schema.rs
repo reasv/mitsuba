@@ -81,6 +81,7 @@ table! {
         no -> Int8,
         last_modified -> Int8,
         replies -> Int8,
+        page -> Int4,
     }
 }
 

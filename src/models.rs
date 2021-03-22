@@ -142,17 +142,19 @@ pub struct ThreadInfo {
     pub board: String,
     pub no: i64,
     pub last_modified: i64,
-    pub replies: i64
+    pub replies: i64,
+    #[serde(default)]
+    pub page: i32
 }
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Identifiable)]
 #[table_name="thread_backlog"]
 pub struct ThreadJob {
     pub id: i32,
-    #[serde(default)]
     pub board: String,
     pub no: i64,
     pub last_modified: i64,
-    pub replies: i64
+    pub replies: i64,
+    pub page: i32
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Insertable)]
