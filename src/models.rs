@@ -81,7 +81,9 @@ pub struct Post {
     #[serde(default)]
     pub archived: i64,
     #[serde(default)]
-    pub archived_on: i64
+    pub archived_on: i64,
+    #[serde(default)]
+    pub last_modified: i64
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset)]
 #[table_name="posts"]
@@ -98,6 +100,8 @@ pub struct PostUpdate {
     pub imagelimit: i64,
     pub unique_ips: Option<i64>,
     pub archived: i64,
+    pub archived_on: i64,
+    pub last_modified: i64
 }
 impl From<&Post> for PostUpdate {
     fn from(post: &Post) -> Self {
@@ -117,6 +121,8 @@ impl From<&Post> for PostUpdate {
             imagelimit: post.imagelimit,
             unique_ips,
             archived: post.archived,
+            archived_on: post.archived_on,
+            last_modified: post.last_modified
         }
     }
 }

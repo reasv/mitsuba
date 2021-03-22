@@ -146,7 +146,7 @@ impl Archiver {
         }
         let thread = thread_opt.unwrap_or_default();
 
-        let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post}).collect();
+        let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = board.clone(); post.last_modified = info.last_modified; post}).collect();
         let image_infos = posts.iter().filter_map(|post| self.get_post_image_info(&board,post)).collect::<Vec<ImageInfo>>();
 
         self.db_client.insert_posts_async(&posts).await

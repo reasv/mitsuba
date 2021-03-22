@@ -70,6 +70,7 @@ table! {
         m_img -> Int8,
         archived -> Int8,
         archived_on -> Int8,
+        last_modified -> Int8,
     }
 }
 
