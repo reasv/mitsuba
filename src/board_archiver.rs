@@ -192,9 +192,9 @@ impl Archiver {
                 rx.recv().await; // wait for a job to complete before dispatching the next
                 debug!("One image job has completed")
             }
-        }
-        for handle in handles {
-            handle.await.ok();
+            while let Some(handle) = handles.pop() {
+                handle.await.ok();
+            }
         }
         return Ok(())
     }
