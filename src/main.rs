@@ -119,7 +119,6 @@ fn main() {
     })
 }
 
-// #[tokio::main(flavor = "current_thread")]
 async fn real_main() {
     dotenv::dotenv().ok();
     env_logger::init();
