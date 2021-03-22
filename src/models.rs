@@ -1,10 +1,7 @@
 use diesel::{Queryable, Insertable, AsChangeset, Identifiable, QueryableByName, sql_types::BigInt};
 use serde::{Deserialize, Serialize};
 
-use crate::schema::posts;
-use crate::schema::images;
-use crate::schema::boards;
-use crate::schema::image_backlog;
+use crate::schema::{posts, images, boards, image_backlog, thread_backlog};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset, Eq, PartialEq)]
 #[table_name="posts"]
@@ -138,8 +135,21 @@ pub struct ThreadsPage {
     pub threads: Vec<ThreadInfo>
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Insertable)]
+#[table_name="thread_backlog"]
 pub struct ThreadInfo {
+    #[serde(default)]
+    pub board: String,
+    pub no: i64,
+    pub last_modified: i64,
+    pub replies: i64
+}
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Identifiable)]
+#[table_name="thread_backlog"]
+pub struct ThreadJob {
+    pub id: i32,
+    #[serde(default)]
+    pub board: String,
     pub no: i64,
     pub last_modified: i64,
     pub replies: i64

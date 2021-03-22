@@ -6,7 +6,7 @@ use diesel::pg::{PgConnection};
 use dotenv::dotenv;
 use diesel::r2d2::{ Pool, ConnectionManager, PoolError};
 use diesel::{sql_query, sql_types::{BigInt, Varchar} };
-use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadNo};
+use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadInfo, ThreadJob, ThreadNo};
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
@@ -89,7 +89,7 @@ impl DBClient {
         }
         Ok(res)
     });
-    pub fn update_post_with_conn(&self, connection: &PgConnection, entry: &Post) -> anyhow::Result<usize> {
+    fn update_post_with_conn(&self, connection: &PgConnection, entry: &Post) -> anyhow::Result<usize> {
         use crate::schema::posts::dsl::*;
         let target = posts.filter(board.eq(&entry.board)).filter(no.eq(&entry.no));
         let res = diesel::update(target).set(&PostUpdate::from(entry)).execute(connection)?;
@@ -239,6 +239,39 @@ impl DBClient {
             Some(p) => Ok(Some(p.md5)),
             None => Ok(None)
         }
+    });
+    gen_async!(insert_thread_job_async,
+        pub fn insert_thread_job(&self, tinfo: &ThreadInfo) -> anyhow::Result<usize> {
+            use crate::schema::thread_backlog::table;
+            use crate::schema::thread_backlog::dsl::*;
+            let connection = self.pool.get()?;
+            if self.get_is_thread_updated(&connection, tinfo)? {
+                return Ok(0)
+            }
+            let res = diesel::insert_into(table)
+                .values(tinfo)
+                .on_conflict((board, no, last_modified))
+                .do_update().set(
+                        replies.eq(&tinfo.replies)
+                )
+                .execute(&connection)?;
+            Ok(res)
+    });
+    fn get_is_thread_updated(&self, connection: &PgConnection, tinfo: &ThreadInfo) -> anyhow::Result<bool> {
+        use crate::schema::posts::dsl::*;
+        let op = posts.filter(board.eq(&tinfo.board).and(no.eq(tinfo.no))).first::<Post>(connection).optional()?;
+        if let Some(post) = op {
+            // If thread is already updated to the latest version, ignore
+            return Ok(post.last_modified == tinfo.last_modified)
+        }
+        Ok(false)
+    }
+    gen_async!(get_thread_jobs_async, 
+        pub fn get_thread_jobs(&self) -> anyhow::Result<Vec<ThreadJob>> {
+            use crate::schema::thread_backlog::dsl::*;
+            let connection = self.pool.get()?;
+            let jobs = thread_backlog.order(id.asc()).limit(250).load::<ThreadJob>(&connection)?;
+            Ok(jobs)
     });
 
     gen_async!(insert_image_job_async,

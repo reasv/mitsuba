@@ -1,0 +1,8 @@
+CREATE TABLE thread_backlog (
+  id SERIAL PRIMARY KEY,
+  board VARCHAR(16) NOT NULL,
+  no BIGINT NOT NULL,
+  last_modified BIGINT NOT NULL,
+  replies BIGINT NOT NULL,
+  UNIQUE(board, no, last_modified)
+);

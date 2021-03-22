@@ -1,0 +1,1 @@
+DROP TABLE thread_backlog;

@@ -74,9 +74,20 @@ table! {
     }
 }
 
+table! {
+    thread_backlog (id) {
+        id -> Int4,
+        board -> Varchar,
+        no -> Int8,
+        last_modified -> Int8,
+        replies -> Int8,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(
     boards,
     image_backlog,
     images,
     posts,
+    thread_backlog,
 );
