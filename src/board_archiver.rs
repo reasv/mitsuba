@@ -133,16 +133,7 @@ impl Archiver {
         }
         Ok(())
     }
-    pub async fn image_cycle(&self, previous_remaining: Vec<ImageJob>) -> Result<Vec<ImageJob>,()> {
-        let image_jobs;
-        if previous_remaining.len() == 0 {
-            image_jobs = self.db_client.get_image_jobs_async().await
-            .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
-        } else {
-            image_jobs = previous_remaining;
-        }
-
-        info!("Running image cycle for {} new jobs", image_jobs.len());
+    pub async fn get_boards_with_full_images(&self) -> Result<HashSet<String>, ()> {
         let boards = self.db_client.get_all_boards_async().await
         .map_err(|e| {error!("Failed to get boards from database: {}", e);})?;
 
@@ -152,22 +143,42 @@ impl Archiver {
                 full_images.insert(board.name);
             }
         }
+        Ok(full_images)
+    }
+    pub async fn image_cycle(&self) -> Result<(),()> {
+        let full_image_boards = self.get_boards_with_full_images().await?;
+
+        let (tx, mut rx) = tokio::sync::mpsc::channel(100);
         let mut handles = Vec::new();
-        for job in image_jobs {
-            let c = self.clone();
-            let need_full_image = full_images.contains(&job.board);
-            handles.push(tokio::task::spawn(
-                async move {
-                    c.archive_image(&job.clone(), need_full_image).await
-                }
-            ))
+        loop {
+            let mut image_jobs = self.db_client.get_image_jobs_async().await
+                .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
+            
+            if image_jobs.len() == 0 {break}; // No more jobs available
+
+            let mut iteration = 0;
+            while let Some(job) = image_jobs.pop() {
+                handles.push(self.dispatch_archive_image(tx.clone(),  full_image_boards.contains(&job.board), job));
+                iteration+=1;
+                if iteration < 20 {continue}; // dispatch up to 20 first images in the log first
+
+                rx.recv().await; // wait for a job to complete before dispatching the next
+                debug!("One image job has completed")
+            }
         }
         for handle in handles {
             handle.await.ok();
         }
-        let remaining_image_jobs = self.db_client.get_image_jobs_async().await
-        .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
-        Ok(remaining_image_jobs)
+        return Ok(())
+    }
+    pub fn dispatch_archive_image(&self, tx: tokio::sync::mpsc::Sender<bool>, need_full_image: bool, job: ImageJob) -> tokio::task::JoinHandle<()> {
+        let c = self.clone();
+        tokio::task::spawn(
+            async move {
+                c.archive_image(&job.clone(), need_full_image).await.ok();
+                tx.send(true).await.ok();
+            }
+        )
     }
     pub async fn archive_image(&self, job: &ImageJob, need_full_image: bool) -> Result<(),()> {
         let thumbnail_folder = get_image_folder(&job.md5, true);
@@ -218,12 +229,9 @@ impl Archiver {
     pub fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {
         let c = self.clone();
         tokio::task::spawn(async move {
-            let mut remaining = Vec::new();
             loop {
-                remaining = c.image_cycle(remaining).await.ok().unwrap_or(Vec::new());
-                if remaining.len() == 0 {
-                    tokio::time::sleep(Duration::from_secs(10)).await;
-                }
+                c.image_cycle().await.ok();
+                tokio::time::sleep(Duration::from_secs(10)).await;
             }
         })
     }
