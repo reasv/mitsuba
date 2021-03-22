@@ -1,6 +1,7 @@
 use std::env;
 use std::sync::Arc;
 
+use tokio::runtime::Runtime;
 use diesel::prelude::*;
 use diesel::pg::{PgConnection};
 use dotenv::dotenv;
@@ -64,14 +65,28 @@ pub fn establish_connection() -> PgPool {
         .expect("DATABASE_URI must be set");
     init_pool(&database_url).expect("Failed to create pool")
 }
+pub async fn sqlx_connection() -> sqlx::Pool<sqlx::Postgres> {
+    use sqlx::postgres::PgPoolOptions;
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&env::var("DATABASE_URI").expect("DATABASE_URI must be set")).await.expect("Failed to connect to database");
+    pool
+}
+pub fn get_dbc() -> DBClient {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(DBClient::new())
+}
+
 #[derive(Clone)]
 pub struct DBClient {
     pub pool: Arc<PgPool>,
+    pub cpool: Arc<sqlx::Pool<sqlx::Postgres>>
 }
 impl DBClient {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
-            pool: Arc::new(establish_connection())
+            pool: Arc::new(establish_connection()),
+            cpool: Arc::new(sqlx_connection().await)
         }
     }
     gen_async!(insert_posts_async,
@@ -381,7 +396,7 @@ impl DBClient {
 #[cfg(test)]
 #[test]
 fn image_operations() {
-    let dbc = DBClient::new();
+    let dbc = get_dbc();
     let img_md5 = "test".to_string();
     assert_eq!(false, dbc.image_exists(&img_md5).unwrap());
     assert_eq!(1, dbc.insert_image(&Image{ md5: img_md5.clone(), thumbnail: true, full_image: true, md5_base32:"test".to_string()}).unwrap());
@@ -392,7 +407,7 @@ fn image_operations() {
 
 #[test]
 fn insert_upsert_test() {
-    let dbc = DBClient::new();
+    let dbc = get_dbc();
     let mut post1 = Post::default();
     post1.board = "test".to_string();
     post1.no = 10;
@@ -424,7 +439,7 @@ fn insert_upsert_test() {
 
 #[test]
 fn update_test(){
-    let dbc = DBClient::new();
+    let dbc = get_dbc();
     let mut post1 = Post::default();
     post1.board = "test".to_string();
     post1.no = 10;
@@ -447,7 +462,7 @@ fn update_test(){
 
 #[test]
 fn job_test() {
-    let dbc = DBClient::new();
+    let dbc = get_dbc();
     let mut img = ImageInfo::default();
     img.board = "test_a".to_string();
     img.md5 = "test".to_string();
@@ -469,7 +484,7 @@ fn job_test() {
 }
 #[test]
 fn index_test() {
-    let dbc = DBClient::new();
+    let dbc = get_dbc();
     println!("{:?}", dbc.get_thread_index(&"i".to_string(), 0, 5).unwrap());
     println!("{:?}", dbc.get_thread_index(&"i".to_string(), 1, 5).unwrap());
 }

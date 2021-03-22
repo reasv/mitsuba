@@ -33,6 +33,7 @@ clap = "3.0.0-beta.2"
 handlebars = { version = "3.0.0", features = ["dir_source"] }
 unicode-truncate = "0.2.0"
 handlebars_misc_helpers = "0.11.2"
+sqlx = { version = "0.5", features = [ "postgres", "macros", "migrate", "runtime-tokio-rustls" ] }
 [profile.release]
 lto = true
 codegen-units = 1

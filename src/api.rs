@@ -135,10 +135,10 @@ pub async fn web_main() -> std::io::Result<()> {
     let port = std::env::var("WEB_PORT").unwrap_or("8080".to_string());
     let ip = std::env::var("WEB_IP").unwrap_or("0.0.0.0".to_string());
     create_dir_all(std::path::Path::new(&image_folder)).await.ok();
+    let dbc = DBClient::new().await;
     HttpServer::new(move || {
-        let dbc: DBClient = DBClient::new();
         App::new()
-        .data(dbc)
+        .data(dbc.clone())
         .app_data(handlebars_ref.clone())
         .wrap(NormalizePath::default())
         .service(get_index)

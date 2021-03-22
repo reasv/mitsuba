@@ -13,17 +13,12 @@ pub struct Archiver {
     pub db_client: DBClient
 }
 
-impl Default for Archiver {
-    fn default() -> Self { 
-        Self::new(HttpClient::default())
-    }
-}
 
 impl Archiver {
-    pub fn new(client: HttpClient) -> Self {
+    pub async fn new(client: HttpClient) -> Self {
         Self {
             http_client: Arc::new(client),
-            db_client: DBClient::new()
+            db_client: DBClient::new().await
         }
     }
     pub fn run_archivers(&self) -> tokio::task::JoinHandle<()> {

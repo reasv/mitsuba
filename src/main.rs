@@ -14,6 +14,7 @@ extern crate diesel_migrations;
 mod board_archiver;
 #[allow(dead_code)]
 mod db;
+mod db_sqlx;
 mod models;
 mod schema;
 mod http;
@@ -156,7 +157,7 @@ async fn real_main() {
             jitter_variance.into(),
             retry_max_time.into()
         )
-    );
+    ).await;
     let connection = client.db_client.pool.get().unwrap();
     embedded_migrations::run_with_output(&connection, &mut std::io::stdout()).unwrap();
 
