@@ -121,7 +121,7 @@ impl From<&Post> for PostUpdate {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Default, Serialize, Eq, PartialEq)]
 pub struct Thread {
     pub posts: Vec<Post>,
 }

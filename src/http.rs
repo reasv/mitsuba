@@ -80,9 +80,14 @@ impl HttpClient {
         }).await
     }
 
-    pub async fn fetch_json<T: DeserializeOwned>(&self, url: &str) -> anyhow::Result<T> {
-        let bytes = self.fetch_url_backoff(url, &"api".to_string()).await?;
-        Ok(serde_json::from_slice(&bytes)?)
+    // Returns Err(true) if error was 404 (non recoverable)
+    pub async fn fetch_json<T: DeserializeOwned>(&self, url: &str) -> Result<T, bool> {
+        let bytes = self.fetch_url_backoff(url, &"api".to_string()).await
+        .map_err(|e| e.status().unwrap_or(StatusCode::OK) == StatusCode::NOT_FOUND)?;
+        
+        let obj = serde_json::from_slice(&bytes)
+        .map_err(|e| {error!("Failed to deserialize {} Error: {}", url, e); false})?;
+        Ok(obj)
     }
 
     pub async fn download_file(&self, url: &String, filename: &Path) -> bool {
