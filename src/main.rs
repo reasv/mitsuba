@@ -20,8 +20,11 @@ mod http;
 mod api;
 mod frontend;
 mod util;
+mod thread_archiver;
+mod image_archiver;
+mod archiver;
 use api::web_main;
-use board_archiver::{Archiver};
+use archiver::{Archiver};
 use http::HttpClient;
 
 
@@ -163,7 +166,7 @@ async fn real_main() {
             web_main().await.unwrap();
         },
         SubCommand::Start(arcopts) => {
-            let handle = client.run_archivers().await.unwrap();
+            let handle = client.run_archivers();
             if arcopts.archiver_only.unwrap_or_default() {
                 handle.await.ok();
             } else {

@@ -273,9 +273,18 @@ impl DBClient {
         pub fn get_thread_jobs(&self) -> anyhow::Result<Vec<ThreadJob>> {
             use crate::schema::thread_backlog::dsl::*;
             let connection = self.pool.get()?;
-            let jobs = thread_backlog.order(id.asc()).limit(250).load::<ThreadJob>(&connection)?;
+            // Last pages first
+            let jobs = thread_backlog.order((page.desc(), id.asc())).limit(250).load::<ThreadJob>(&connection)?;
             Ok(jobs)
     });
+    gen_async!(delete_thread_job_async,
+        pub fn delete_thread_job(&self, &(ref _board_name): &String, jid: i32) -> anyhow::Result<usize> {
+            use crate::schema::thread_backlog::dsl::*;
+            let connection = self.pool.get()?;
+            let res = diesel::delete(thread_backlog.filter(id.eq(jid)))
+                .execute(&connection)?;
+            Ok(res)
+        });
 
     gen_async!(insert_image_job_async,
     pub fn insert_image_job(&self, img: &ImageInfo) -> anyhow::Result<usize> {
