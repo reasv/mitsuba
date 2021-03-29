@@ -11,4 +11,4 @@ CREATE TABLE image_backlog (
   thumbnail_sha256 TEXT NOT NULL,
   UNIQUE(board, no)
 );
-CREATE INDEX page_index ON posts (page);
+CREATE INDEX page_index ON image_backlog (page);
