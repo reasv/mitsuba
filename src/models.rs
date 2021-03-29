@@ -252,7 +252,6 @@ pub struct IndexPost {
     pub inner_post: Post,
     pub omitted_posts: i64,
     pub omitted_images: i64,
-    pub last_modified: i64
 }
 
 impl From<Thread> for IndexThread {
@@ -262,19 +261,15 @@ impl From<Thread> for IndexThread {
                 posts: Vec::new()
             }
         }
-        // safe because we checked length to be 1 or gt
-        let last_modified = thread.posts.last().unwrap().time;
-        
         let (op, mut thread_posts): (Post, Vec<Post>) = match thread.posts.clone().split_first_mut() {
             Some((opref, postsref)) => (opref.clone(), postsref.to_vec()),
             None => return Self {posts: Vec::new()}
         };
-        // let op = thread_posts[0].clone();
+
         let mut kept_posts = Vec::new();
-        for _ in 0..4 {
-            match thread_posts.pop() {
-                Some(post) =>  kept_posts.push(post),
-                None => continue
+        for _ in 0..5 {
+            if let Some(post) = thread_posts.pop() {
+                kept_posts.push(post);
             }
         }
         let omitted_posts = thread_posts.len() as i64;
@@ -284,8 +279,7 @@ impl From<Thread> for IndexThread {
             IndexPost {
                 inner_post: op,
                 omitted_posts,
-                omitted_images,
-                last_modified
+                omitted_images
             }
         );
         for post in kept_posts.into_iter().rev() {
@@ -293,8 +287,7 @@ impl From<Thread> for IndexThread {
                 IndexPost {
                     inner_post: post,
                     omitted_posts,
-                    omitted_images,
-                    last_modified
+                    omitted_images
                 }
             )
         }
