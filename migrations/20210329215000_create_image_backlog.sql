@@ -6,5 +6,7 @@ CREATE TABLE image_backlog (
   thumbnail_url TEXT NOT NULL,
   filename TEXT NOT NULL,
   thumbnail_filename TEXT NOT NULL,
+  file_sha256 TEXT NOT NULL,
+  thumbnail_sha256 TEXT NOT NULL,
   UNIQUE(board, no)
 );
