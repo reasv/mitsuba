@@ -103,10 +103,6 @@ struct Templates;
 
 pub(crate) fn build_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
-    // handlebars
-    //     .register_templates_directory(".html", "./src/templates")
-    //     .unwrap();
-    
     for template_path in Templates::iter() {
         if let Some(template_file) = Templates::get(&template_path) {
             let path_vec: Vec<&str> = template_path.split(".").collect();
