@@ -39,9 +39,13 @@ CREATE TABLE posts (
   archived BIGINT NOT NULL,
   archived_on BIGINT NOT NULL,
   last_modified BIGINT NOT NULL,
+  file_sha256 TEXT NOT NULL,
+  thumbnail_sha256 TEXT NOT NULL,
   UNIQUE(board, no)
 );
 CREATE INDEX resto_index ON posts (resto);
 CREATE INDEX tim_index ON posts (tim);
 CREATE INDEX md5_index ON posts (md5);
+CREATE INDEX file_sha256_index ON posts (file_sha256);
+CREATE INDEX thumb_sha256_index ON posts (thumbnail_sha256);
 CREATE INDEX timestamp_index ON posts (time);

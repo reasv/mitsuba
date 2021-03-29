@@ -1,6 +1,0 @@
-CREATE TABLE images (
-  md5 TEXT NOT NULL PRIMARY KEY,
-  md5_base32 TEXT NOT NULL UNIQUE,
-  thumbnail BOOL NOT NULL,
-  full_image BOOL NOT NULL
-)
