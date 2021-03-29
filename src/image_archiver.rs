@@ -10,7 +10,7 @@ use crate::archiver::Archiver;
 
 impl Archiver {
     pub async fn get_boards_with_full_images(&self) -> Result<HashSet<String>, ()> {
-        let boards = self.db_client.get_all_boards_async().await
+        let boards = self.db_client.get_all_boards().await
         .map_err(|e| {error!("Failed to get boards from database: {}", e);})?;
 
         let mut full_images = HashSet::new();
@@ -28,7 +28,7 @@ impl Archiver {
         let mut handles = Vec::new();
         let mut jobs_dispatched = 0;
         loop {
-            let mut image_jobs = self.db_client.get_image_jobs_async().await
+            let mut image_jobs = self.db_client.get_image_jobs(250).await
                 .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
             
             if image_jobs.len() == 0 {break}; // No more jobs available
@@ -62,7 +62,7 @@ impl Archiver {
         create_dir_all(&thumbnail_folder).await.ok();
         create_dir_all(&full_folder).await.ok();
 
-        let (thumb_exists, full_exists) = self.db_client.image_exists_full_async(&job.md5).await
+        let (thumb_exists, full_exists) = self.db_client.image_exists(&job.md5).await
         .map_err(|e| {error!("Failed to get image status from database: {}", e); e} )
         .unwrap_or((false, false));
 
@@ -81,7 +81,7 @@ impl Archiver {
 
         image.thumbnail = thumb_success;
 
-        self.db_client.insert_image_async(&image).await
+        self.db_client.insert_image(&image).await
         .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
 
         info!("Processed thumbnail {} ({})", job.md5, job.thumbnail_filename);
@@ -94,9 +94,9 @@ impl Archiver {
 
         image.full_image = full_success;
 
-        self.db_client.insert_image_async(&image).await
+        self.db_client.insert_image(&image).await
         .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
-        self.db_client.delete_image_job_async(&job.board, &job.md5).await
+        self.db_client.delete_image_job(job.id).await
         .map_err(|e| {error!("Failed to delete image {} from backlog: {}", job.md5, e);})?;
 
         info!("Processed image {} ({}) successfully", job.md5, job.filename);

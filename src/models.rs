@@ -1,12 +1,9 @@
-use diesel::{Queryable, Insertable, AsChangeset, Identifiable, QueryableByName, sql_types::BigInt};
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{posts, images, boards, image_backlog, thread_backlog};
-
-#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset, Eq, PartialEq)]
-#[table_name="posts"]
-#[primary_key((board, no))] 
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
 pub struct Post {
+    #[serde(skip)]
+    pub post_id: i64,
     #[serde(default)]
     pub board: String,
     pub no: i64,
@@ -82,12 +79,8 @@ pub struct Post {
     #[serde(default)]
     pub last_modified: i64
 }
-#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable, Default, AsChangeset)]
-#[table_name="posts"]
-#[primary_key((board, no))] 
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PostUpdate {
-    pub board: String,
-    pub no: i64,
     pub closed: i64,
     pub sticky: i64,
     pub filedeleted: i64,
@@ -95,20 +88,18 @@ pub struct PostUpdate {
     pub images: i64,
     pub bumplimit: i64,
     pub imagelimit: i64,
-    pub unique_ips: Option<i64>,
+    pub unique_ips: i64,
     pub archived: i64,
     pub archived_on: i64,
     pub last_modified: i64
 }
 impl From<&Post> for PostUpdate {
     fn from(post: &Post) -> Self {
-        let unique_ips = match post.unique_ips > 0 {
-            true => Some(post.unique_ips),
-            false => None // Do not take update if update is 0
-        };
+        // let unique_ips = match post.unique_ips > 0 {
+        //     true => Some(post.unique_ips),
+        //     false => None // Do not take update if update is 0
+        // };
         Self {
-            board: post.board.clone(),
-            no: post.no,
             closed: post.closed,
             sticky: post.sticky,
             filedeleted: post.filedeleted,
@@ -116,7 +107,7 @@ impl From<&Post> for PostUpdate {
             images: post.images,
             bumplimit: post.bumplimit,
             imagelimit: post.imagelimit,
-            unique_ips,
+            unique_ips: post.unique_ips,
             archived: post.archived,
             archived_on: post.archived_on,
             last_modified: post.last_modified
@@ -135,8 +126,7 @@ pub struct ThreadsPage {
     pub threads: Vec<ThreadInfo>
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Insertable)]
-#[table_name="thread_backlog"]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ThreadInfo {
     #[serde(default)]
     pub board: String,
@@ -146,10 +136,9 @@ pub struct ThreadInfo {
     #[serde(default)]
     pub page: i32
 }
-#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Identifiable)]
-#[table_name="thread_backlog"]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ThreadJob {
-    pub id: i32,
+    pub id: i64,
     pub board: String,
     pub no: i64,
     pub last_modified: i64,
@@ -157,8 +146,7 @@ pub struct ThreadJob {
     pub page: i32
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Insertable)]
-#[table_name="image_backlog"]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ImageInfo {
     pub md5: String,
     pub md5_base32: String,
@@ -168,10 +156,9 @@ pub struct ImageInfo {
     pub filename: String,
     pub thumbnail_filename: String,
 }
-#[derive(Debug, Clone, Default, Deserialize, Serialize, Queryable, Identifiable)]
-#[table_name="image_backlog"]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct ImageJob {
-    pub id: i32,
+    pub id: i64,
     pub md5: String,
     pub md5_base32: String,
     pub board: String,
@@ -181,23 +168,18 @@ pub struct ImageJob {
     pub thumbnail_filename: String,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize, Queryable, Insertable)]
-#[table_name="boards"]
-pub struct Board {
-    pub name: String,
-    pub wait_time: i64,
-    pub full_images: bool,
-    pub last_modified: i64,
-    pub archive: bool
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Queryable, Insertable)]
-#[table_name="images"]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct Image {
     pub md5: String,
     pub md5_base32: String,
     pub thumbnail: bool,
     pub full_image: bool
+}
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct Board {
+    pub name: String,
+    pub full_images: bool,
+    pub archive: bool
 }
 // From /boards.json endpoint
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
@@ -252,9 +234,8 @@ pub struct BoardsList {
     pub boards: Vec<BoardInfo>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq, QueryableByName)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
 pub struct ThreadNo {
-    #[sql_type = "BigInt"]
     pub resto: i64
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]

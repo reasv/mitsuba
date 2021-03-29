@@ -15,7 +15,7 @@ use crate::models::{IndexPage, BoardsStatus};
 #[get("/{board}/thread/{no}.json")]
 async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
-    let thread = db.get_thread_async(&board, no).await
+    let thread = db.get_thread(&board, no).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -28,7 +28,7 @@ async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> 
 #[get("/{board}/post/{no}.json")]
 async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
-    let post = db.get_post_async(&board, no).await
+    let post = db.get_post(&board, no).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -42,7 +42,7 @@ async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> R
     if index > 0 {
         index -= 1;
     }
-    let threads = db.get_thread_index_async(&board, index, 15).await
+    let threads = db.get_thread_index(&board, index, 15).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -63,7 +63,7 @@ async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i
 }
 #[get("/boards-status.json")]
 async fn get_boards_status(db: web::Data<DBClient>) -> Result<HttpResponse, HttpResponse> {
-    let boards = db.get_all_boards_async().await
+    let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -72,7 +72,7 @@ async fn get_boards_status(db: web::Data<DBClient>) -> Result<HttpResponse, Http
 }
 
 async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile, HttpResponse> {
-    let md5_base64 = db.image_tim_to_md5_async(&board, tim).await
+    let md5_base64 = db.image_tim_to_md5(&board, tim).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -135,10 +135,10 @@ pub async fn web_main() -> std::io::Result<()> {
     let port = std::env::var("WEB_PORT").unwrap_or("8080".to_string());
     let ip = std::env::var("WEB_IP").unwrap_or("0.0.0.0".to_string());
     create_dir_all(std::path::Path::new(&image_folder)).await.ok();
+    let dbc = DBClient::new().await;
     HttpServer::new(move || {
-        let dbc: DBClient = DBClient::new();
         App::new()
-        .data(dbc)
+        .data(dbc.clone())
         .app_data(handlebars_ref.clone())
         .wrap(NormalizePath::default())
         .service(get_index)

@@ -1,5 +1,5 @@
 CREATE TABLE thread_backlog (
-  id SERIAL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,
   board VARCHAR(16) NOT NULL,
   no BIGINT NOT NULL,
   last_modified BIGINT NOT NULL,

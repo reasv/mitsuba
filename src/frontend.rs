@@ -31,13 +31,13 @@ struct TemplateThreadIndexThread {
 pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
 -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
-    let boards = db.get_all_boards_async().await
+    let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
             HttpResponse::InternalServerError().finish()
         })?;
     
-    let thread = db.get_thread_async(&board, no).await
+    let thread = db.get_thread(&board, no).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -61,12 +61,12 @@ pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars
         nonzero_index = index;
     }
 
-    let boards = db.get_all_boards_async().await
+    let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
             HttpResponse::InternalServerError().finish()
         })?;
-    let threads = db.get_thread_index_async(&board, nonzero_index-1, 15).await
+    let threads = db.get_thread_index(&board, nonzero_index-1, 15).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             HttpResponse::InternalServerError().finish()

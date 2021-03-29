@@ -41,7 +41,7 @@ impl Archiver {
         let mut handles = Vec::new();
         let mut jobs_dispatched = 0u64;
         loop {
-            let mut jobs = self.db_client.get_thread_jobs_async().await
+            let mut jobs = self.db_client.get_thread_jobs(250).await
                 .map_err(|e|{error!("Failed to get new thread jobs from database: {}", e); e})?;
             
             if jobs.len() == 0 {break}; // No more jobs available
@@ -85,16 +85,16 @@ impl Archiver {
         let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = job.board.clone(); post.last_modified = job.last_modified; post}).collect();
         let image_jobs = posts.iter().filter_map(|post| self.get_post_image_info(&job.board,post)).collect::<Vec<ImageInfo>>();
 
-        self.db_client.insert_posts_async(&posts).await
+        self.db_client.insert_posts(&posts).await
         .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", 
         job.board, job.no, e); job.clone()}).ok();
 
         for image_info in image_jobs {
-            self.db_client.insert_image_job_async(&image_info).await
+            self.db_client.insert_image_job(&image_info).await
             .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", 
             job.board, image_info.md5.clone(), e); job.clone()}).ok();
         }
-        self.db_client.delete_thread_job_async(&"".to_string(), job.id).await
+        self.db_client.delete_thread_job(job.id).await
         .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e); job})?;
         Ok(())
     }
