@@ -97,11 +97,24 @@ pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars
     Ok(HttpResponse::Ok().body(body))
 }
 
+#[derive(RustEmbed)]
+#[folder = "src/templates"]
+struct Templates;
+
 pub(crate) fn build_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
-    handlebars
-        .register_templates_directory(".html", "./src/templates")
-        .unwrap();
+    // handlebars
+    //     .register_templates_directory(".html", "./src/templates")
+    //     .unwrap();
+    
+    for template_path in Templates::iter() {
+        if let Some(template_file) = Templates::get(&template_path) {
+            let path_vec: Vec<&str> = template_path.split(".").collect();
+            let name = path_vec[0];
+            let template_str: String = std::str::from_utf8(template_file.as_ref()).unwrap().to_string();
+            handlebars.register_template_string(&name, &template_str).unwrap();
+        }
+    }
     
     register(&mut handlebars);
     handlebars_helper!(b_to_kb: |b: i64|  b/1024i64);
