@@ -141,6 +141,7 @@ async fn real_main() {
         )
     ).await;
     sqlx::migrate!().run(&client.db_client.pool).await.expect("Failed to migrate");
+    
     match opts.subcmd {
         SubCommand::StartReadOnly(_) => {
             web_main().await.unwrap();

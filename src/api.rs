@@ -6,7 +6,7 @@ use actix_files::NamedFile;
 use tokio::fs::create_dir_all;
 
 use crate::db::DBClient;
-use crate::frontend::{thread_page, index_page, build_handlebars};
+use crate::frontend::{thread_page, index_page, build_handlebars, dist};
 use crate::util::{base64_to_32, get_image_folder};
 use crate::models::{IndexPage, BoardsStatus};
 
@@ -112,7 +112,7 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(index_page)
         .service(get_boards_status)
         .service(actix_files::Files::new("/img", image_folder.clone()))
-        .service(actix_files::Files::new("/static", "static"))
+        .service(web::resource("/static/{_:.*}").route(web::get().to(dist)))
     })
     .bind(format!("{}:{}", ip, port))?
     .run()

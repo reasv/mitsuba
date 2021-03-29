@@ -1,7 +1,10 @@
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
-use actix_web::{get, web, HttpResponse, Result};
+use actix_web::{get, web, HttpResponse, Result, body::Body};
 use serde::{Deserialize, Serialize};
+use rust_embed::RustEmbed;
+use std::borrow::Cow;
+use mime_guess::from_path;
 
 use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
 use handlebars::handlebars_helper;
@@ -133,4 +136,24 @@ pub(crate) fn build_handlebars() -> Handlebars<'static> {
         Ok(())
     }));
     handlebars
+}
+
+#[derive(RustEmbed)]
+#[folder = "static"]
+struct Asset;
+
+fn handle_embedded_file(path: &str) -> HttpResponse {
+    match Asset::get(path) {
+        Some(content) => {
+        let body: Body = match content {
+            Cow::Borrowed(bytes) => bytes.into(),
+            Cow::Owned(bytes) => bytes.into(),
+        };
+        HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(body)
+        }
+        None => HttpResponse::NotFound().body("404 Not Found"),
+    }
+}
+pub(crate) fn dist(path: web::Path<String>) -> HttpResponse {
+    handle_embedded_file(&path.into_inner())
 }
