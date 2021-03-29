@@ -37,9 +37,9 @@ enum SubCommand {
     StartReadOnly(ReadOnlyMode),
     #[clap(about = "Add a board to the archiver, or replace its settings.")]
     Add(Add),
-    #[clap(about = "Stop archiver for a board. Does not delete any data, does not reset the board. Archiver will only stop after completing the current cycle.")]
+    #[clap(about = "Stop and disable archiver for a particular board. Does not delete any data. Archiver will only stop after completing the current cycle.")]
     Remove(Remove),
-    #[clap(about = "List all boards in the database and their current settings. Includes stopped ('removed') boards")]
+    #[clap(about = "List all boards in the database and their current settings. Includes disabled ('removed') boards")]
     List(ListBoards)
 }
 
@@ -59,7 +59,7 @@ struct StartArc {
     #[clap(long, long_about = "(Optional) Variance for jitter, in milliseconds. Default is 800ms. Jitter will be a random value between min and min+variance.")]
     jitter_variance: Option<u32>,
 
-    #[clap(long, long_about = "(Optional) Maximum amount of time to spend retrying a failed image download, in seconds. Default is 60s (10m).")]
+    #[clap(long, long_about = "(Optional) Maximum amount of time to spend retrying a failed image download, in seconds. Default is 600s (10m).")]
     max_time: Option<u32>
 }
 
@@ -141,7 +141,7 @@ async fn real_main() {
         )
     ).await;
     sqlx::migrate!().run(&client.db_client.pool).await.expect("Failed to migrate");
-    
+
     match opts.subcmd {
         SubCommand::StartReadOnly(_) => {
             web_main().await.unwrap();

@@ -1,7 +1,7 @@
 # Mitsuba
 Mitsuba is a lightweight 4chan board archiver written in Rust. It continuously monitors a set of 4chan boards, fetches new posts, thumbnails, and optionally full images, and makes them available through an imageboard web UI as well as a read-only JSON API that is compatible with 4chan's [official API](https://github.com/4chan/4chan-API).
 
-Mitsuba's main goal is to be very lightweight in terms of CPU and memory usage, and Rust helps accomplish this goal. Mitsuba is designed to be easy to deploy and doesn't currently have any runtime dependencies besides Postgresql and the related libraries.
+Mitsuba's main goal is to be very lightweight in terms of CPU and memory usage, and Rust helps accomplish this goal. Mitsuba is designed to be easy to deploy and doesn't currently have any runtime dependencies besides needing a Postgresql database.
 
 The intended usage is self-hosting an archive on a low budget, however the Actix based web UI and API are quite performant, and should be capable of scaling to any amount of readers, with much lower resource consumption compared to competing frameworks in other languages, and without the possible latency spikes caused by garbage collection.
 
@@ -9,9 +9,10 @@ Mitsuba does not support "ghost posting" as it's not an imageboard engine. This 
 
 ## Features
 - Very quick and easy to set up
-- Few dependencies, just Postgresql for now.
-- Extremely lightweight, can run on a very small VPS.
-- Fully integrated, archiving boards, serving them through a JSON API and Web UI all in one.
+- No runtime dependencies except a running Postgresql database.
+- Single static executable, all assets and dependencies embedded.
+- Extremely lightweight, can run on a budget VPS.
+- Fully integrated: Mitsuba archives boards, threads, and images, serves them through a JSON API and Web UI all in one.
 - Easy administration with a few CLI commands
 - Configurable rate limiter
 - Optional full image download setting per-board
@@ -20,22 +21,19 @@ Mitsuba does not support "ghost posting" as it's not an imageboard engine. This 
 There are some important features missing:
 - No "ghost posting" or posting of any kind. Read only archive.
 - No full text search, or any search really. Can only get to a post or thread from the ID. We want to have search eventually.
-- No admin UI, CLI only (but there are few things to change anyways)
-- No administration tools to delete individual posts or images (but you can safely delete an image file from the folder if necessary)
-- No account system whatsoever (however this also makes it inherently secure)
-- No tools to delete a board's posts or images if you don't want to have them anymore (This is a planned feature, for now you could just run one instance per board)
+- No admin UI, administration CLI only (but there are only a few things you'd want to change anyways)
+- No administration tools to delete individual posts or images (but you can safely delete an image file from the folder if necessary, it won't be downloaded again)
+- No account system whatsoever (but this makes it inherently secure)
+- No tools for deleting all posts or images from a particular board (This is a planned feature, for now you could just run one instance per board)
 
 ## Dependencies
-You need to have Postgresql running on your system, the client libraries must be available on your path.
-To install the libraries on Ubuntu:
+You need to have a Postgresql instance available somewhere Mitsuba can reach it with the DATABASE_URL env variable provided.
+If you get an error about the server not accepting any more connections on startup, you might need to increase your database's `max_connections` configuration.
+
+## Quick Setup
 ```
-sudo apt install libpq-dev libpq5
-```
-Your Postgresql server needs to be configured to accept at least 500 connections (`max_connections=500`) for mitsuba to work.
-## Quick Setup (with little explanation)
-```
-export DATABASE_URI="postgres://user:password@127.0.0.1/mitsuba"
-export RUST_LOG="info"
+export DATABASE_URL="postgres://user:password@127.0.0.1/mitsuba"
+export RUST_LOG=mitsuba=info # Optional, to get feedback
 mitsuba add po
 mitsuba start
 ```
@@ -45,30 +43,28 @@ This will only get posts and thumbnails but not full images.
 
 Use `mitsuba add po --full-images=true` to change that.
 
-It's recommended to perform `mitsuba reset po` if you enable full images after you started the archiver with only thumbnails. This will not delete any data, but it makes it rescan the entire and get full images for posts that had already been archived. Otherwise you will only get full images on a thread once it gets a new post.
+Mitsuba will not fetch full images for a post it has already archived previously, unless it has to visit that post again. Currently this means if you enable full images on a board you were already archiving with only thumbnails, Mitsuba won't fetch full images for posts on threads until that particular thread gets a new post.
 
-`mitsuba add BOARD` with a new board that is not being archived will not start an archiver for that board while mitsuba is already running. So if you want to add another board you have to restart mitsuba after `add`.
-`mitsuba remove BOARD` *does* work while mitsuba is running. It doesn't delete any data, but it stops the archiver for that board. It will only stop after it has completed its current archival cycle. Restarting an archiver requires using `add` and then restarting mitsuba entirely.
+`mitsuba add BOARD` and `mitsuba remove BOARD` are safe to use while mitsuba is running. But in that scenario, they will not take effect until the current archive cycle is completed.
 
-## Setup
+## Setup Guide
 Mitsuba is designed to be easy and quick to set up.
 Download a binary build for your system, or clone the repository and build your executable.
-Mitsuba also requires some static files for its frontend, they should be included with the binary build and the source code as the "static" folder.
-Just include them in the same directory mitsuba is run from. If you only need the API, they are not required.
+Currently all static files mitsuba uses are embedded in the executable. You should just be able to run Mitsuba in an empty folder.
 
-Some options need to be passed as environment variables. Mitsuba uses `dotenv`, which means that instead of setting the environment variables, you can specify their values in a file called `.env` which must be in the directory you are running the mitsuba executable in. Mitsuba will read this file and apply the environment variables specified with their values.
+Some options need to be passed as environment variables. Mitsuba uses `dotenv`, which means that instead of setting the environment variables yourself, you can specify their values in a file called `.env` which must be in the directory you are running the mitsuba executable in. Mitsuba will read this file and apply the environment variables specified with their values.
 
 You will find an `example.env` file in this repository. Copy it and rename it to just `.env`, then edit its configuration as needed.
-A full explanation of the settings and their effect is included in this readme file in a dedicated section, but there are a couple of values that you need to be aware of right now:
+There are a couple of settings that you need to be aware of right now:
 
-- DATABASE_URI: you need to specify the connection URI for your Postgresql instance here. In the example file it's `postgres://user:password@127.0.0.1/mitsuba` .
+- DATABASE_URL: you need to specify the connection URI for your Postgresql instance here. In the example file it's `postgres://user:password@127.0.0.1/mitsuba` .
    Replace with the correct username and password, as well as address, port and database name. The user needs to either be the owner of the specified database (in this case called `mitsuba`) if it already exists, or you need to create it yourself.
 
 - DATA_ROOT: the directory in which to save the image files. This is an optional setting. If you leave it out entirely, Mitsuba will just create a "data" folder in the current working directory, and use that.
 
-- RUST_LOG: the recommended setting for this is "info". This controls the mitsuba's log output. For now mitsuba uses `env_logger` which just prints the log information to standard output (the console). If this is not set, you will only see errors and warnings and no other feedback. 
+- RUST_LOG: the recommended setting for this is "mitsuba=info". This controls the mitsuba's log output. For now mitsuba uses `env_logger` which just prints the log information to standard output (the console). If this is not set, you will only see errors and warnings and no other feedback. 
   
-The only required setting is DATABASE_URI but RUST_LOG="info" is also recommended. Just use the `example.env` file contents and change the database URI.
+The only required setting is DATABASE_URL but RUST_LOG="info" is also recommended. Just use the `example.env` file contents and change the database URI.
 
 We will refer to the executable as `mitsuba` in this guide from now on, but on Windows® it is of course called `mitsuba.exe` .
 
@@ -76,6 +72,7 @@ Run `mitsuba help` to get a quick usage guide with a list of possible commands:
 
 ```
 $ mitsuba help
+mitsuba 1.0
 High performance board archiver software. Add boards with `add`, then start with `start` command.
 See `help add` and `help start`
 
@@ -87,24 +84,19 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    add                Add a board to the archiver, or replace its settings. (Requires restart
-                       of mitsuba to apply changes)
+    add                Add a board to the archiver, or replace its settings.
     help               Prints this message or the help of the given subcommand(s)
     list               List all boards in the database and their current settings. Includes
-                       stopped ('removed') boards
-    remove             Stop archiver for a board. Does not delete any data, does not reset the
-                       board. Archiver will only stop after completing the current cycle.
-    reset              Reset a board's state. Does not delete any data or images. Next time the
-                       archiver runs, it will fetch all currently active threads again from
-                       scratch. Images will not be redownloaded unless they are missing. Run
-                       this if you think the archiver missed some posts or images.
+                       disabled ('removed') boards
+    remove             Stop and disable archiver for a particular board. Does not delete any
+                       data. Archiver will only stop after completing the current cycle.
     start              Start the archiver, API, and webserver
     start-read-only    Start in read only mode. Archivers will not run, only API and webserver
 ```
 You can use `mitsuba help COMMAND` in order to get more detailed information on each command and the possible options:
 ```
 $ mitsuba help add
-Add a board to the archiver, or replace its settings. (Requires restart of mitsuba to apply changes)
+Add a board to the archiver, or replace its settings.
 
 USAGE:
     mitsuba.exe add [OPTIONS] <name>
@@ -119,38 +111,28 @@ FLAGS:
 OPTIONS:
         --full-images <full-images>    (Optional) If false, will only download thumbnails for this
                                        board. If true, thumbnails and full images. Default is false.
-        --wait-time <wait-time>        (Optional) Seconds to wait after an update for this board is
-                                       completed, before trying to perform a new update. Default is
-                                       10s
 ```
 This command will add a database entry for the specified board and its settings. Next time Mitsuba is run, an archiver will start for this board and any other boards you added with `add`.
 
-As you can see there are two options for the board's settings. 
+As you can see there is only one option in terms of board specific settings.
 - `full-images=true` will make the archiver download full images (and files) for that board. The default is `false`, meaning only thumbnails will be downloaded.
-
- - `wait-time=10` specifies how long, in seconds, the archiver for this board will wait after it *finishes* fetching updates to get more updates. A longer time means it will get updates less often. It's recommended you set this to a higher value for slow boards that have relatively few posts per hour/minute. For very slow boards like /po/ even an hour could be safe. The tradeoff with this is that if you set it too high, a thread might get deleted and 404 before you capture some of the last posts. However most 4chan boards have 1-week archives after the threads die, so this is not really a concern.
-
-
- Wait time is a particularly important setting if you are archiving many boards with the same mitsuba instance. A slow board should get a higher wait time than a fast board with many posts per minute, otherwise if they are constantly updating at the same time, they can slow each other down. Mitsuba employs (configurable) rate-limiting for all requests to 4chan to respect their limits. This rate limiting is global, not per board. So if two boards are updated at the same time, it will take longer.
 
 Note that any time you use `add` on a board that was already added before, it enables that board if it was disabled with `remove`, and *replaces* the configuration for that board with the values you specify, or the defaults. The previous settings are **ignored**. So if you had full image download enabled on /po/ previously with a wait time of 100, and then do `mitsuba add po`, the settings will be reset to the default of no full image download, and wait time of 10.
 
 So let's add our first board, /po/ is a good example because it's the slowest board on 4chan most of the time:
 ```
-mitsuba add po --full-images=true --wait-time=600
-Added /po/ Enabled: true, Full Images: true, Wait Time: 600, Last Change: 0
+mitsuba add po --full-images=true
+Added /po/ Enabled: true, Full Images: true
 If mitsuba is running, you need to restart it to apply these changes.
 ```
 We will get all images, and we'll look for new thread updates 10 minutes after the previous update completes.
 Let's confirm our changes with the `list` command which lists all boards added to mitsuba.
 ```
 $ mitsuba list
-/po/ Enabled: true, Full Images: true, Wait Time: 600, Last Change: 1616275933
+/po/ Enabled: true, Full Images: true
 1 boards found in database
 ```
 - `Enabled` means the board is currently being actively archived.
-- `Last change` is the timestamp of the most recent post mitsuba has archived on this board. On the next archive cycle, it will only fetch threads that have posts newer than this. Threads not updated since will be ignored. Initially the number is always 0 as we don't have any posts at all.
-This value can be reset to 0 with `mitsuba reset BOARD`. This will not delete any data, but it will make the archiver rescan the entire board on the next cycle. All threads will be fetched again, but images won't be downloaded twice. However if you enabled full-images and full images are missing, they will be downloaded. So this is highly recommended if you add full-images to an existing board that was already being archived. Applying a reset doesn't require restart.
 
 Finally, we take a look at the `start` command:
 ```
@@ -177,7 +159,7 @@ OPTIONS:
                                                Default is 800ms. Jitter will be a random value
                                                between min and min+variance.
         --max-time <max-time>                  (Optional) Maximum amount of time to spend retrying a
-                                               failed image download, in seconds. Default is 60s
+                                               failed image download, in seconds. Default is 600s
                                                (10m).
         --rpm <rpm>                            (Optional) Max requests per minute. Default is 60.
 ```
@@ -190,7 +172,7 @@ You can run the web UI and API separately with `mitsuba start-read-only`. You ca
 `--rpm` is the main rate-limiter option. It decides how many requests per minute are performed by mitsuba against 4chan's API and image servers, globally.
 All of the rate limiter settings are global for all boards and images, but note that images and API-calls (which are used to fetch threads) are counted **separately** in the rate limiting.
 
-This means that if you set say, RPM to 60, mitsuba will perform 60 requests per minute (at most, on average it will be much less depending on how many threads get updated, and `wait-time`) against 4chan's API to fetch new threads it finds, **and** it will do 60 requests per minute to fetch images, for a global total of 120 requests per minute done at most across all boards and all images. This separation ensures that even if there's a large backlog of images to download, mitsuba can continue to fetch new posts at the same time, without the two interfering with each other.
+This means that if you set say, RPM to 60, mitsuba will perform 60 requests per minute (at most, on average it will be much less depending on how many threads get updated) against 4chan's API to fetch new threads it finds, **and** it will do 60 requests per minute to fetch images, for a global total of 120 requests per minute done at most across all boards and all images. This separation ensures that even if there's a large backlog of images to download, mitsuba can continue to fetch new posts at the same time, without the two interfering with each other.
 
 We can now start our archiver with `mitsuba start`.
 It will start its work of archiving the board, /po/.
@@ -285,25 +267,13 @@ If you don't specify an option, it will be set to the default value. Even if the
 ### Remove
 `mitsuba remove BOARD`
 
-Does *not* remove a board from the database, does *not* delete any of its data, posts or images, and does *not* reset the board (see `reset` command for the latter).
+Does *not* remove a board from the database, does *not* delete any of its data, posts or images.
 
 What it *does* do is **disable** a board. That is, it stops being archived. The archiver for this board will complete its current cycle if it's in the middle of one, and then shut down. Other boards will not be affected.
 
 This also does not affect the Web UI or the API. Data that was already archived for this board is still served like normal, just it won't be updated.
 
 You can enable a board again by using `add`, however this doesn't apply until you restart mitsuba.
-
-### Reset
-`mitsuba reset BOARD`
-
-Does *not* remove a board from the database, does *not* delete any of its data, posts or images, and does *not* stop a board from being archived (see `remove` command for the latter).
-
-This command only sets the `Last Change` value for the board to 0, as it is when a board is first added.
-
-This value is a timestamp, which corresponds to the most recent post on this board that we have archived. On each archive cycle, the archiver only fetches threads that have had changes (such as new posts) since this timestamp. This means that a thread that hasn't gotten new replies or other changes, will not be fetched again or checked in any way.
-
-Resetting this value to 0 means that on the next run, the archiver will fetch all threads that are currently on the board.
-It won't download an image a second time if it's already present. But for example if last time a full image was not fetched, and now full-images is set to true for this board, the full image will be fetched if not present. Therefore resetting a board after enabling full images is recommended. Otherwise you will only get the full images for threads once they change.
 
 ### Start
 `mitsuba start`
@@ -313,6 +283,7 @@ Starts the archivers and the web UI and web API server. There are various settin
 The option `--archiver-only=true` will only start the archiver without the API or web UI. This is useful if you want to start the web UI/API separately using `start-read-only`, this setup allows you to restart or stop the archiver without causing any disruption to the public facing website.
 
 ### Start Read Only
+`mitsuba start-read-only`
 
 Starts the web UI and API, without the archivers. You can run as many instances of Mitsuba in this read-only mode as you wish.
 
