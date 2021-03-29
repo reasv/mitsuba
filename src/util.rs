@@ -7,7 +7,7 @@ fn bad_hash(s: String) -> i64 {
     let mut msg = 0i64;
     let j = s.len();
     for i in 0..j {
-        msg = ((msg << 5) - msg) + (s.bytes().nth(i).unwrap() as i64);
+        msg = ((msg << 5) - msg) + (s.bytes().nth(i).unwrap_or(0) as i64);
     }
     msg
 }
