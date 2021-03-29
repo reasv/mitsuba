@@ -1,9 +1,13 @@
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 use actix_web::{get, web, HttpResponse, Result};
-use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 
+use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
+use handlebars::handlebars_helper;
+use handlebars_misc_helpers::register;
+
+use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_url};
 use crate::db::DBClient;
 use crate::models::{IndexThread, Post, IndexPost, Board};
 
@@ -88,4 +92,45 @@ pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars
         threads: index_threads.into_iter().map(|t| TemplateThreadIndexThread{op: t.posts[0].clone(), posts: t.posts[1..].to_vec()}).collect()
     }).unwrap();
     Ok(HttpResponse::Ok().body(body))
+}
+
+pub(crate) fn build_handlebars() -> Handlebars<'static> {
+    let mut handlebars = Handlebars::new();
+    handlebars
+        .register_templates_directory(".html", "./src/templates")
+        .unwrap();
+    
+    register(&mut handlebars);
+    handlebars_helper!(b_to_kb: |b: i64|  b/1024i64);
+    handlebars.register_helper("b_to_kb", Box::new(b_to_kb));
+
+    handlebars.register_helper("shorten",
+        Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+            let length = h.param(0).ok_or(RenderError::new("Length not found"))?;
+            let text = h.param(1).ok_or(RenderError::new("String not found"))?.value().render();
+            let sz = length.value().as_u64().unwrap_or_default();
+            out.write(shorten_string(sz as usize, text).as_ref())?;
+            Ok(())
+        }));
+    handlebars.register_helper("id_color",
+        Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+            let id_text = h.param(0).ok_or(RenderError::new("ID not found"))?.value().render();
+            out.write(string_to_idcolor(id_text).as_ref())?;
+            Ok(())
+        }));
+    handlebars.register_helper("base64_to_32",
+        Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+            let b64_text = h.param(0).ok_or(RenderError::new("base64 not found"))?.value().render();
+            out.write(base64_to_32(b64_text).unwrap_or_default().as_ref())?;
+            Ok(())
+        }));
+    handlebars.register_helper("get_image_url",
+    Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+        let b64_text = h.param(0).ok_or(RenderError::new("base64 not found"))?.value().render();
+        let is_thumb = h.param(1).ok_or(RenderError::new("Boolan not found"))?;
+        let is_thumb_bool = is_thumb.value().as_bool().unwrap_or_default();
+        out.write(get_image_url(&b64_text, is_thumb_bool).as_ref())?;
+        Ok(())
+    }));
+    handlebars
 }
