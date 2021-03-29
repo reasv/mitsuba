@@ -69,19 +69,11 @@ struct ReadOnlyMode;
 struct Add {
     #[clap(about = "Board name (eg. 'po')")]
     name: String,
-    #[clap(long, long_about = "(Optional) Seconds to wait after an update for this board is completed, before trying to perform a new update. Default is 10s")]
-    wait_time: Option<i64>,
     #[clap(long, long_about = "(Optional) If false, will only download thumbnails for this board. If true, thumbnails and full images. Default is false.")]
     full_images: Option<bool>,
 }
 #[derive(Clap, Clone)]
 struct Remove {
-    #[clap(about = "Board name (eg. 'po')")]
-    name: String,
-}
-
-#[derive(Clap, Clone)]
-struct Reset {
     #[clap(about = "Board name (eg. 'po')")]
     name: String,
 }
