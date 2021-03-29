@@ -1,4 +1,5 @@
 CREATE TABLE posts (
+  post_id BIGSERIAL PRIMARY KEY,
   board VARCHAR(16) NOT NULL,
   no BIGINT NOT NULL,
   resto BIGINT NOT NULL,
@@ -37,5 +38,10 @@ CREATE TABLE posts (
   m_img BIGINT NOT NULL,
   archived BIGINT NOT NULL,
   archived_on BIGINT NOT NULL,
-  PRIMARY KEY(board, no)
-)
+  last_modified BIGINT NOT NULL,
+  UNIQUE(board, no)
+);
+CREATE INDEX resto_index ON posts (resto);
+CREATE INDEX tim_index ON posts (tim);
+CREATE INDEX md5_index ON posts (md5);
+CREATE INDEX timestamp_index ON posts (time);

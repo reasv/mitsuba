@@ -37,47 +37,22 @@ impl Archiver {
         }
         Ok(name_set)
     }
-    pub async fn set_board(&self, board: Board) -> anyhow::Result<usize> {
-        let db_board = self.db_client.get_board_async(&board.name).await?;
-        let insert_board = match db_board {
-            Some(prev_board) => {
-                // Don't overwrite last_modified
-                Board {name: board.name, wait_time: board.wait_time, 
-                    full_images: board.full_images, archive: board.archive,
-                    last_modified: prev_board.last_modified}
-            },
-            None => board
-        };
-        if !self.get_boards_set().await?.contains(&insert_board.name) {
-            error!("Board /{}/ does not exist, skipping", insert_board.name);
-            return Ok(0)
+    pub async fn set_board(&self, board: Board) -> anyhow::Result<Option<Board>> {
+        if !self.get_boards_set().await?.contains(&board.name) {
+            error!("Board /{}/ does not exist, skipping", board.name);
+            return Ok(None)
         }
-        self.db_client.insert_board_async(&insert_board).await
+        Ok(Some(self.db_client.insert_board(&board).await?))
     }
-    pub async fn stop_board(&self, board_name: &String) -> anyhow::Result<usize> {
-        let db_board = self.db_client.get_board_async(board_name).await?;
-        let insert_board = match db_board {
-            Some(mut prev_board) => {
-                prev_board.archive = false;
-                prev_board
-            },
-            None => return Ok(0)
-        };
-        self.db_client.insert_board_async(&insert_board).await
-    }
-    pub async fn reset_board_state(&self, board_name: &String) -> anyhow::Result<usize> {
-        let db_board = self.db_client.get_board_async(board_name).await?;
-        match db_board {
-            Some(mut prev_board) => {
-                // Reset last_modified
-                prev_board.last_modified = 0;
-                self.db_client.insert_board_async(&prev_board).await
-            },
-            None => Ok(0)
+    pub async fn stop_board(&self, board_name: &String) -> anyhow::Result<Option<Board>> {
+        if let Some(mut board) = self.db_client.get_board(board_name).await? {
+            board.archive = false;
+            return Ok(Some(self.db_client.insert_board(&board).await?));
         }
+        Ok(None)
     }
     pub async fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
-        self.db_client.get_all_boards_async().await
+        self.db_client.get_all_boards().await
     }
     
 }

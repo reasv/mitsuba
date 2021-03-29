@@ -18,14 +18,14 @@ impl Archiver {
             while let Some(mut thread_info) = page.threads.pop() {
                 thread_info.board = board.clone();
                 thread_info.page = page.page as i32;
-                self.db_client.insert_thread_job_async(&thread_info).await
+                self.db_client.insert_thread_job(&thread_info).await
                 .map_err(|e| {error!("Error inserting thread job into database: {}", e); false})?;
             }
         }
         Ok(())
     }
     pub async fn board_cycle(&self) -> anyhow::Result<(), bool> {
-        let boards = self.db_client.get_all_boards_async().await
+        let boards = self.db_client.get_all_boards().await
         .map_err(|e| {error!("Error getting board settings from database: {}", e); false})?;
         for board in boards {
             if !board.archive {
