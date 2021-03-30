@@ -114,7 +114,10 @@ impl DBClient {
             )
             VALUES
             ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT(board, no) DO NOTHING
+            ON CONFLICT(board, no) DO UPDATE
+            SET 
+            page = $6
+            WHERE image_backlog.board = $1 AND image_backlog.no = $2
             RETURNING *;
             ",
             img.board, //1
@@ -425,25 +428,6 @@ mod tests {
         sqlx::migrate!()
         .run(&dbc.pool)
         .await.expect("Failed to migrate");
-    }
-
-    #[test]
-    fn test_image(){
-        run_async(image_operations());
-    }
-
-    async fn image_operations(){
-        let dbc = DBClient::new().await;
-        let img_md5 = "test".to_string();
-        assert_eq!((false, false), dbc.image_exists(&img_md5).await.unwrap());
-        let mut image = Image{ md5: img_md5.clone(), thumbnail: true, full_image: true, md5_base32:"test".to_string()};
-        assert_eq!(image, dbc.insert_image(&image).await.unwrap());
-        assert_eq!((true, true), dbc.image_exists(&img_md5).await.unwrap());
-        image.full_image = false;
-        assert_eq!(image, dbc.insert_image(&image).await.unwrap());
-        assert_eq!((true, false), dbc.image_exists(&img_md5).await.unwrap());
-        assert_eq!(1u64, dbc.delete_image(&img_md5).await.unwrap());
-        assert_eq!((false, false), dbc.image_exists(&img_md5).await.unwrap());
     }
 
     #[test]
