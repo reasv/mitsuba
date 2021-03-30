@@ -80,7 +80,7 @@ impl DBClient {
         let jobs = sqlx::query_as!(ImageJob,
             "
             SELECT * FROM image_backlog
-            ORDER BY (page, id) ASC
+            ORDER BY page DESC, id ASC
             LIMIT $1
             ",
             limit
@@ -153,7 +153,7 @@ impl DBClient {
         let jobs = sqlx::query_as!(ThreadJob,
             "
             SELECT * FROM thread_backlog
-            ORDER BY (page, id) ASC
+            ORDER BY page DESC, id ASC
             LIMIT $1
             ",
             limit
