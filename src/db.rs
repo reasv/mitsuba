@@ -1,4 +1,10 @@
 use std::env;
+use std::sync::Arc;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
+use dashmap::DashSet;
+use log::debug;
 
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadInfo, ThreadJob, ThreadNo};
@@ -17,12 +23,14 @@ pub async fn sqlx_connection() -> sqlx::Pool<sqlx::Postgres> {
 #[derive(Clone)]
 pub struct DBClient {
     pub pool: sqlx::Pool<sqlx::Postgres>,
+    post_hashes: Arc<DashSet<u64>>
 }
 
 impl DBClient {
     pub async fn new() -> Self {
         Self {
-            pool: sqlx_connection().await
+            pool: sqlx_connection().await,
+            post_hashes: Arc::new(DashSet::new())
         }
     }
     pub async fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
@@ -290,9 +298,30 @@ impl DBClient {
         .await?;
         Ok(post)
     }
+    fn get_post_hash(&self, post: &Post) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        let mut hash_post = post.clone();
+        hash_post.post_id = 0;
+        // For OP we always write on new last_modified values.
+        // For other posts, if this is the only change we won't consider it changed.
+        if hash_post.resto != 0 {
+            hash_post.last_modified = 0;
+        }
+        // ignore image hashes - image hashes are updated with set_post_files()
+        hash_post.file_sha256 = "".to_string();
+        hash_post.thumbnail_sha256 = "".to_string();
+        hash_post.hash(& mut hasher);
+        hasher.finish()
+    }
     pub async fn insert_posts(&self, entries: &Vec<Post>) -> anyhow::Result<Vec<Post>> {
+
         let mut posts = Vec::new();
         for entry in entries {
+            let hash = self.get_post_hash(entry);
+            if self.post_hashes.contains(&hash) {
+                debug!("Post has not changed, skipped (/{}/{})", entry.board, entry.no);
+                continue;
+            }
             let post = sqlx::query_as!(Post,
                 "
                 INSERT INTO posts(
@@ -403,6 +432,8 @@ impl DBClient {
             )
             .fetch_one(&self.pool)
             .await?;
+            self.post_hashes.insert(hash);
+            // we will only return new or updated posts.
             posts.push(post);
         }
         

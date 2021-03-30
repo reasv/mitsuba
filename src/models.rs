@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq, Hash)]
 pub struct Post {
     #[serde(skip)]
     pub post_id: i64,
