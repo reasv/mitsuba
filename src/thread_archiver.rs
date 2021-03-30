@@ -84,8 +84,7 @@ impl Archiver {
 
         for image_info in image_jobs {
             self.db_client.insert_image_job(&image_info).await
-            .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", 
-            job.board, image_info.no, e); job.clone()})?;
+            .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", job.board, image_info.no, e); job.clone()})?;
         }
         self.db_client.delete_thread_job(job.id).await
         .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e); job})?;
