@@ -34,7 +34,7 @@ struct TemplateThreadIndexThread {
     pub op: IndexPost,
     pub posts: Vec<IndexPost>
 }
-#[get("/{board}/thread/{no}")]
+#[get("/{board}/thread/{no:\\d+}")]
 pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
 -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
@@ -59,7 +59,7 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
     Ok(HttpResponse::Ok().body(body))
 }
 
-#[get("/{board}/{idx}")]
+#[get("/{board}/{idx:\\d+}")]
 pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
 -> Result<HttpResponse, HttpResponse> {
     let (board, index) = info.into_inner();
