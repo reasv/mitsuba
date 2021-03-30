@@ -1,4 +1,6 @@
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
 use base64::decode;
 use base32::{Alphabet, encode};
 use unicode_truncate::UnicodeTruncateStr;
@@ -70,4 +72,12 @@ pub fn get_file_url(sha256: &String, ext: &String, is_thumb: bool) -> String {
     }
 
     format!("/img/{}/{}/{}/{}{}", folder, &sha256[0..2], &sha256[2..3], sha256, ext)
+}
+
+pub fn bool_from_env(env: &String) -> bool {
+    bool::from_str(
+        &std::env::var(env)
+        .unwrap_or("false".to_string())
+    )
+    .unwrap_or(false)
 }

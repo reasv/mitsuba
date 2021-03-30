@@ -17,6 +17,7 @@ mod util;
 mod thread_archiver;
 mod image_archiver;
 mod archiver;
+mod object_storage;
 use api::web_main;
 use archiver::{Archiver};
 use http::HttpClient;

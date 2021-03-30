@@ -4,8 +4,10 @@ use log::{info, warn, error, debug};
 use actix_web::{get, web, App, HttpResponse, HttpServer, Result, middleware::NormalizePath};
 use actix_files::NamedFile;
 use tokio::fs::create_dir_all;
+use mime_guess::from_path;
 
 use crate::db::DBClient;
+use crate::object_storage::ObjectStorage;
 use crate::frontend::{thread_page, index_page, build_handlebars, dist};
 use crate::util::{get_file_folder};
 use crate::models::{IndexPage, BoardsStatus};
@@ -88,6 +90,21 @@ async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String
     })
 }
 
+async fn get_file_object_storage(obc: web::Data<ObjectStorage>, path: web::Path<String>) -> Result<HttpResponse, HttpResponse> {
+    let path = &path.into_inner();
+    let (data, code) = obc.bucket.get_object("/img/".to_string()+path).await.map_err(|e| {
+        error!("Error getting file ({}) from bucket: {}", path, e);
+        HttpResponse::InternalServerError().finish()
+    })?;
+    if code == 404 {
+        Err(HttpResponse::NotFound().body("404 Not Found (Object storage)"))
+    } else if code == 200 {
+        Ok(HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(data))
+    } else {
+        error!("Error getting file ({}) from bucket: {}", path, code);
+        Err(HttpResponse::InternalServerError().finish())
+    }
+}
 pub async fn web_main() -> std::io::Result<()> {
     let handlebars = build_handlebars();
 
@@ -99,7 +116,8 @@ pub async fn web_main() -> std::io::Result<()> {
     create_dir_all(std::path::Path::new(&image_folder)).await.ok();
     let dbc = DBClient::new().await;
     HttpServer::new(move || {
-        App::new()
+        let obc = ObjectStorage::new();
+        let mut app = App::new()
         .data(dbc.clone())
         .app_data(handlebars_ref.clone())
         .wrap(NormalizePath::default())
@@ -111,8 +129,15 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(thread_page)
         .service(index_page)
         .service(get_boards_status)
-        .service(actix_files::Files::new("/img", image_folder.clone()))
-        .service(web::resource("/static/{_:.*}").route(web::get().to(dist)))
+        .service(web::resource("/static/{_:.*}").route(web::get().to(dist)));
+
+        if obc.enabled {
+            app = app.service(web::resource("/img/{_:.*}").route(web::get().to(get_file_object_storage)))
+            .data(obc);
+        } else {
+            app = app.service(actix_files::Files::new("/img", image_folder.clone()));
+        }
+        app
     })
     .bind(format!("{}:{}", ip, port))?
     .run()

@@ -2,7 +2,7 @@ use std::time::Duration;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
-use crate::models::{ ThreadJob, ImageInfo, Post, Thread};
+use crate::models::{ThreadJob, ImageInfo, Post, Thread};
 use crate::util::get_thread_api_url;
 use crate::archiver::Archiver;
 

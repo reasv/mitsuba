@@ -12,7 +12,8 @@ use tokio::time::Duration;
 use log::{info, warn, error, debug};
 use tokio::fs::create_dir_all;
 
-use crate::util::{hash_file, get_file_folder};
+use crate::util::{hash_file, get_file_folder, get_file_url};
+use crate::object_storage::ObjectStorage;
 
 async fn write_bytes_to_file(filename: &Path, file_bytes: bytes::Bytes) -> anyhow::Result<()> {
     Ok(File::create(filename).await?.write_all(&file_bytes).await?)
@@ -23,6 +24,7 @@ pub struct HttpClient {
     jitter: Jitter,
     max_time: u64,
     rclient: reqwest::Client,
+    oclient: ObjectStorage,
 }
 
 impl Default for HttpClient {
@@ -38,7 +40,7 @@ impl HttpClient {
             jitter: Jitter::new(Duration::from_millis(jitter_min), Duration::from_millis(jitter_interval)),
             max_time,
             rclient: reqwest::Client::new(),
-
+            oclient: ObjectStorage::new(),
         }
     }
 
@@ -54,7 +56,7 @@ impl HttpClient {
             start_time: instant::Instant::now(),
         }
     }
-    
+
     async fn fetch_url_bytes(&self, url: &str, attempt: u64, rlimit_key: &String) -> Result<bytes::Bytes, backoff::Error<reqwest::Error>> {
         self.limiter.until_key_ready_with_jitter(rlimit_key, self.jitter).await; // wait for rate limiter
         let resp = self.rclient.get(url).send().await.map_err(backoff::Error::Transient)?;
@@ -108,14 +110,7 @@ impl HttpClient {
             }
         }
     }
-    pub async fn download_file_checksum(&self, url: &String, ext: &String, is_thumb: bool) -> Option<String> {
-        let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
-            Ok(b) => b,
-            Err(msg) => {
-                error!("Failed to download {} Error: {}", url, msg);
-                return None
-            }
-        };
+    async fn save_file(&self, bytes: bytes::Bytes, ext: &String, is_thumb: bool) -> Option<String> {
         let hash = hash_file(&bytes);
         let folder = get_file_folder(&hash, is_thumb);
         create_dir_all(&folder).await.ok();
@@ -126,6 +121,28 @@ impl HttpClient {
                 error!("Could not write to file {}: {}", filename.to_str().unwrap_or_default(), msg);
                 None
             }
+        }
+    }
+    async fn upload_file(&self, bytes: bytes::Bytes, ext: &String, is_thumb: bool) -> Option<String> {
+        let hash = hash_file(&bytes);
+        let filename = get_file_url(&hash, &ext, is_thumb);
+        info!("{}", filename);
+        let (_, code) = self.oclient.bucket.put_object(filename, &bytes).await.unwrap();
+        assert_eq!(200, code);
+        Some(hash)
+    }
+    pub async fn download_file_checksum(&self, url: &String, ext: &String, is_thumb: bool) -> Option<String> {
+        let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
+            Ok(b) => b,
+            Err(msg) => {
+                error!("Failed to download {} Error: {}", url, msg);
+                return None
+            }
+        };
+        if self.oclient.enabled {
+            self.upload_file(bytes, ext, is_thumb).await
+        } else {
+            self.save_file(bytes, ext, is_thumb).await
         }
     }
 }
