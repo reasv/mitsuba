@@ -125,7 +125,6 @@ async fn get_file_object_storage(obc: web::Data<ObjectStorage>, path: &String) -
         HttpResponse::InternalServerError().finish()
     })?;
     if code == 404 {
-        error!("Error getting file ({}) from bucket: {}", path, code);
         Err(HttpResponse::NotFound().body("404 Not Found (Object storage)"))
     } else if code == 200 {
         Ok(HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(data))
