@@ -34,6 +34,7 @@ handlebars_misc_helpers = "0.11.2"
 sqlx = { version = "0.5", features = [ "postgres", "macros", "migrate", "runtime-tokio-rustls", "offline" ] }
 rust-embed = "5.9.0"
 mime_guess = "2.0.3"
+sha2 = "0.9.3"
 
 [profile.release]
 lto = true

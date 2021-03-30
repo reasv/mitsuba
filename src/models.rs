@@ -77,7 +77,11 @@ pub struct Post {
     #[serde(default)]
     pub archived_on: i64,
     #[serde(default)]
-    pub last_modified: i64
+    pub last_modified: i64,
+    #[serde(default)]
+    pub file_sha256: String,
+    #[serde(default)]
+    pub thumbnail_sha256: String
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PostUpdate {
@@ -148,24 +152,26 @@ pub struct ThreadJob {
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ImageInfo {
-    pub md5: String,
-    pub md5_base32: String,
     pub board: String,
+    pub no: i64,
     pub url: String,
     pub thumbnail_url: String,
-    pub filename: String,
-    pub thumbnail_filename: String,
+    pub ext: String,
+    pub page: i32,
+    pub file_sha256: String,
+    pub thumbnail_sha256: String
 }
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct ImageJob {
     pub id: i64,
-    pub md5: String,
-    pub md5_base32: String,
     pub board: String,
+    pub no: i64,
     pub url: String,
     pub thumbnail_url: String,
-    pub filename: String,
-    pub thumbnail_filename: String,
+    pub ext: String,
+    pub page: i32,
+    pub file_sha256: String,
+    pub thumbnail_sha256: String
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]

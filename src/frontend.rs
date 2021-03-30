@@ -10,7 +10,7 @@ use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperR
 use handlebars::handlebars_helper;
 use handlebars_misc_helpers::register;
 
-use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_image_url};
+use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_file_url};
 use crate::db::DBClient;
 use crate::models::{IndexThread, Post, IndexPost, Board};
 
@@ -136,12 +136,17 @@ pub(crate) fn build_handlebars() -> Handlebars<'static> {
             out.write(base64_to_32(b64_text).unwrap_or_default().as_ref())?;
             Ok(())
         }));
-    handlebars.register_helper("get_image_url",
+    handlebars.register_helper("get_file_url",
     Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
-        let b64_text = h.param(0).ok_or(RenderError::new("base64 not found"))?.value().render();
-        let is_thumb = h.param(1).ok_or(RenderError::new("Boolan not found"))?;
-        let is_thumb_bool = is_thumb.value().as_bool().unwrap_or_default();
-        out.write(get_image_url(&b64_text, is_thumb_bool).as_ref())?;
+        let sha256 = h.param(0).ok_or(RenderError::new("sha256 not found"))?.value().render();
+        let ext = h.param(1).ok_or(RenderError::new("ext not found"))?.value().render();
+        out.write(get_file_url(&sha256, &ext, false).as_ref())?;
+        Ok(())
+    }));
+    handlebars.register_helper("get_thumbnail_url",
+    Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
+        let sha256 = h.param(0).ok_or(RenderError::new("sha256 not found"))?.value().render();
+        out.write(get_file_url(&sha256, &".jpg".to_string(), true).as_ref())?;
         Ok(())
     }));
     handlebars

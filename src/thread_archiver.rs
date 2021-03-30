@@ -3,7 +3,7 @@ use std::time::Duration;
 use log::{info, warn, error, debug};
 
 use crate::models::{ ThreadJob, ImageInfo, Post, Thread};
-use crate::util::{ get_thread_api_url, base64_to_32};
+use crate::util::get_thread_api_url;
 use crate::archiver::Archiver;
 
 impl Archiver {
@@ -19,22 +19,13 @@ impl Archiver {
             }
         }
     }
-    pub fn get_post_image_info(&self, board: &String, post: &Post) -> Option<ImageInfo> {
+    pub fn get_post_image_info(&self, board: &String, page: i32, post: &Post) -> Option<ImageInfo> {
         if post.tim == 0 || post.filedeleted == 1 {
             return None // no image
         }
         let url = format!("https://i.4cdn.org/{}/{}{}", board, post.tim, post.ext);
         let thumbnail_url = format!("https://i.4cdn.org/{}/{}s.jpg", board, post.tim);
-        let md5_b32 = match base64_to_32(post.md5.clone()) {
-            Ok(b32) => b32,
-            Err(e) => {
-                error!("Error converting image to base32: {}", e);
-                return None
-            }
-        };
-        let filename = format!("{}{}", md5_b32, post.ext);
-        let thumbnail_filename = format!("{}.jpg", md5_b32);
-        Some(ImageInfo{url, thumbnail_url, filename, thumbnail_filename, md5: post.md5.clone(), md5_base32: md5_b32, board: board.clone()})
+        Some(ImageInfo{url, thumbnail_url, ext: post.ext.clone(), file_sha256: post.file_sha256.clone(), thumbnail_sha256: post.thumbnail_sha256.clone(), page, no: post.no, board: board.clone()})
     }
     pub async fn thread_cycle(&self) -> anyhow::Result<()> {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
@@ -83,16 +74,17 @@ impl Archiver {
         let thread = thread_opt.unwrap_or_default();
 
         let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = job.board.clone(); post.last_modified = job.last_modified; post}).collect();
-        let image_jobs = posts.iter().filter_map(|post| self.get_post_image_info(&job.board,post)).collect::<Vec<ImageInfo>>();
+        
+        let inserted_posts = self.db_client.insert_posts(&posts).await
+        .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", job.board, job.no, e); job.clone()})?;
 
-        self.db_client.insert_posts(&posts).await
-        .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", 
-        job.board, job.no, e); job.clone()}).ok();
+        let image_jobs = inserted_posts.iter().filter_map(|post| self.get_post_image_info(&job.board, job.page, post))
+        .collect::<Vec<ImageInfo>>();
 
         for image_info in image_jobs {
             self.db_client.insert_image_job(&image_info).await
             .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", 
-            job.board, image_info.md5.clone(), e); job.clone()}).ok();
+            job.board, image_info.no, e); job.clone()})?;
         }
         self.db_client.delete_thread_job(job.id).await
         .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e); job})?;

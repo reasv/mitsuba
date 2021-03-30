@@ -10,7 +10,9 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::time::Duration;
 use log::{info, warn, error, debug};
+use tokio::fs::create_dir_all;
 
+use crate::util::{hash_file, get_file_folder};
 
 async fn write_bytes_to_file(filename: &Path, file_bytes: bytes::Bytes) -> anyhow::Result<()> {
     Ok(File::create(filename).await?.write_all(&file_bytes).await?)
@@ -90,7 +92,7 @@ impl HttpClient {
         Ok(obj)
     }
 
-    pub async fn download_file(&self, url: &String, filename: &Path) -> bool {
+    pub async fn _download_file(&self, url: &String, filename: &Path) -> bool {
         let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
             Ok(b) => b,
             Err(msg) => {
@@ -103,6 +105,26 @@ impl HttpClient {
             Err(msg) => {
                 error!("Could not write to file {}: {}", filename.to_str().unwrap_or_default(), msg);
                 return false
+            }
+        }
+    }
+    pub async fn download_file_checksum(&self, url: &String, ext: &String, is_thumb: bool) -> Option<String> {
+        let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
+            Ok(b) => b,
+            Err(msg) => {
+                error!("Failed to download {} Error: {}", url, msg);
+                return None
+            }
+        };
+        let hash = hash_file(&bytes);
+        let folder = get_file_folder(&hash, is_thumb);
+        create_dir_all(&folder).await.ok();
+        let filename = folder.join(hash.clone() + ext);
+        match write_bytes_to_file(&filename, bytes).await {
+            Ok(()) => Some(hash),
+            Err(msg) => {
+                error!("Could not write to file {}: {}", filename.to_str().unwrap_or_default(), msg);
+                None
             }
         }
     }

@@ -89,16 +89,12 @@ impl DBClient {
         .rows_affected();
         Ok(res)
     }
-    pub async fn get_image_job(&self, board: &String, md5: &String) -> anyhow::Result<Option<ImageJob>> {
+    pub async fn get_image_job(&self, job_id: i64) -> anyhow::Result<Option<ImageJob>> {
         let job = sqlx::query_as!(ImageJob,
             "
-            SELECT *
-            FROM image_backlog
-            WHERE board = $1
-            AND md5 = $2
+            SELECT * FROM  image_backlog WHERE id = $1
             ",
-            board,
-            md5
+            job_id,
         ).fetch_optional(&self.pool)
         .await?;
         Ok(job)
@@ -106,22 +102,29 @@ impl DBClient {
     pub async fn insert_image_job(&self, img: &ImageInfo) -> anyhow::Result<ImageJob> {
         let job = sqlx::query_as!(ImageJob,
             "
-            INSERT INTO image_backlog (md5, md5_base32, board, url, thumbnail_url, filename, thumbnail_filename)
+            INSERT INTO image_backlog (
+                board, -- 1
+                no, -- 2
+                url, -- 3
+                thumbnail_url, -- 4
+                ext, -- 5
+                page, -- 6
+                file_sha256, -- 7
+                thumbnail_sha256 -- 8
+            )
             VALUES
-            ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT(board, md5) DO
-            UPDATE SET
-            url = $4,
-            thumbnail_url = $5
+            ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT(board, no) DO NOTHING
             RETURNING *;
             ",
-            img.md5,
-            img.md5_base32,
-            img.board,
-            img.url,
-            img.thumbnail_url,
-            img.filename,
-            img.thumbnail_filename,
+            img.board, //1
+            img.no, //2
+            img.url, //3
+            img.thumbnail_url, //4
+            img.ext, //5
+            img.page, //6
+            img.file_sha256, //7
+            img.thumbnail_sha256 //8
         ).fetch_one(&self.pool)
         .await?;
         Ok(job)
@@ -174,8 +177,8 @@ impl DBClient {
         .await?;
         Ok(Some(job))
     }
-    pub async fn image_tim_to_md5(&self, board: &String, image_tim: i64) -> anyhow::Result<Option<String>> {
-        let post = sqlx::query_as!(Post,
+    pub async fn image_tim_to_sha256(&self, board: &String, image_tim: i64, thumb: bool) -> anyhow::Result<Option<String>> {
+        let post_opt = sqlx::query_as!(Post,
             "
             SELECT *
             FROM posts
@@ -186,55 +189,15 @@ impl DBClient {
             image_tim
         ).fetch_optional(&self.pool)
         .await?;
-        Ok(post.map(|p|p.md5))
-    }
-    pub async fn insert_image(&self, img: &Image) -> anyhow::Result<Image> {
-        let image = sqlx::query_as!(Image,
-            "
-            INSERT INTO images (md5, md5_base32, thumbnail, full_image)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT(md5) DO 
-            UPDATE SET
-            thumbnail = $3,
-            full_image = $4
-            WHERE images.md5 = $1
-            RETURNING *;
-            ",
-            img.md5,
-            img.md5_base32,
-            img.thumbnail,
-            img.full_image
-        ).fetch_one(&self.pool)
-        .await?;
-
-        Ok(image)
-    }
-    pub async fn delete_image(&self, md5: &String) -> anyhow::Result<u64> {
-        let res: u64 = sqlx::query!(
-            "
-            DELETE FROM images WHERE md5 = $1
-            ",
-            md5,
-        ).execute(&self.pool)
-        .await?
-        .rows_affected();
-        Ok(res)
-    }
-    pub async fn image_exists(&self, md5: &String) -> anyhow::Result<(bool, bool)> {
-        let image_opt = sqlx::query_as!(Image,
-            "
-            SELECT *
-            FROM images
-            WHERE md5 = $1
-            ",
-            md5,
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-        match image_opt {
-            Some(img) => Ok((img.thumbnail, img. full_image)),
-            None => Ok((false, false))
+        if let Some(post) = post_opt {
+            if thumb && !post.thumbnail_sha256.is_empty() {
+                return Ok(Some(post.thumbnail_sha256))
+            }
+            if !thumb && !post.file_sha256.is_empty() {
+                return Ok(Some(post.file_sha256))
+            }
         }
+        Ok(None)
     }
     pub async fn get_post(&self, board: &String, post_no: i64) -> anyhow::Result<Option<Post>> {
         let post = sqlx::query_as!(Post,
@@ -306,6 +269,24 @@ impl DBClient {
         }
         Ok(Some(Thread{posts}))
     }
+    pub async fn set_post_files(&self, board: &String, no: i64, file_sha256: &String, thumbnail_sha256: &String) -> anyhow::Result<Option<Post>> {
+        let post = sqlx::query_as!(Post,
+            "
+            UPDATE posts
+            SET 
+            file_sha256 = $1,
+            thumbnail_sha256 = $2
+            WHERE board = $3 AND no = $4
+            RETURNING *
+            ",
+            file_sha256,
+            thumbnail_sha256,
+            board,
+            no
+        ).fetch_optional(&self.pool)
+        .await?;
+        Ok(post)
+    }
     pub async fn insert_posts(&self, entries: &Vec<Post>) -> anyhow::Result<Vec<Post>> {
         let mut posts = Vec::new();
         for entry in entries {
@@ -350,11 +331,13 @@ impl DBClient {
                     m_img, -- 36
                     archived, -- 37
                     archived_on, -- 38
-                    last_modified -- 39
+                    last_modified, -- 39
+                    file_sha256, -- 40
+                    thumbnail_sha256 -- 41
                 )
                 VALUES
                 ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
-                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39)
+                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
                 ON CONFLICT (board, no) DO 
                 UPDATE 
                 SET
@@ -411,7 +394,9 @@ impl DBClient {
                 entry.m_img, //36
                 entry.archived, //37
                 entry.archived_on, //38
-                entry.last_modified //39
+                entry.last_modified, //39
+                entry.file_sha256, //40,
+                entry.thumbnail_sha256 //41
             )
             .fetch_one(&self.pool)
             .await?;

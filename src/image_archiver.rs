@@ -2,10 +2,8 @@ use std::time::Duration;
 use std::collections::HashSet;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
-use tokio::fs::create_dir_all;
 
-use crate::models::{Image, ImageJob};
-use crate::util::{get_image_folder};
+use crate::models::ImageJob;
 use crate::archiver::Archiver;
 
 impl Archiver {
@@ -57,49 +55,26 @@ impl Archiver {
         )
     }
     pub async fn archive_image(&self, job: &ImageJob, need_full_image: bool) -> Result<(),()> {
-        let thumbnail_folder = get_image_folder(&job.md5, true);
-        let full_folder = get_image_folder(&job.md5, false);
-        create_dir_all(&thumbnail_folder).await.ok();
-        create_dir_all(&full_folder).await.ok();
+        let mut thumbnail_sha256 = job.thumbnail_sha256.clone();
+        let mut file_sha256 = job.file_sha256.clone();
 
-        let (thumb_exists, full_exists) = self.db_client.image_exists(&job.md5).await
-        .map_err(|e| {error!("Failed to get image status from database: {}", e); e} )
-        .unwrap_or((false, false));
+        if thumbnail_sha256.is_empty() {
+            thumbnail_sha256 = self.http_client.download_file_checksum(&job.thumbnail_url, &".jpg".to_string(), true).await
+            .unwrap_or(thumbnail_sha256);
+            info!("Processed thumbnail for /{}/{}", job.board, job.no);
+            self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
+            .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+        }
 
-        let mut image = Image{
-            md5: job.md5.clone(), 
-            thumbnail: thumb_exists,
-            full_image: full_exists,
-            md5_base32: job.md5_base32.clone()
-        };
-        
-        let thumb_success = match !thumb_exists {
-            true => self.http_client.download_file(&job.thumbnail_url, 
-                &thumbnail_folder.join(&job.thumbnail_filename)).await,
-            false => thumb_exists
-        };
-
-        image.thumbnail = thumb_success;
-
-        self.db_client.insert_image(&image).await
-        .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
-
-        info!("Processed thumbnail {} ({})", job.md5, job.thumbnail_filename);
-
-        let full_success = match need_full_image && !full_exists {
-            true => self.http_client.download_file(&job.url, 
-                &full_folder.join(&job.filename)).await,
-            false => full_exists
-        };
-
-        image.full_image = full_success;
-
-        self.db_client.insert_image(&image).await
-        .map_err(|e| {error!("Failed to insert image {} into database: {}", job.md5, e);})?;
+        if file_sha256.is_empty() && need_full_image {
+            file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await
+            .unwrap_or(file_sha256);
+            info!("Processed full image for /{}/{}", job.board, job.no);
+            self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
+            .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+        }
         self.db_client.delete_image_job(job.id).await
-        .map_err(|e| {error!("Failed to delete image {} from backlog: {}", job.md5, e);})?;
-
-        info!("Processed image {} ({}) successfully", job.md5, job.filename);
+        .map_err(|e| {error!("Failed to delete file job {} from backlog: {}", job.id, e);})?;
         Ok(())
     }
     pub fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {

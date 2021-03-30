@@ -7,7 +7,7 @@ use tokio::fs::create_dir_all;
 
 use crate::db::DBClient;
 use crate::frontend::{thread_page, index_page, build_handlebars, dist};
-use crate::util::{base64_to_32, get_image_folder};
+use crate::util::{get_file_folder};
 use crate::models::{IndexPage, BoardsStatus};
 
 #[get("/{board}/thread/{no}.json")]
@@ -70,18 +70,18 @@ async fn get_boards_status(db: web::Data<DBClient>) -> Result<HttpResponse, Http
 }
 
 async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile, HttpResponse> {
-    let md5_base64 = db.image_tim_to_md5(&board, tim).await
+    let sha256_base32 = db.image_tim_to_sha256(&board, tim, is_thumb).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
             HttpResponse::InternalServerError().finish()
         })?
         .ok_or(HttpResponse::NotFound().finish())?;
-
-    let md5_base32 = base64_to_32(md5_base64.clone()).unwrap();
-    let path = match is_thumb { 
-        true => get_image_folder(&md5_base64, true).join(format!("{}.jpg", md5_base32)),
-        false => get_image_folder(&md5_base64, false).join(format!("{}.{}", md5_base32, ext))
+    
+    let filename = match is_thumb { 
+        true => format!("{}.jpg", sha256_base32),
+        false => format!("{}.{}", sha256_base32, ext)
     };
+    let path = get_file_folder(&sha256_base32, is_thumb).join(filename);
     NamedFile::open(path).map_err(|e| {
         error!("Error getting image from filesystem: {}", e);
         HttpResponse::NotFound().finish()
