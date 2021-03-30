@@ -70,7 +70,7 @@ async fn get_boards_status(db: web::Data<DBClient>) -> Result<HttpResponse, Http
 }
 
 async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> Result<NamedFile, HttpResponse> {
-    let sha256_base32 = db.image_tim_to_sha256(&board, tim, is_thumb).await
+    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -78,10 +78,10 @@ async fn get_image(db: web::Data<DBClient>, board: String, tim: i64, ext: String
         .ok_or(HttpResponse::NotFound().finish())?;
     
     let filename = match is_thumb { 
-        true => format!("{}.jpg", sha256_base32),
-        false => format!("{}.{}", sha256_base32, ext)
+        true => format!("{}.jpg", sha256),
+        false => format!("{}.{}", sha256, ext)
     };
-    let path = get_file_folder(&sha256_base32, is_thumb).join(filename);
+    let path = get_file_folder(&sha256, is_thumb).join(filename);
     NamedFile::open(path).map_err(|e| {
         error!("Error getting image from filesystem: {}", e);
         HttpResponse::NotFound().finish()

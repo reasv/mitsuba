@@ -57,7 +57,7 @@ pub fn get_file_folder(sha256: &String, is_thumb: bool) -> PathBuf {
         true => image_folder.join("thumb"),
         false => image_folder.join("full")
     };
-    folder.join(&sha256[0..2])
+    folder.join(&sha256[0..2]).join(&sha256[2..3])
 }
 
 pub fn get_file_url(sha256: &String, ext: &String, is_thumb: bool) -> String {
@@ -65,10 +65,9 @@ pub fn get_file_url(sha256: &String, ext: &String, is_thumb: bool) -> String {
         true => "thumb",
         false => "full"
     };
-    if sha256.len() < 2 {
+    if sha256.len() < 3 {
         return "/static/image/favicon-ws.ico".to_string();
     }
 
-    format!("/img/{}/{}/{}{}", folder, &sha256[0..2], sha256, ext)
+    format!("/img/{}/{}/{}/{}{}", folder, &sha256[0..2], &sha256[2..3], sha256, ext)
 }
-
