@@ -528,7 +528,7 @@ mod tests {
         post.board = "test".to_string();
         for i in 0..100000 {
             post.last_modified = i;
-            dbc.insert_posts(&vec![post.clone()]).await;
+            dbc.insert_posts(&vec![post.clone()]).await.unwrap();
         }
     }
 }

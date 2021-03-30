@@ -127,9 +127,15 @@ impl HttpClient {
         let hash = hash_file(&bytes);
         let filename = get_file_url(&hash, &ext, is_thumb);
         info!("{}", filename);
-        let (_, code) = self.oclient.bucket.put_object(filename, &bytes).await.unwrap();
-        assert_eq!(200, code);
-        Some(hash)
+        if let Some((_, code)) = self.oclient.bucket.put_object(filename.clone(), &bytes).await
+        .map_err(|e| {error!("Error uploading file ({}) to object storage: {}", filename, e);})
+        .ok() {
+            if code == 200 {
+                return Some(hash);
+            }
+            error!("Error response code from object storage after upload request ({}): {}", filename, code);
+        }
+        None
     }
     pub async fn download_file_checksum(&self, url: &String, ext: &String, is_thumb: bool) -> Option<String> {
         let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
