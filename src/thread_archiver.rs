@@ -63,12 +63,13 @@ impl Archiver {
             res
         })
     }
-    // Returns err (bool, timestamp) where bool indicates if the error is a 404
     pub async fn archive_thread(&self, job: ThreadJob) -> Result<(), ThreadJob> {
         let thread_opt = self.get_thread(&job.board, &job.no.to_string()).await
         .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no); job.clone()})?;
 
         if thread_opt.is_none() { // Thread was 404
+            self.db_client.delete_thread_job(job.id).await
+            .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e); job})?;
             return Ok(())
         }
         let thread = thread_opt.unwrap_or_default();
