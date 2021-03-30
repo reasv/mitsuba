@@ -126,7 +126,7 @@ impl HttpClient {
     async fn upload_file(&self, bytes: bytes::Bytes, ext: &String, is_thumb: bool) -> Option<String> {
         let hash = hash_file(&bytes);
         let filename = get_file_url(&hash, &ext, is_thumb);
-        info!("{}", filename);
+        info!("Uploading: {}", filename);
         if let Some((_, code)) = self.oclient.bucket.put_object(filename.clone(), &bytes).await
         .map_err(|e| {error!("Error uploading file ({}) to object storage: {}", filename, e);})
         .ok() {
