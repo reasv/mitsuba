@@ -31,7 +31,7 @@ impl ObjectStorage {
             region: std::env::var("S3_REGION").unwrap().into(),
             endpoint: std::env::var("S3_ENDPOINT").unwrap().into(),
         };
-        let bucket = Bucket::new_with_path_style(&bucket_name, region.clone(), credentials.clone()).unwrap();
+        let mut bucket = Bucket::new_with_path_style(&bucket_name, region.clone(), credentials.clone()).unwrap();
         bucket.add_header("x-amz-acl", "public-read");
         bucket.add_header("Content-Disposition", "inline");
         Self {

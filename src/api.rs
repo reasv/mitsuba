@@ -127,6 +127,9 @@ async fn get_file_object_storage(obc: web::Data<ObjectStorage>, path: &String) -
     if code == 404 {
         Err(HttpResponse::NotFound().body("404 Not Found (Object storage)"))
     } else if code == 200 {
+        let region = obc.bucket.url();
+        debug!("{}{}", region, path);
+        // Ok(HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).streaming(data))
         Ok(HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(data))
     } else {
         error!("Error getting file ({}) from bucket: {}", path, code);
