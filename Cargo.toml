@@ -1,10 +1,14 @@
 [package]
 name = "mitsuba"
-version = "1.0.0"
-authors = ["moot"]
+version = "1.8.0"
+authors = ["reasv", "moot"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "AGPL-3.0"
+keywords = ["web", "archive", "4chan", "download", "downloader", "crawler"]
+repository = "https://github.com/reasv/mitsuba"
+readme = "readme.md"
+categories  = ["web-programming::http-server"]
+description = "Lightweight 4chan board archive software (like Foolfuuka), in Rust"
 
 [dependencies]
 log = "0.4.14"
