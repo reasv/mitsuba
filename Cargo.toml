@@ -9,6 +9,9 @@ repository = "https://github.com/reasv/mitsuba"
 readme = "readme.md"
 categories  = ["web-programming::http-server"]
 description = "Lightweight 4chan board archive software (like Foolfuuka), in Rust"
+exclude = [
+    "data/*",
+]
 
 [dependencies]
 log = "0.4.14"
