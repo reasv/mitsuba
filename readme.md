@@ -22,6 +22,7 @@ If you want to check it out in the wild, https://mitsuba.world/ always has the l
 - Sha256 image deduplication, doesn't rely on 4chan's MD5 hash
 - Support for S3-compatible image storage backend 
 - Reduced database writes: the hash of every post is kept in memory, if a post hasn't changed, no DB operation is performed
+- Can find an image from its original 4chan URL. `https://i.4cdn.org/po/1546293948883.png` can be found on mitsuba at `/po/1546293948883.png`
 
 There are some important features missing:
 - No "ghost posting" or posting of any kind. Read only archive.
