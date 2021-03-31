@@ -68,7 +68,7 @@ pub fn get_file_url(sha256: &String, ext: &String, is_thumb: bool) -> String {
         false => "full"
     };
     if sha256.len() < 3 {
-        return "/static/image/favicon-ws.ico".to_string();
+        return "/static/image/404-Angelguy.png".to_string();
     }
 
     format!("/img/{}/{}/{}/{}{}", folder, &sha256[0..2], &sha256[2..3], sha256, ext)

@@ -1,0 +1,28 @@
+{{#*inline "page_title"}}Mitsuba Archive{{/inline}}
+{{#*inline "page_content"}}Mitsuba Archive{{/inline}}
+{{#*inline "page_board"}}Mitsuba Archive{{/inline}}
+{{#*inline "extra_head"}}
+<link type="text/css" id="base-css" rel="stylesheet" href="/static/css/catalog_yotsuba_b_new.697.css">
+{{/inline}}
+{{#*inline "page_body"}}
+<body class="ws is_catalog board_vip yotsuba_b_new">
+    {{> board_header}}
+    <div id="content" class="desktop">
+        <div id="ctrl-top" class="desktop"><hr>
+        </div>
+    </div>
+    <div id="threads" class="extended-small" contextmenu="ctxmenu-thread">
+        {{#each posts}}
+        <div id="thread-{{no}}" class="thread">
+            <a href="/{{board}}/thread/{{#unless resto}}{{no}}{{else}}{{resto}}{{/unless}}#p{{no}}">
+                <img loading="lazy" alt="" id="thumb-{{no}}" class="thumb" width="{{tn_w}}" height="{{tn_h}}" src="{{get_thumbnail_url thumbnail_sha256}}" data-id="{{no}}">
+                </a>
+        </div>
+        {{/each}}
+    </div>
+    
+
+    <div id="bottom"></div>
+</body>
+{{/inline}}
+{{> root}}

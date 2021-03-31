@@ -34,7 +34,35 @@ struct TemplateThreadIndexThread {
     pub op: IndexPost,
     pub posts: Vec<IndexPost>
 }
-#[get("/{board}/thread/{no:\\d+}")]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct TemplateHomePage {
+    pub boards: Vec<Board>,
+    pub posts: Vec<Post>
+}
+
+#[get("/")]
+pub(crate) async fn home_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>) 
+-> Result<HttpResponse, HttpResponse> {
+    let boards = db.get_all_boards().await
+        .map_err(|e| {
+            error!("Error getting boards from DB: {}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+    let posts = db.get_latest_images(500i64, 0i64).await
+    .map_err(|e| {
+        error!("Error getting posts from DB: {}", e);
+        HttpResponse::InternalServerError().finish()
+    })?;
+
+    let body = hb.render("home", &TemplateHomePage{
+        boards,
+        posts
+    }).unwrap();
+    Ok(HttpResponse::Ok().body(body))
+}
+
+
+#[get("/{board:[A-z0-9]+}/thread/{no:\\d+}{foo:/?[^/]*}")]
 pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
 -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
@@ -59,10 +87,22 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
     Ok(HttpResponse::Ok().body(body))
 }
 
-#[get("/{board}/{idx:\\d+}")]
-pub(crate) async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
+#[get("/{board:[A-z0-9]+}/{idx:\\d+}")]
+pub(crate) async fn index_page_handler(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
 -> Result<HttpResponse, HttpResponse> {
     let (board, index) = info.into_inner();
+    index_page(db, hb, board, index).await
+}
+
+#[get("/{board:[A-z0-9]+}")]
+pub(crate) async fn board_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<String>)
+-> Result<HttpResponse, HttpResponse> {
+    let board = info.into_inner();
+    index_page(db, hb, board, 1).await
+}
+
+async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, board: String, index: i64) 
+-> Result<HttpResponse, HttpResponse> {
     let mut nonzero_index = 1;
     if index > 0 {
         nonzero_index = index;

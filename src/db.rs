@@ -33,6 +33,22 @@ impl DBClient {
             post_hashes: Arc::new(DashSet::new())
         }
     }
+    pub async fn get_latest_images(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Post>> {
+        let posts = sqlx::query_as!(Post,
+            "
+            SELECT *
+            FROM posts
+            WHERE thumbnail_sha256 != ''
+            ORDER BY last_modified DESC
+            LIMIT $1 OFFSET $2
+            ",
+            limit,
+            offset
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(posts)
+    }
     pub async fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
         let boards = sqlx::query_as!(Board,
             "SELECT * FROM boards ORDER BY name ASC"

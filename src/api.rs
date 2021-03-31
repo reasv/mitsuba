@@ -8,7 +8,7 @@ use mime_guess::from_path;
 
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
-use crate::frontend::{thread_page, index_page, build_handlebars, dist};
+use crate::frontend::{thread_page, index_page_handler, board_page, build_handlebars, dist, home_page};
 use crate::util::{get_file_folder, get_file_url};
 use crate::models::{IndexPage, BoardsStatus};
 
@@ -22,7 +22,7 @@ async fn get_boards_status(db: web::Data<DBClient>) -> Result<HttpResponse, Http
     Ok(HttpResponse::Ok().json(BoardsStatus{boards}))
 }
 
-#[get("/{board}/thread/{no:\\d+}.json")]
+#[get("/{board:[A-z0-9]+}/thread/{no:\\d+}.json")]
 async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
     let thread = db.get_thread(&board, no).await
@@ -35,7 +35,7 @@ async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> 
     Ok(HttpResponse::Ok().json(thread))
 }
 
-#[get("/{board}/post/{no:\\d+}.json")]
+#[get("/{board:[A-z0-9]+}/post/{no:\\d+}.json")]
 async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, no) = info.into_inner();
     let post = db.get_post(&board, no).await
@@ -46,7 +46,7 @@ async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Re
         .ok_or(HttpResponse::NotFound().finish())?;
     Ok(HttpResponse::Ok().json(post))
 }
-#[get("/{board}/{idx:\\d+}.json")]
+#[get("/{board:[A-z0-9]+}/{idx:\\d+}.json")]
 async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, mut index) = info.into_inner();
     if index > 0 {
@@ -60,13 +60,13 @@ async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> R
     Ok(HttpResponse::Ok().json(IndexPage {threads: threads.into_iter().map(|t| t.into()).collect()}))
 }
 
-#[get("/{board}/{tim:\\d+}.{ext}")]
+#[get("/{board:[A-z0-9]+}/{tim:\\d+}.{ext}")]
 async fn get_full_image(db: web::Data<DBClient>, info: web::Path<(String, i64, String)>) -> Result<NamedFile, HttpResponse> {
     let (board, tim, ext) = info.into_inner();
     get_image_from_tim(db, board, tim, ext, false).await
 }
 
-#[get("/{board}/{tim:\\d+}s.jpg")]
+#[get("/{board:[A-z0-9]+}/{tim:\\d+}s.jpg")]
 async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> Result<NamedFile, HttpResponse> {
     let (board, tim) = info.into_inner();
     get_image_from_tim(db, board, tim, "".to_string(), true).await
@@ -91,12 +91,12 @@ async fn get_image_from_tim(db: web::Data<DBClient>, board: String, tim: i64, ex
     })
 }
 
-#[get("/{board}/{tim:\\d+}.{ext}")]
+#[get("/{board:[A-z0-9]+}/{tim:\\d+}.{ext}")]
 async fn get_full_image_object_storage(db: web::Data<DBClient>, obc: web::Data<ObjectStorage>, info: web::Path<(String, i64, String)>) -> Result<HttpResponse, HttpResponse> {
     let (board, tim, ext) = info.into_inner();
     get_image_from_tim_object_storage(db, obc, board, tim, ext, false).await
 }
-#[get("/{board}/{tim:\\d+}s.jpg")]
+#[get("/{board:[A-z0-9]+}/{tim:\\d+}s.jpg")]
 async fn get_thumbnail_image_object_storage(db: web::Data<DBClient>, obc: web::Data<ObjectStorage>, info: web::Path<(String, i64)>) -> Result<HttpResponse, HttpResponse> {
     let (board, tim) = info.into_inner();
     get_image_from_tim_object_storage(db, obc, board, tim, "jpg".to_string(), true).await
@@ -156,8 +156,10 @@ pub async fn web_main() -> std::io::Result<()> {
         .service(get_thread)
         .service(get_post)
         .service(thread_page)
-        .service(index_page)
+        .service(index_page_handler)
+        .service(board_page)
         .service(get_boards_status)
+        .service(home_page)
         .service(web::resource("/static/{_:.*}").route(web::get().to(dist)));
 
         if obc.enabled {
