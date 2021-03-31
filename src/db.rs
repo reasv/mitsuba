@@ -33,15 +33,16 @@ impl DBClient {
             post_hashes: Arc::new(DashSet::new())
         }
     }
-    pub async fn get_latest_images(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<Post>> {
+    pub async fn get_latest_images(&self, limit: i64, offset: i64, boards: Vec<String>) -> anyhow::Result<Vec<Post>> {
         let posts = sqlx::query_as!(Post,
             "
             SELECT *
             FROM posts
-            WHERE thumbnail_sha256 != ''
+            WHERE thumbnail_sha256 != '' AND board = ANY($1)
             ORDER BY last_modified DESC
-            LIMIT $1 OFFSET $2
+            LIMIT $2 OFFSET $3
             ",
+            &boards,
             limit,
             offset
         )

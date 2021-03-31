@@ -1,9 +1,12 @@
+use std::borrow::Cow;
+use std::env;
+use std::collections::HashSet;
+
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 use actix_web::{get, web, HttpResponse, Result, body::Body};
 use serde::{Deserialize, Serialize};
 use rust_embed::RustEmbed;
-use std::borrow::Cow;
 use mime_guess::from_path;
 
 use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
@@ -40,6 +43,13 @@ struct TemplateHomePage {
     pub posts: Vec<Post>
 }
 
+fn get_home_boards(boards: &Vec<Board>) -> Vec<String> {
+    let env_str = env::var("HOME_PAGE_BOARDS").ok().unwrap_or_default();
+    let board_set = env_str.split(",").fold(HashSet::new(), |mut set, s| {if !s.is_empty() {set.insert(s.to_string());} set});
+    // in case there's no boards in the set, we use all boards.
+    boards.iter().map(|b| b.name.clone()).filter(|b| board_set.contains(b) || board_set.is_empty()).collect()
+}
+
 #[get("/")]
 pub(crate) async fn home_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>) 
 -> Result<HttpResponse, HttpResponse> {
@@ -48,7 +58,8 @@ pub(crate) async fn home_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<
             error!("Error getting boards from DB: {}", e);
             HttpResponse::InternalServerError().finish()
         })?;
-    let posts = db.get_latest_images(500i64, 0i64).await
+    let home_boards = get_home_boards(&boards);
+    let posts = db.get_latest_images(500i64, 0i64, home_boards).await
     .map_err(|e| {
         error!("Error getting posts from DB: {}", e);
         HttpResponse::InternalServerError().finish()

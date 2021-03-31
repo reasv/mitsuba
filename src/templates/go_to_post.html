@@ -1,4 +1,4 @@
-<input type="text" id="go-box" placeholder="Go to Post/Thread ID"><select name="go-board-choice" id="go-board-choice">
+<input type="text" id="go-box" placeholder="Go to Post/Thread ID (Enter)"><select name="go-board-choice" id="go-board-choice">
     {{#each boards}}
         <option {{#if (eq this.name ../op.board)}}selected{{/if}} value="{{name}}">/{{name}}/</option>
     {{/each}}
