@@ -1534,6 +1534,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "unicode-truncate",
+ "weighted-rs",
 ]
 
 [[package]]
@@ -3092,6 +3093,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82015b7e0b8bad8185994674a13a93306bea76cf5a16c5a181382fd3a5ec2376"
 dependencies = [
  "webpki",
+]
+
+[[package]]
+name = "weighted-rs"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99eded5892abe2ef0b82002aa60227c1e40ff0caa6a653a5dda8471feded40a4"
+dependencies = [
+ "rand 0.7.3",
 ]
 
 [[package]]

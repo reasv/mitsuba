@@ -1,10 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::env;
 
 use base64::decode;
 use base32::{Alphabet, encode};
 use unicode_truncate::UnicodeTruncateStr;
 use sha2::{Sha256, Digest};
+use weighted_rs::{SmoothWeight, Weight};
+use std::collections::HashMap;
 
 pub fn hash_file(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
@@ -74,10 +77,32 @@ pub fn get_file_url(sha256: &String, ext: &String, is_thumb: bool) -> String {
     format!("/img/{}/{}/{}/{}{}", folder, &sha256[0..2], &sha256[2..3], sha256, ext)
 }
 
-pub fn bool_from_env(env: &String) -> bool {
+pub fn bool_from_env(env_var: &String) -> bool {
     bool::from_str(
-        &std::env::var(env)
+        &env::var(env_var)
         .unwrap_or("false".to_string())
     )
     .unwrap_or(false)
+}
+fn int_from_env(env_var: &str, default: isize) -> isize {
+    isize::from_str(
+        &env::var(env_var)
+        .unwrap_or(default.to_string())
+    )
+    .unwrap_or(default)
+}
+
+pub fn get_proxy_config() -> SmoothWeight<Option<reqwest::Url>> {
+    let mut sw = SmoothWeight::new();
+    if !bool_from_env(&"PROXY_ONLY".to_string()) {
+        sw.add(None, int_from_env("PROXY_WEIGHT_SELF", 1));
+    }
+    let mut i = 0;
+    while let Some(url) = env::var(format!("PROXY_URL_{}", i)).ok() {
+        if let Some(proxy) = reqwest::Url::parse(&url).ok() {
+            sw.add(Some(proxy), int_from_env(format!("PROXY_WEIGHT_{}", i), 1));
+        }
+        i+=1;
+    }
+    sw
 }
