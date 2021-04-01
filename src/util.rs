@@ -84,7 +84,8 @@ pub fn bool_from_env(env_var: &String) -> bool {
     )
     .unwrap_or(false)
 }
-fn int_from_env(env_var: &str, default: isize) -> isize {
+
+pub fn int_from_env(env_var: &str, default: isize) -> isize {
     isize::from_str(
         &env::var(env_var)
         .unwrap_or(default.to_string())
