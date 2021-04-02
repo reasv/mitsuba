@@ -40,13 +40,13 @@ impl HttpClient {
         let proxy_balancer = Arc::new(Mutex::new(get_proxy_config()));
         let rclient = reqwest::Client::builder()
         .proxy(reqwest::Proxy::custom(move |url| {
-            warn!("Proxy call");
+            debug!("Proxy call");
             // Unwrap here is safe, because .next() can not panic.
             if let Some(proxy_url_opt) = proxy_balancer.lock().unwrap().next() {
-                warn!("Used proxy {:?} for {}{}", get_host_string(&proxy_url_opt), url, url.path());
+                debug!("Used proxy {:?} for {}{}", get_host_string(&proxy_url_opt), url, url.path());
                 proxy_url_opt.clone()
             } else {
-                error!("No proxy for {}{}", url, url.path());
+                debug!("No proxy for {}{}", url, url.path());
                 None
             }
         }))
