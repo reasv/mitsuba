@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::num::NonZeroU32;
+use std::sync::{Arc, Mutex};
 
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
@@ -11,8 +12,9 @@ use tokio::io::AsyncWriteExt;
 use tokio::time::Duration;
 use log::{info, warn, error, debug};
 use tokio::fs::create_dir_all;
+use weighted_rs::Weight;
 
-use crate::util::{hash_file, get_file_folder, get_file_url};
+use crate::util::{hash_file, get_file_folder, get_file_url, get_proxy_config, get_host_string};
 use crate::object_storage::ObjectStorage;
 
 async fn write_bytes_to_file(filename: &Path, file_bytes: bytes::Bytes) -> anyhow::Result<()> {
@@ -35,11 +37,26 @@ impl Default for HttpClient {
 
 impl HttpClient {
     pub fn new(quota: NonZeroU32, burst: NonZeroU32, jitter_min: u64, jitter_interval: u64, max_time: u64) -> HttpClient {
+        let proxy_balancer = Arc::new(Mutex::new(get_proxy_config()));
+        let rclient = reqwest::Client::builder()
+        .proxy(reqwest::Proxy::custom(move |url| {
+            warn!("Proxy call");
+            // Unwrap here is safe, because .next() can not panic.
+            if let Some(proxy_url_opt) = proxy_balancer.lock().unwrap().next() {
+                warn!("Used proxy {:?} for {}{}", get_host_string(&proxy_url_opt), url, url.path());
+                proxy_url_opt.clone()
+            } else {
+                error!("No proxy for {}{}", url, url.path());
+                None
+            }
+        }))
+        .build().unwrap();
+
         HttpClient {
             limiter: RateLimiter::dashmap(Quota::per_minute(quota).allow_burst(burst)),
             jitter: Jitter::new(Duration::from_millis(jitter_min), Duration::from_millis(jitter_interval)),
             max_time,
-            rclient: reqwest::Client::new(),
+            rclient,
             oclient: ObjectStorage::new(),
         }
     }

@@ -101,9 +101,17 @@ pub fn get_proxy_config() -> SmoothWeight<Option<reqwest::Url>> {
     let mut i = 0;
     while let Some(url) = env::var(format!("PROXY_URL_{}", i)).ok() {
         if let Some(proxy) = reqwest::Url::parse(&url).ok() {
-            sw.add(Some(proxy), int_from_env(format!("PROXY_WEIGHT_{}", i), 1));
+            sw.add(Some(proxy), int_from_env(&format!("PROXY_WEIGHT_{}", i), 1));
         }
         i+=1;
     }
     sw
+}
+pub fn get_host_string(url_opt: &Option<reqwest::Url>) -> Option<String> {
+    if let Some(url) = url_opt {
+        if let Some(host_str) = url.host_str() {
+            return Some(host_str.to_string().clone());
+        }
+    }
+    None
 }
