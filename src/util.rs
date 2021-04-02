@@ -7,7 +7,6 @@ use base32::{Alphabet, encode};
 use unicode_truncate::UnicodeTruncateStr;
 use sha2::{Sha256, Digest};
 use weighted_rs::{SmoothWeight, Weight};
-use std::collections::HashMap;
 
 pub fn hash_file(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
