@@ -554,35 +554,42 @@ mod tests {
         assert_eq!(1u64, dbc.delete_post(&post1.board, post1.no).await.unwrap());
         assert_eq!(None, dbc.get_post(&post1.board, post1.no).await.unwrap());
     }
-    // #[test]
-    // fn test_job_update(){
-    //     run_async(job_insert_update());
-    // }
-    // async fn job_insert_update() {
-    //     let dbc = DBClient::new().await;
-    //     let mut img = ImageInfo::default();
-    //     img.board = "test_a".to_string();
-    //     img.md5 = "test".to_string();
-    //     img.md5_base32 = "test".to_string();
-    //     img.url = "url1".to_string();
-    //     let img_job = dbc.insert_image_job(&img).await.unwrap();
-    //     img.url = "url2".to_string();
-    //     let mut img_b = ImageInfo::default();
-    //     img_b.board = "test_b".to_string();
-    //     img_b.md5 = "test".to_string();
-    //     img_b.md5_base32 = "test".to_string();
-    //     img_b.url = "urlB".to_string();
-    //     let img_b_job = dbc.insert_image_job(&img_b).await.unwrap();
-        
-    //     dbc.insert_image_job(&img).await.unwrap();
+    #[test]
+    fn test_job_update(){
+        run_async(job_insert_update());
+    }
+    async fn job_insert_update() {
+        let dbc = DBClient::new().await;
+        let mut img = ImageInfo::default();
+        img.board = "test_a".to_string();
+        img.no = 777;
+        img.url = "url1".to_string();
+        img.page = 5;
+        let img_job = dbc.insert_image_job(&img).await.unwrap();
+        img.url = "url2".to_string();
+        img.page = 6;
+        assert_eq!(img_job.id, dbc.insert_image_job(&img).await.unwrap().id);
 
-    //     assert_eq!("url2".to_string(), dbc.get_image_job(&img.board, &img.md5).await.unwrap().unwrap().url);
-    //     assert_eq!("urlB".to_string(), dbc.get_image_job(&img_b.board, &img_b.md5).await.unwrap().unwrap().url);
-    //     assert_eq!(1u64, dbc.delete_image_job(img_b_job.id).await.unwrap());
-    //     assert_eq!(1u64, dbc.delete_image_job(img_job.id).await.unwrap());
-    //     assert_eq!(None, dbc.get_image_job(&img.board, &img.md5).await.unwrap());
-    //     assert_eq!(None, dbc.get_image_job(&img_b.board, &img_b.md5).await.unwrap());
-    // }
+        let mut img_b = ImageInfo::default();
+        img_b.board = "test_b".to_string();
+        img_b.no = 777;
+        img_b.url = "urlB".to_string();
+        img_b.page = 77;
+        let img_b_job = dbc.insert_image_job(&img_b).await.unwrap();
+
+        assert_eq!(false, img_job.id == img_b_job.id);
+
+        assert_eq!("url1".to_string(), dbc.get_image_job(img_job.id).await.unwrap().unwrap().url);
+        assert_eq!(6, dbc.get_image_job(img_job.id).await.unwrap().unwrap().page);
+        assert_eq!("urlB".to_string(), dbc.get_image_job(img_b_job.id).await.unwrap().unwrap().url);
+        assert_eq!(77, dbc.get_image_job(img_b_job.id).await.unwrap().unwrap().page);
+
+        assert_eq!(1u64, dbc.delete_image_job(img_b_job.id).await.unwrap());
+        assert_eq!(1u64, dbc.delete_image_job(img_job.id).await.unwrap());
+        assert_eq!(None, dbc.get_image_job(img_job.id).await.unwrap());
+        assert_eq!(None, dbc.get_image_job(img_b_job.id).await.unwrap());
+    }
+    
     #[test]
     fn test_many_post_update(){
         run_async(many_post_update());
