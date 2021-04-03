@@ -315,6 +315,22 @@ impl DBClient {
         .await?;
         Ok(post)
     }
+    pub async fn get_files_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<String>> {
+        struct Sha256Field {
+            file_sha256: Option<String>
+        };
+        let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
+            "
+            SELECT file_sha256 FROM posts WHERE board = $1 and file_sha256 != ''
+            EXCEPT
+            SELECT file_sha256 FROM posts WHERE board != $1 and file_sha256 != ''
+            ",
+            board
+            ).fetch_all(&self.pool)
+            .await?;
+        Ok(hashes.into_iter().filter(|h| h.file_sha256.is_some())
+        .map(|h| h.file_sha256.unwrap_or_default()).collect())
+    }
     fn get_post_hash(&self, post: &Post) -> u64 {
         let mut hasher = DefaultHasher::new();
         let mut hash_post = post.clone();
@@ -330,6 +346,7 @@ impl DBClient {
         hash_post.hash(& mut hasher);
         hasher.finish()
     }
+    
     pub async fn insert_posts(&self, entries: &Vec<Post>) -> anyhow::Result<Vec<Post>> {
 
         let mut posts = Vec::new();
@@ -578,5 +595,14 @@ mod tests {
             post.last_modified = i;
             dbc.insert_posts(&vec![post.clone()]).await.unwrap();
         }
+    }
+    #[test]
+    fn test_image_filtering(){
+        run_async(get_images_board());
+    }
+    async fn get_images_board(){
+        let dbc = DBClient::new().await;
+        let hashes = dbc.get_files_exclusive_to_board(&"vip".to_string()).await.unwrap();
+        println!("{}", hashes.len());
     }
 }
