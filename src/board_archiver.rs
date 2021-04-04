@@ -43,7 +43,7 @@ impl Archiver {
             loop {
                 let s = Instant::now();
                 c.board_cycle().await.ok();
-                histogram!("board_scan_duration", s.elapsed().as_millis() as f64);
+                histogram!("boards_scan_duration", s.elapsed().as_millis() as f64);
                 tokio::time::sleep(Duration::from_secs(10)).await;
             }
         })
