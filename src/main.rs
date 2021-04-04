@@ -18,6 +18,7 @@ mod thread_archiver;
 mod image_archiver;
 mod archiver;
 mod object_storage;
+mod metric;
 use api::web_main;
 use archiver::{Archiver};
 use http::HttpClient;
@@ -106,7 +107,8 @@ fn main() {
 async fn real_main() {
     dotenv::dotenv().ok();
     env_logger::init();
-
+    metric::init_metrics();
+    
     let opts: Opts = Opts::parse();
     let arc_opt = match opts.subcmd.clone() {
         SubCommand::Start(a) => a,

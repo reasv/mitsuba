@@ -1,7 +1,9 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
+#[allow(unused_imports)]
+use metrics::{gauge, counter, histogram};
 
 use crate::models::{ThreadsPage};
 use crate::util::{get_board_page_api_url};
@@ -39,7 +41,9 @@ impl Archiver {
         let c = self.clone();
         tokio::task::spawn(async move {
             loop {
+                let s = Instant::now();
                 c.board_cycle().await.ok();
+                histogram!("board_scan_duration", s.elapsed().as_millis() as f64);
                 tokio::time::sleep(Duration::from_secs(10)).await;
             }
         })

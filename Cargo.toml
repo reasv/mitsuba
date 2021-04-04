@@ -45,6 +45,8 @@ sha2 = "0.9.3"
 rust-s3 = "=0.27.0-beta11"
 dashmap = "4.0.2"
 weighted-rs = "0.1.2"
+metrics = "0.14.2"
+metrics-exporter-prometheus = "0.3.0"
 
 [profile.release]
 lto = true

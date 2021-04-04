@@ -1,6 +1,9 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
+#[allow(unused_imports)]
+use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
 use crate::models::{ThreadJob, ImageInfo, Post, Thread};
 use crate::util::get_thread_api_url;
@@ -32,6 +35,7 @@ impl Archiver {
         let mut handles = Vec::new();
         let mut jobs_dispatched = 0u64;
         loop {
+            let s = Instant::now();
             let mut jobs = self.db_client.get_thread_jobs(250).await
                 .map_err(|e|{error!("Failed to get new thread jobs from database: {}", e); e})?;
             
@@ -52,13 +56,19 @@ impl Archiver {
             while let Some(handle) = handles.pop() {
                 handle.await.ok();
             }
+            histogram!("thread_batch_duration", s.elapsed().as_millis() as f64);
         }
         Ok(())
     }
     pub fn dispatch_archive_thread(&self, tx: tokio::sync::mpsc::Sender<Result<(), ThreadJob>>, job: ThreadJob) -> tokio::task::JoinHandle<Result<(), ThreadJob>>{
         let c = self.clone();
         tokio::task::spawn(async move {
+            increment_gauge!("thread_jobs_running", 1.0);
+            let s = Instant::now();
             let res = c.archive_thread(job).await;
+            histogram!("thread_job_duration", s.elapsed().as_millis() as f64);
+            decrement_gauge!("thread_jobs_running", 1.0);
+            counter!("thread_jobs_completed", 1);
             tx.send(res.clone()).await.ok();
             res
         })
@@ -66,10 +76,12 @@ impl Archiver {
     pub async fn archive_thread(&self, job: ThreadJob) -> Result<(), ThreadJob> {
         let thread_opt = self.get_thread(&job.board, &job.no.to_string()).await
         .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no); job.clone()})?;
+        counter!("threads_fetched", 1);
 
         if thread_opt.is_none() { // Thread was 404
             self.db_client.delete_thread_job(job.id).await
             .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e); job})?;
+            counter!("thread_404", 1);
             return Ok(())
         }
         let thread = thread_opt.unwrap_or_default();

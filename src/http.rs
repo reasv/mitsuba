@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
@@ -9,8 +10,11 @@ use nonzero_ext::nonzero;
 use backoff::{default, ExponentialBackoff};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-use tokio::time::Duration;
+
 use log::{info, warn, error, debug};
+#[allow(unused_imports)]
+use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
+
 use tokio::fs::create_dir_all;
 use weighted_rs::Weight;
 
@@ -76,16 +80,26 @@ impl HttpClient {
 
     async fn fetch_url_bytes(&self, url: &str, attempt: u64, rlimit_key: &String) -> Result<bytes::Bytes, backoff::Error<reqwest::Error>> {
         self.limiter.until_key_ready_with_jitter(rlimit_key, self.jitter).await; // wait for rate limiter
+        counter!("http_requests", 1);
+        increment_gauge!("http_requests_running", 1.0);
+        let s = Instant::now();
         let resp = self.rclient.get(url).send().await.map_err(backoff::Error::Transient)?;
+        histogram!("http_request_duration", s.elapsed().as_millis() as f64);
+        decrement_gauge!("http_requests_running", 1.0);
+        
+        
+
         info!("Fetching: {} (Attempt {})", url, attempt);
         match resp.status() {
             StatusCode::OK => Ok(resp.bytes().await.map_err(backoff::Error::Transient)?),
             StatusCode::NOT_FOUND => {
                 error!("Error fetching {} (Status: 404)", url);
+                counter!("http_404", 1);
                 Err(backoff::Error::Permanent(resp.error_for_status().unwrap_err()))
             },
             _ => {
                 warn!("Retry fetching {} after bad status code (Status: {})", url, resp.status());
+                counter!("http_warn", 1);
                 Err(backoff::Error::Transient(resp.error_for_status().unwrap_err()))
             }
         }
@@ -94,11 +108,13 @@ impl HttpClient {
     pub async fn fetch_url_backoff(&self, url: &str, rlimit_key: &String) -> Result<bytes::Bytes, reqwest::Error> {
         let back = self.new_backoff();
         let mut attempt: u64 = 0;
-        backoff::future::retry(back, || {
-            debug!("Scheduling: {} (Attempt {})", url, attempt);
+        let bytes = backoff::future::retry(back, || {
             attempt += 1;
+            debug!("Scheduling: {} (Attempt {})", url, attempt);
             self.fetch_url_bytes(url, attempt, rlimit_key)
-        }).await
+        }).await?;
+        counter!("bytes_fetched", bytes.len() as u64);
+        Ok(bytes)
     }
 
     // Returns Err(true) if error was 404 (non recoverable)
@@ -162,6 +178,11 @@ impl HttpClient {
                 return None
             }
         };
+        if is_thumb {
+            histogram!("http_size_thumbnail", bytes.len() as f64);
+        } else {
+            histogram!("http_size_file", bytes.len() as f64);
+        }
         if self.oclient.enabled {
             self.upload_file(bytes, ext, is_thumb).await
         } else {
