@@ -6,7 +6,25 @@ pub fn init_metrics(){
     let builder = PrometheusBuilder::new();
     builder
     .set_buckets_for_metric(Matcher::Prefix("http_size".to_string()), 
-    &[64f64, 256f64, 1024f64, 4096f64, 16384f64, 65536f64, 262144f64, 1048576f64, 2097152f64, 4194304f64, 16777216f64, 67108864f64])
+    &[64f64, 256f64, 1024f64, 4096f64, 16384f64, 65536f64, 262144f64, 1048576f64, 2097152f64, 
+    4194304f64, 6291456f64, 8388608f64, 10485760f64, 12582910f64, 16777216f64, 33554430f64, 67108860f64])
+    .set_buckets_for_metric(Matcher::Full("http_request_duration".to_string()),
+    &[30f64, 40f64, 50f64, 60f64, 70f64, 80f64, 100f64, 120f64, 150f64, 
+    200f64, 250f64, 300f64, 500f64, 700f64, 800f64, 1000f64, 1250f64, 1500f64, 
+    1750f64, 2000f64, 2500f64, 3000f64, 4000f64, 5000f64,
+    10000f64, 15000f64, 30000f64, 45000f64, 60000f64])
+    .set_buckets_for_metric(Matcher::Full("boards_scan_duration".to_string()),
+    &[50f64, 100f64, 200f64, 500f64, 800f64, 1000f64, 1500f64, 2000f64, 2500f64, 3000f64, 5000f64,
+    10000f64, 12000f64, 15000f64, 20000f64, 30000f64])
+    .set_buckets_for_metric(Matcher::Suffix("job_duration".to_string()), 
+    &[50f64, 100f64, 200f64, 500f64, 800f64, 1000f64, 1250f64, 1500f64, 
+    1750f64, 2000f64, 2500f64, 3000f64, 4000f64, 5000f64, 
+    10000f64, 15000f64, 30000f64, 45000f64, 60000f64, 120000f64, 180000f64, 240000f64, 
+    600000f64, 1200000f64])
+    .set_buckets_for_metric(Matcher::Suffix("batch_duration".to_string()), 
+    &[100f64, 500f64, 800f64, 1000f64, 1500f64, 2000f64, 3000f64, 5000f64, 
+    10000f64, 15000f64, 30000f64, 45000f64, 60000f64, 120000f64, 180000f64, 240000f64, 
+    600000f64, 1200000f64])
     .install().expect("Failed to install Prometheus recorder");
 
     register_metrics();
@@ -24,8 +42,10 @@ fn register_metrics() {
     register_histogram!("http_size_thumbnail", Unit::Bytes, "Thumbnail sizes");
     register_counter!("files_fetched", "Total number of files fetched");
     register_counter!("thumbnails_fetched", "Total number of thumbnails fetched");
+    register_counter!("file_jobs_scheduled", "Total number of file jobs that were scheduled");
     register_counter!("file_jobs_completed", "Total number of file jobs that were completed");
     register_counter!("threads_fetched", "Number of times threads were fetched");
+    register_counter!("thread_jobs_scheduled", "Total number of thread jobs that were scheduled");
     register_counter!("thread_jobs_completed", "Total number of thread jobs that were completed");
     register_counter!("thread_404", "Total number of http 404 threads");
 
