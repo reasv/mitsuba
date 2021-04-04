@@ -23,8 +23,6 @@ impl Archiver {
         Ok(full_images)
     }
     pub async fn image_cycle(&self) -> Result<(),()> {
-        let full_image_boards = self.get_boards_with_full_images().await?;
-
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
         let mut handles = Vec::new();
         let mut jobs_dispatched = 0;
@@ -34,6 +32,7 @@ impl Archiver {
                 .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
             
             if image_jobs.len() == 0 {break}; // No more jobs available
+            let full_image_boards = self.get_boards_with_full_images().await?;
             
             while let Some(job) = image_jobs.pop() {
                 handles.push(self.dispatch_archive_image(tx.clone(),  full_image_boards.contains(&job.board), job));
