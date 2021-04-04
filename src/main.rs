@@ -107,7 +107,6 @@ fn main() {
 async fn real_main() {
     dotenv::dotenv().ok();
     env_logger::init();
-    metric::init_metrics();
     
     let opts: Opts = Opts::parse();
     let arc_opt = match opts.subcmd.clone() {
@@ -150,6 +149,10 @@ async fn real_main() {
             web_main().await.unwrap();
         },
         SubCommand::Start(arcopts) => {
+            // Metrics are only for the archiver, for now.
+            // Starting them earlier makes using the cli tools impossible
+            // while the archiver is running. Metrics would try to bind to the same port.
+            metric::init_metrics();
             let handle = client.run_archivers();
             if arcopts.archiver_only.unwrap_or_default() {
                 handle.await.ok();
