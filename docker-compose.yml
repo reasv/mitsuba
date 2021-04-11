@@ -2,7 +2,7 @@ version: "3.3"
 
 services:
   mitsuba:
-    image: .
+    build: .
     container_name: "mitsuba"
     restart: always
     network_mode: bridge
