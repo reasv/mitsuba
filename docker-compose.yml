@@ -6,7 +6,7 @@ services:
     container_name: "mitsuba"
     restart: always
     network_mode: bridge
-    command: "start"
+    command: "./mitsuba start"
     volumes:
       - ./data:/data
     ports:
@@ -19,6 +19,7 @@ services:
   db:
     image: postgres:13.2
     restart: always
+    network_mode: bridge
     environment:
       POSTGRES_PASSWORD: postgres1
       POSTGRES_USER: mitsuba
