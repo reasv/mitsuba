@@ -43,13 +43,8 @@ fn register_metrics() {
     register_counter!("files_fetched", "Total number of files fetched");
     register_counter!("thumbnails_fetched", "Total number of thumbnails fetched");
     register_counter!("file_jobs_scheduled", "Total number of file jobs that were scheduled");
-    register_counter!("file_jobs_completed", "Total number of file jobs that were completed");
     register_counter!("threads_fetched", "Number of times threads were fetched");
-    register_counter!("thread_jobs_scheduled", "Total number of thread jobs that were scheduled");
-    register_counter!("thread_jobs_completed", "Total number of thread jobs that were completed");
     register_counter!("thread_404", "Total number of http 404 threads");
-
-    register_counter!("http_requests", "Total number of http requests started");
     register_counter!("http_404", "Total number of http 404 errors");
     register_counter!("http_warn", "Total number of http non-404 error codes");
     register_counter!("bytes_fetched", Unit::Bytes, "Total number of bytes fetched");

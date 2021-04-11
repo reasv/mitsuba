@@ -80,7 +80,6 @@ impl HttpClient {
 
     async fn fetch_url_bytes(&self, url: &str, attempt: u64, rlimit_key: &String) -> Result<bytes::Bytes, backoff::Error<reqwest::Error>> {
         self.limiter.until_key_ready_with_jitter(rlimit_key, self.jitter).await; // wait for rate limiter
-        counter!("http_requests", 1);
         increment_gauge!("http_requests_running", 1.0);
         let s = Instant::now();
         let resp = self.rclient.get(url).send().await.map_err(backoff::Error::Transient)?;

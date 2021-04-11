@@ -58,7 +58,6 @@ impl Archiver {
                 c.archive_image(&job.clone(), need_full_image).await.ok();
                 histogram!("file_job_duration", s.elapsed().as_millis() as f64);
                 decrement_gauge!("file_jobs_running", 1.0);
-                counter!("file_jobs_completed", 1);
                 tx.send(true).await.ok();
             }
         )

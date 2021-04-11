@@ -68,7 +68,6 @@ impl Archiver {
             let res = c.archive_thread(job).await;
             histogram!("thread_job_duration", s.elapsed().as_millis() as f64);
             decrement_gauge!("thread_jobs_running", 1.0);
-            counter!("thread_jobs_completed", 1);
             tx.send(res.clone()).await.ok();
             res
         })
