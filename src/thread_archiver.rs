@@ -1,4 +1,5 @@
 use std::time::{Duration, Instant};
+use std::collections::HashMap;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -32,35 +33,33 @@ impl Archiver {
     }
     pub async fn thread_cycle(&self) -> anyhow::Result<()> {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
-        let mut handles = Vec::new();
-        let mut jobs_dispatched = 0u64;
+        let mut running_jobs = HashMap::new();
         loop {
             let s = Instant::now();
             let mut jobs = self.db_client.get_thread_jobs(250).await
                 .map_err(|e|{error!("Failed to get new thread jobs from database: {}", e); e})?;
             
-            if jobs.len() == 0 {break}; // No more jobs available
+            if jobs.len() == 0 { // No more jobs available
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                continue;
+            };
             
             while let Some(job) = jobs.pop() {
-                handles.push(self.dispatch_archive_thread(tx.clone(), job));
-                jobs_dispatched+=1;
-                if jobs_dispatched < 20 {continue}; // dispatch up to 20 first images in the log first
+                if running_jobs.contains_key(&job.id) { // Don't schedule the same job twice
+                    continue;
+                }
+                running_jobs.insert(job.id, self.dispatch_archive_thread(tx.clone(), job));
+                if running_jobs.len() < 20 {continue}; // Dispatch up to 20 jobs at once
 
-                if let Some(res) = rx.recv().await { // Wait for one job to complete before continuing
-                    if let Err(info) = res {
-                        jobs.push(info); // re-add thread that failed for non-404 reasons for immediate re-trying
-                    }
+                if let Some(job_id) = rx.recv().await { // wait for a job to complete before dispatching the next
+                    running_jobs.remove(&job_id);
                 }
                 debug!("One thread job has completed")
             }
-            while let Some(handle) = handles.pop() {
-                handle.await.ok();
-            }
             histogram!("thread_batch_duration", s.elapsed().as_millis() as f64);
         }
-        Ok(())
     }
-    pub fn dispatch_archive_thread(&self, tx: tokio::sync::mpsc::Sender<Result<(), ThreadJob>>, job: ThreadJob) -> tokio::task::JoinHandle<Result<(), ThreadJob>>{
+    pub fn dispatch_archive_thread(&self, tx: tokio::sync::mpsc::Sender<i64>, job: ThreadJob) -> tokio::task::JoinHandle<Result<(), ThreadJob>>{
         let c = self.clone();
         tokio::task::spawn(async move {
             increment_gauge!("thread_jobs_running", 1.0);
@@ -68,7 +67,7 @@ impl Archiver {
             let res = c.archive_thread(job).await;
             histogram!("thread_job_duration", s.elapsed().as_millis() as f64);
             decrement_gauge!("thread_jobs_running", 1.0);
-            tx.send(res.clone()).await.ok();
+            tx.send(job.id).await.ok();
             res
         })
     }
@@ -107,7 +106,6 @@ impl Archiver {
         tokio::task::spawn(async move {
             loop {
                 c.thread_cycle().await.ok();
-                tokio::time::sleep(Duration::from_secs(10)).await;
             }
         })
     }

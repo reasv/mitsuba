@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -24,32 +25,34 @@ impl Archiver {
     }
     pub async fn image_cycle(&self) -> Result<(),()> {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
-        let mut handles = Vec::new();
-        let mut jobs_dispatched = 0;
+        let mut running_jobs = HashMap::new();
         loop {
             let s = Instant::now();
-            let mut image_jobs = self.db_client.get_image_jobs(250).await
+            let mut jobs = self.db_client.get_image_jobs(250).await
                 .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
             
-            if image_jobs.len() == 0 {break}; // No more jobs available
+            if jobs.len() == 0 { // No more jobs available
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                continue;
+            };
             let full_image_boards = self.get_boards_with_full_images().await?;
             
-            while let Some(job) = image_jobs.pop() {
-                handles.push(self.dispatch_archive_image(tx.clone(),  full_image_boards.contains(&job.board), job));
-                jobs_dispatched+=1;
-                if jobs_dispatched < 20 {continue}; // dispatch up to 20 first images in the log first
+            while let Some(job) = jobs.pop() {
+                if running_jobs.contains_key(&job.id) { // Don't schedule the same job twice
+                    continue;
+                }
+                running_jobs.insert(job.id, self.dispatch_archive_image(tx.clone(),  full_image_boards.contains(&job.board), job));
+                if running_jobs.len() < 20 {continue}; // Dispatch up to 20 jobs at once
 
-                rx.recv().await; // wait for a job to complete before dispatching the next
+                if let Some(job_id) = rx.recv().await { // wait for a job to complete before dispatching the next
+                    running_jobs.remove(&job_id);
+                }
                 debug!("One image job has completed")
-            }
-            while let Some(handle) = handles.pop() {
-                handle.await.ok();
             }
             histogram!("file_batch_duration", s.elapsed().as_millis() as f64);
         }
-        return Ok(())
     }
-    pub fn dispatch_archive_image(&self, tx: tokio::sync::mpsc::Sender<bool>, need_full_image: bool, job: ImageJob) -> tokio::task::JoinHandle<()> {
+    pub fn dispatch_archive_image(&self, tx: tokio::sync::mpsc::Sender<i64>, need_full_image: bool, job: ImageJob) -> tokio::task::JoinHandle<()> {
         let c = self.clone();
         tokio::task::spawn(
             async move {
@@ -58,7 +61,7 @@ impl Archiver {
                 c.archive_image(&job.clone(), need_full_image).await.ok();
                 histogram!("file_job_duration", s.elapsed().as_millis() as f64);
                 decrement_gauge!("file_jobs_running", 1.0);
-                tx.send(true).await.ok();
+                tx.send(job.id).await.ok();
             }
         )
     }
@@ -92,7 +95,6 @@ impl Archiver {
         tokio::task::spawn(async move {
             loop {
                 c.image_cycle().await.ok();
-                tokio::time::sleep(Duration::from_secs(10)).await;
             }
         })
     }
