@@ -144,9 +144,11 @@ impl HttpClient {
         }
     }
     async fn save_file(&self, bytes: bytes::Bytes, ext: &String, is_thumb: bool) -> Option<String> {
+        error!("Saving file");
         let hash = hash_file(&bytes);
         let folder = get_file_folder(&hash, is_thumb);
-        create_dir_all(&folder).await.ok();
+        create_dir_all(&folder).await.unwrap();
+        error!("{:?}", folder);
         let filename = folder.join(hash.clone() + ext);
         match write_bytes_to_file(&filename, bytes).await {
             Ok(()) => Some(hash),
