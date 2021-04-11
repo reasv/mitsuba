@@ -45,6 +45,8 @@ impl Archiver {
 
                 if let Some(job_id) = rx.recv().await { // wait for a job to complete before dispatching the next
                     running_jobs.remove(&job_id);
+                } else { // All jobs are terminated or dead
+                    running_jobs.clear();
                 }
                 debug!("One image job has completed")
             }
