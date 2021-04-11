@@ -9,6 +9,8 @@ use log::debug;
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadInfo, ThreadJob, ThreadNo};
 
+use crate::util::{strip_nullchars};
+
 pub async fn sqlx_connection() -> sqlx::Pool<sqlx::Postgres> {
     use sqlx::postgres::PgPoolOptions;
     dotenv::dotenv().ok();
@@ -429,17 +431,17 @@ impl DBClient {
                 entry.closed, //5
                 entry.now, //6
                 entry.time, //7
-                entry.name, //8
+                strip_nullchars(&entry.name), //8
                 entry.trip, //9
                 entry.id, //10
                 entry.capcode, //11
                 entry.country, //12
                 entry.country_name, //13
-                entry.sub, //14
-                entry.com, //15
+                strip_nullchars(&entry.sub), //14
+                strip_nullchars(&entry.com), //15
                 entry.tim, //16
-                entry.filename, //17
-                entry.ext, //18
+                strip_nullchars(&entry.filename), //17
+                strip_nullchars(&entry.ext), //18
                 entry.fsize, //19
                 entry.md5, //20
                 entry.w, //21
@@ -453,7 +455,7 @@ impl DBClient {
                 entry.images, //29
                 entry.bumplimit, //30
                 entry.imagelimit, //31
-                entry.tag, //32
+                strip_nullchars(&entry.tag), //32
                 entry.semantic_url, //33
                 entry.since4pass, //34
                 entry.unique_ips, //35
@@ -529,6 +531,24 @@ mod tests {
         assert_eq!(1, dbc.delete_post(&post2.board, post2.no).await.unwrap());
         assert_eq!(1, dbc.delete_post(&post3.board, post3.no).await.unwrap());
     }
+    #[test]
+    fn test_post_nullchars(){
+        run_async(post_insert_nullchars());
+    }
+    async fn post_insert_nullchars() {
+        let dbc = DBClient::new().await;
+        let mut post1 = Post::default();
+        post1.board = "test".to_string();
+        post1.no = 10;
+        post1.time = 1337;
+        post1.images = 77;
+        post1.com = "test \u{00} test \u{00}".to_string();
+        assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
+    
+        assert_eq!(77, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().images);
+        assert_eq!(1, dbc.delete_post(&post1.board, post1.no).await.unwrap());
+    }
+
     #[test]
     fn test_post_update(){
         run_async(post_update());

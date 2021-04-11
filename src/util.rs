@@ -114,3 +114,7 @@ pub fn get_host_string(url_opt: &Option<reqwest::Url>) -> Option<String> {
     }
     None
 }
+
+pub fn strip_nullchars(s: &String) -> String {
+    s.replace("\u{00}", "\u{2400}")
+}
