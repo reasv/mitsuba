@@ -5,6 +5,8 @@ use std::collections::hash_map::DefaultHasher;
 
 use dashmap::DashSet;
 use log::debug;
+#[allow(unused_imports)]
+use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadInfo, ThreadJob, ThreadNo};
@@ -486,6 +488,7 @@ impl DBClient {
             )
             .fetch_one(&self.pool)
             .await?;
+            counter!("post_writes", 1);
             self.post_hashes.insert(hash);
             // we will only return new or updated posts.
             posts.push(post);
