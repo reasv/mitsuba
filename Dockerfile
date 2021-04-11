@@ -7,8 +7,12 @@ WORKDIR /usr/src/mitsuba
 COPY Cargo.toml Cargo.lock ./
 RUN cargo build --release
 
+COPY static ./static
+COPY migrations ./migrations
+COPY sqlx-data.json ./sqlx-data.json
 COPY src ./src
 
+ENV SQLX_OFFLINE="true"
 RUN cargo install --target x86_64-unknown-linux-musl --path .
 
 FROM scratch

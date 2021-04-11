@@ -1,0 +1,24 @@
+version: "3.3"
+
+services:
+  mitsuba:
+    image: .
+    container_name: "mitsuba"
+    restart: always
+    network_mode: bridge
+    command: "start"
+    volumes:
+      - ./data:/data
+    ports:
+      - "8085:8080"
+      - "9025:9000"
+    environment:
+      - "DATA_ROOT=/data"
+      - "RUST_LOG=mitsuba=warn"
+      - "DATABASE_URL=postgres://mitsuba:postgres1@db/mitsuba7"
+  db:
+    image: postgres:13.2
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres1
+      POSTGRES_USER: mitsuba
