@@ -1,6 +1,6 @@
 FROM rust:1.51.0-slim-buster AS build
 WORKDIR /usr/src
-RUN apt update && apt install build-essential g++ libssl-dev pkg-config -y
+RUN apt update && apt install build-essential g++ libssl-dev pkg-config musl-tools -y
 RUN rustup target add x86_64-unknown-linux-musl
 RUN USER=root cargo new mitsuba
 WORKDIR /usr/src/mitsuba
