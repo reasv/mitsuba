@@ -14,11 +14,8 @@ COPY src ./src
 
 ENV SQLX_OFFLINE="true"
 RUN cargo install --target x86_64-unknown-linux-musl --path .
-USER 1000
-RUN mkdir /tmp/data
 
-FROM scratch
+FROM alpine:3.13.4
 COPY --from=build /usr/local/cargo/bin/mitsuba .
-COPY --from=build /tmp/data /data
 USER 1000
-CMD ["./mitsuba"]
+CMD ["./mitsuba start"]
