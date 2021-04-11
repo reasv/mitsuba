@@ -144,6 +144,7 @@ pub async fn web_main() -> std::io::Result<()> {
     let image_folder = format!("{}/images", data_folder_str);
     let port = std::env::var("WEB_PORT").unwrap_or("8080".to_string());
     let ip = std::env::var("WEB_IP").unwrap_or("0.0.0.0".to_string());
+    info!("Web adress: {}:{}", ip, port);
     create_dir_all(std::path::Path::new(&image_folder)).await.ok();
     let dbc = DBClient::new().await;
     HttpServer::new(move || {

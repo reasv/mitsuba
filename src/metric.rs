@@ -1,12 +1,12 @@
 use metrics::{register_histogram, register_counter, register_gauge, gauge, Unit};
 use metrics_exporter_prometheus::{PrometheusBuilder, Matcher};
-
+use log::info;
 
 pub fn init_metrics(){
     let port = std::env::var("PROMETHEUS_PORT").unwrap_or("9000".to_string());
     let ip = std::env::var("PROMETHEUS_IP").unwrap_or("127.0.0.1".to_string());
     let address = format!("{}:{}", ip, port);
-    println!("{}", address);
+    info!("Prometheus metrics export: {}", address);
     let socket: std::net::SocketAddr = address.parse().unwrap();
     let builder = PrometheusBuilder::new();
     builder
