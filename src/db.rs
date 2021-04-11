@@ -9,7 +9,8 @@ use log::debug;
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadInfo, ThreadJob, ThreadNo};
 
-use crate::util::{strip_nullchars};
+#[allow(unused_imports)]
+use crate::util::strip_nullchars;
 
 pub async fn sqlx_connection() -> sqlx::Pool<sqlx::Postgres> {
     use sqlx::postgres::PgPoolOptions;
