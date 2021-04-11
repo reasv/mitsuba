@@ -17,5 +17,5 @@ RUN cargo install --target x86_64-unknown-linux-musl --path .
 
 FROM alpine:3.13.4
 COPY --from=build /usr/local/cargo/bin/mitsuba .
-USER 1000
+RUN mkdir /data
 CMD ["./mitsuba start"]

@@ -12,8 +12,8 @@ services:
       - "8085:8080"
       - "9025:9000"
     environment:
-      - "DATA_ROOT=/data"
-      - "RUST_LOG=mitsuba=warn"
+      - "DATA_ROOT=/home/mitsuba/data"
+      - "RUST_LOG=mitsuba=info"
       - "DATABASE_URL=postgres://mitsuba:postgres1@db/mitsuba"
   db:
     image: postgres:13.2
