@@ -47,6 +47,7 @@ dashmap = "4.0.2"
 weighted-rs = "0.1.2"
 metrics = "0.14.2"
 metrics-exporter-prometheus = "0.3.0"
+futures = "0.3.14"
 
 [profile.release]
 lto = true

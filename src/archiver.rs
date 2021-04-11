@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::collections::HashSet;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -9,7 +8,7 @@ use crate::db::DBClient;
 
 #[derive(Clone)]
 pub struct Archiver {
-    pub http_client: Arc<HttpClient>,
+    pub http_client: HttpClient,
     pub db_client: DBClient
 }
 
@@ -17,7 +16,7 @@ pub struct Archiver {
 impl Archiver {
     pub async fn new(client: HttpClient) -> Self {
         Self {
-            http_client: Arc::new(client),
+            http_client: client,
             db_client: DBClient::new().await
         }
     }
@@ -56,3 +55,6 @@ impl Archiver {
     }
     
 }
+
+impl std::panic::UnwindSafe for Archiver {}
+impl std::panic::RefUnwindSafe for Archiver {}

@@ -498,6 +498,10 @@ impl DBClient {
     }
 }
 
+impl std::panic::UnwindSafe for DBClient {}
+impl std::panic::RefUnwindSafe for DBClient {}
+
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {

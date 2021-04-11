@@ -25,12 +25,13 @@ async fn write_bytes_to_file(filename: &Path, file_bytes: bytes::Bytes) -> anyho
     Ok(File::create(filename).await?.write_all(&file_bytes).await?)
 }
 
+#[derive(Clone)]
 pub struct HttpClient {
-    limiter: RateLimiter<String, DashMapStateStore<String>, QuantaClock>,
-    jitter: Jitter,
+    limiter: Arc<RateLimiter<String, DashMapStateStore<String>, QuantaClock>>,
+    jitter: Arc<Jitter>,
     max_time: u64,
     rclient: reqwest::Client,
-    oclient: ObjectStorage,
+    oclient: Arc<ObjectStorage>,
 }
 
 impl Default for HttpClient {
@@ -57,11 +58,11 @@ impl HttpClient {
         .build().unwrap();
 
         HttpClient {
-            limiter: RateLimiter::dashmap(Quota::per_minute(quota).allow_burst(burst)),
-            jitter: Jitter::new(Duration::from_millis(jitter_min), Duration::from_millis(jitter_interval)),
+            limiter:  Arc::new(RateLimiter::dashmap(Quota::per_minute(quota).allow_burst(burst))),
+            jitter:  Arc::new(Jitter::new(Duration::from_millis(jitter_min), Duration::from_millis(jitter_interval))),
             max_time,
             rclient,
-            oclient: ObjectStorage::new(),
+            oclient:  Arc::new(ObjectStorage::new()),
         }
     }
 
@@ -79,7 +80,7 @@ impl HttpClient {
     }
 
     async fn fetch_url_bytes(&self, url: &str, attempt: u64, rlimit_key: &String) -> Result<bytes::Bytes, backoff::Error<reqwest::Error>> {
-        self.limiter.until_key_ready_with_jitter(rlimit_key, self.jitter).await; // wait for rate limiter
+        self.limiter.until_key_ready_with_jitter(rlimit_key, *self.jitter).await; // wait for rate limiter
         increment_gauge!("http_requests_running", 1.0);
         let s = Instant::now();
         let resp = self.rclient.get(url).send().await.map_err(backoff::Error::Transient)?;
@@ -189,3 +190,6 @@ impl HttpClient {
         }
     }
 }
+
+impl std::panic::UnwindSafe for HttpClient {}
+impl std::panic::RefUnwindSafe for HttpClient {}

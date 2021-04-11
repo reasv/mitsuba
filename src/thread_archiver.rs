@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
+use futures::future::FutureExt;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -59,17 +60,16 @@ impl Archiver {
             }
         }
     }
-    pub fn dispatch_archive_thread(&self, tx: tokio::sync::mpsc::Sender<i64>, job: ThreadJob) -> tokio::task::JoinHandle<Result<(), ThreadJob>>{
+    pub fn dispatch_archive_thread(&self, tx: tokio::sync::mpsc::Sender<i64>, job: ThreadJob) -> tokio::task::JoinHandle<()>{
         let c = self.clone();
         tokio::task::spawn(async move {
             increment_gauge!("thread_jobs_running", 1.0);
             let s = Instant::now();
             let job_id = job.id.clone();
-            let res = c.archive_thread(job).await;
+            std::panic::AssertUnwindSafe(c.archive_thread(job)).catch_unwind().await.ok();
             histogram!("thread_job_duration", s.elapsed().as_millis() as f64);
             decrement_gauge!("thread_jobs_running", 1.0);
             tx.send(job_id).await.ok();
-            res
         })
     }
     pub async fn archive_thread(&self, job: ThreadJob) -> Result<(), ThreadJob> {

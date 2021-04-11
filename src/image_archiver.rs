@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 use std::collections::HashSet;
 use std::collections::HashMap;
+use futures::future::FutureExt;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -58,7 +59,7 @@ impl Archiver {
             async move {
                 increment_gauge!("file_jobs_running", 1.0);
                 let s = Instant::now();
-                c.archive_image(&job.clone(), need_full_image).await.ok();
+                std::panic::AssertUnwindSafe(c.archive_image(&job.clone(), need_full_image)).catch_unwind().await.ok();
                 histogram!("file_job_duration", s.elapsed().as_millis() as f64);
                 decrement_gauge!("file_jobs_running", 1.0);
                 tx.send(job.id).await.ok();
