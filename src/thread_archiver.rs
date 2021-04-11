@@ -64,10 +64,11 @@ impl Archiver {
         tokio::task::spawn(async move {
             increment_gauge!("thread_jobs_running", 1.0);
             let s = Instant::now();
+            let job_id = job.id.clone();
             let res = c.archive_thread(job).await;
             histogram!("thread_job_duration", s.elapsed().as_millis() as f64);
             decrement_gauge!("thread_jobs_running", 1.0);
-            tx.send(job.id).await.ok();
+            tx.send(job_id).await.ok();
             res
         })
     }
