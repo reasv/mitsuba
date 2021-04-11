@@ -566,6 +566,28 @@ mod tests {
         assert_eq!(77, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().images);
         assert_eq!(1, dbc.delete_post(&post1.board, post1.no).await.unwrap());
     }
+    #[test]
+    fn post_history(){
+        run_async(post_update_com());
+    }
+    async fn post_update_com() {
+        let dbc = DBClient::new().await;
+        let mut post1 = Post::default();
+        post1.board = "test".to_string();
+        post1.no = 10;
+        post1.com = "Comment2".to_string();
+        assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
+        post1.images = 77;
+        assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
+        assert_eq!(77, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().images);
+        post1.com = "Comment Changed".to_string();
+        assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
+        post1.com = "Comment Changed Again".to_string();
+        assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
+    
+        assert_eq!(post1.com, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().com);
+        assert_eq!(1, dbc.delete_post(&post1.board, post1.no).await.unwrap());
+    }
 
     #[test]
     fn test_post_update(){
