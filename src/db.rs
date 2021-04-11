@@ -337,7 +337,7 @@ impl DBClient {
     pub async fn get_files_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<String>> {
         struct Sha256Field {
             file_sha256: Option<String>
-        };
+        }
         let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
             "
             SELECT file_sha256 FROM posts WHERE board = $1 and file_sha256 != ''
