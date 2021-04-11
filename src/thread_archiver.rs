@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use futures::future::FutureExt;
+use std::panic::AssertUnwindSafe;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -66,7 +67,7 @@ impl Archiver {
             increment_gauge!("thread_jobs_running", 1.0);
             let s = Instant::now();
             let job_id = job.id.clone();
-            std::panic::AssertUnwindSafe(c.archive_thread(job)).catch_unwind().await.ok();
+            AssertUnwindSafe(c.archive_thread(job)).catch_unwind().await.ok();
             histogram!("thread_job_duration", s.elapsed().as_millis() as f64);
             decrement_gauge!("thread_jobs_running", 1.0);
             tx.send(job_id).await.ok();
@@ -106,7 +107,7 @@ impl Archiver {
         let c = self.clone();
         tokio::task::spawn(async move {
             loop {
-                c.thread_cycle().await.ok();
+                AssertUnwindSafe(c.thread_cycle()).catch_unwind().await.ok();
             }
         })
     }

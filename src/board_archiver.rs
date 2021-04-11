@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
-
+use futures::future::FutureExt;
+use std::panic::AssertUnwindSafe;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 #[allow(unused_imports)]
@@ -48,7 +49,10 @@ impl Archiver {
         tokio::task::spawn(async move {
             loop {
                 let s = Instant::now();
-                let add_opt = c.board_cycle().await.ok();
+                let add_opt = AssertUnwindSafe(c.board_cycle())
+                .catch_unwind().await
+                .ok().and_then(|res| res.ok());
+
                 histogram!("boards_scan_duration", s.elapsed().as_millis() as f64);
                 if let Some(added_jobs) = add_opt {
                     if added_jobs == 0 { // No new changes

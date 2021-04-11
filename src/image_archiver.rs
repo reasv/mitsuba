@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 use std::collections::HashSet;
 use std::collections::HashMap;
 use futures::future::FutureExt;
+use std::panic::AssertUnwindSafe;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -59,7 +60,7 @@ impl Archiver {
             async move {
                 increment_gauge!("file_jobs_running", 1.0);
                 let s = Instant::now();
-                std::panic::AssertUnwindSafe(c.archive_image(&job.clone(), need_full_image)).catch_unwind().await.ok();
+                AssertUnwindSafe(c.archive_image(&job.clone(), need_full_image)).catch_unwind().await.ok();
                 histogram!("file_job_duration", s.elapsed().as_millis() as f64);
                 decrement_gauge!("file_jobs_running", 1.0);
                 tx.send(job.id).await.ok();
@@ -95,7 +96,7 @@ impl Archiver {
         let c = self.clone();
         tokio::task::spawn(async move {
             loop {
-                c.image_cycle().await.ok();
+                AssertUnwindSafe(c.image_cycle()).catch_unwind().await.ok();
             }
         })
     }
