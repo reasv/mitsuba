@@ -3,6 +3,11 @@ use metrics_exporter_prometheus::{PrometheusBuilder, Matcher};
 
 
 pub fn init_metrics(){
+    let port = std::env::var("PROMETHEUS_PORT").unwrap_or("9000".to_string());
+    let ip = std::env::var("PROMETHEUS_IP").unwrap_or("127.0.0.1".to_string());
+    let address = format!("{}:{}", ip, port);
+    println!("{}", address);
+    let socket: std::net::SocketAddr = address.parse().unwrap();
     let builder = PrometheusBuilder::new();
     builder
     .set_buckets_for_metric(Matcher::Prefix("http_size".to_string()), 
@@ -25,6 +30,7 @@ pub fn init_metrics(){
     &[100f64, 500f64, 800f64, 1000f64, 1500f64, 2000f64, 3000f64, 5000f64, 
     10000f64, 15000f64, 30000f64, 45000f64, 60000f64, 120000f64, 180000f64, 240000f64, 
     600000f64, 1200000f64])
+    .listen_address(socket)
     .install().expect("Failed to install Prometheus recorder");
 
     register_metrics();
