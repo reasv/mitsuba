@@ -26,10 +26,6 @@ pub fn init_metrics(){
     1750f64, 2000f64, 2500f64, 3000f64, 4000f64, 5000f64, 
     10000f64, 15000f64, 30000f64, 45000f64, 60000f64, 120000f64, 180000f64, 240000f64, 
     600000f64, 1200000f64])
-    .set_buckets_for_metric(Matcher::Suffix("batch_duration".to_string()), 
-    &[100f64, 500f64, 800f64, 1000f64, 1500f64, 2000f64, 3000f64, 5000f64, 
-    10000f64, 15000f64, 30000f64, 45000f64, 60000f64, 120000f64, 180000f64, 240000f64, 
-    600000f64, 1200000f64])
     .listen_address(socket)
     .install().expect("Failed to install Prometheus recorder");
 
@@ -40,9 +36,7 @@ pub fn init_metrics(){
 fn register_metrics() {
     register_histogram!("boards_scan_duration", Unit::Milliseconds, "Time to completion for a scan of all boards");
     register_histogram!("thread_job_duration", Unit::Milliseconds, "Time to completion for thread jobs");
-    register_histogram!("thread_batch_duration", Unit::Milliseconds, "Time to completion for a batch of thread jobs");
     register_histogram!("file_job_duration", Unit::Milliseconds, "Time to completion for file jobs");
-    register_histogram!("file_batch_duration", Unit::Milliseconds, "Time to completion for a batch of file jobs");
     register_histogram!("http_request_duration", Unit::Milliseconds, "Time to completion for each http request");
     register_histogram!("http_size_file", Unit::Bytes, "File sizes");
     register_histogram!("http_size_thumbnail", Unit::Bytes, "Thumbnail sizes");

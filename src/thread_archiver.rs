@@ -35,7 +35,6 @@ impl Archiver {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
         let mut running_jobs = HashMap::new();
         loop {
-            let s = Instant::now();
             let mut jobs = self.db_client.get_thread_jobs(250).await
                 .map_err(|e|{error!("Failed to get new thread jobs from database: {}", e); e})?;
             
@@ -56,7 +55,6 @@ impl Archiver {
                 }
                 debug!("One thread job has completed")
             }
-            histogram!("thread_batch_duration", s.elapsed().as_millis() as f64);
         }
     }
     pub fn dispatch_archive_thread(&self, tx: tokio::sync::mpsc::Sender<i64>, job: ThreadJob) -> tokio::task::JoinHandle<Result<(), ThreadJob>>{

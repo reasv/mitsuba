@@ -27,7 +27,6 @@ impl Archiver {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
         let mut running_jobs = HashMap::new();
         loop {
-            let s = Instant::now();
             let mut jobs = self.db_client.get_image_jobs(250).await
                 .map_err(|e|{error!("Failed to get new image jobs from database: {}", e);})?;
             
@@ -49,7 +48,6 @@ impl Archiver {
                 }
                 debug!("One image job has completed")
             }
-            histogram!("file_batch_duration", s.elapsed().as_millis() as f64);
         }
     }
     pub fn dispatch_archive_image(&self, tx: tokio::sync::mpsc::Sender<i64>, need_full_image: bool, job: ImageJob) -> tokio::task::JoinHandle<()> {
