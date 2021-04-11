@@ -126,23 +126,6 @@ impl HttpClient {
         .map_err(|e| {error!("Failed to deserialize {} Error: {}", url, e); false})?;
         Ok(obj)
     }
-
-    pub async fn _download_file(&self, url: &String, filename: &Path) -> bool {
-        let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
-            Ok(b) => b,
-            Err(msg) => {
-                error!("Failed to download {} Error: {}", url, msg);
-                return false
-            }
-        };
-        match write_bytes_to_file(filename, bytes).await {
-            Ok(()) => return true,
-            Err(msg) => {
-                error!("Could not write to file {}: {}", filename.to_str().unwrap_or_default(), msg);
-                return false
-            }
-        }
-    }
     async fn save_file(&self, bytes: bytes::Bytes, ext: &String, is_thumb: bool) -> Option<String> {
         error!("Saving file");
         let hash = hash_file(&bytes);
