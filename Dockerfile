@@ -14,6 +14,7 @@ COPY src ./src
 
 ENV SQLX_OFFLINE="true"
 RUN cargo install --target x86_64-unknown-linux-musl --path .
+USER 1000
 RUN mkdir /data
 
 FROM scratch
