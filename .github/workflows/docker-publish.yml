@@ -9,21 +9,13 @@ on:
     # Publish `v1.2.3` tags as releases.
     tags:
       - v*
-
-  # Run tests for any PRs.
-  pull_request:
-
 env:
-  # TODO: Change variable to your image's name.
-  IMAGE_NAME: image
+  IMAGE_NAME: mitsuba
 
 jobs:
   # Push image to GitHub Packages.
   # See also https://docs.docker.com/docker-hub/builds/
   push:
-    # Ensure test job passes before pushing image.
-    needs: test
-
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
 
@@ -34,7 +26,7 @@ jobs:
         run: docker build . --file Dockerfile --tag $IMAGE_NAME
 
       - name: Log into registry
-        run: echo "${{ secrets.PUBLISH_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+        run: echo "${{ secrets.PKG_PUBLISH_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
 
       - name: Push image
         run: |
