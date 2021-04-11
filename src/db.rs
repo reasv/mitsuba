@@ -206,6 +206,20 @@ impl DBClient {
             tinfo.page
         ).fetch_one(&self.pool)
         .await?;
+
+        // Delete earlier updates to thread
+        let res: u64 = sqlx::query!(
+            "DELETE FROM thread_backlog WHERE board = $1 AND no = $2 AND last_modified < $3",
+            tinfo.board,
+            tinfo.no,
+            tinfo.last_modified
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        if res > 0 {
+            debug!("Deleting {} obsolete thread jobs", res);
+        }
         Ok(Some(job))
     }
     pub async fn image_tim_to_sha256(&self, board: &String, image_tim: i64, thumb: bool) -> anyhow::Result<Option<String>> {
