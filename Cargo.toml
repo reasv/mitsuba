@@ -16,7 +16,7 @@ exclude = [
 [dependencies]
 log = "0.4.14"
 env_logger = "0.8.3"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.6.4", features = ["full"] }
 dotenv = "0.15.0"
@@ -32,7 +32,7 @@ instant = "0.1.9"
 regex = "1"
 base64 = "0.13.0"
 base32 = "0.4.0"
-actix-web = "4.0.0-BETA.4"
+actix-web = {version = "4.0.0-BETA.4", features = ["rustls"]}
 actix-files = "0.6.0-beta.3"
 clap = "3.0.0-beta.2"
 handlebars = { version = "3.0.0", features = ["dir_source"] }
@@ -42,7 +42,7 @@ sqlx = { version = "0.5", features = [ "postgres", "macros", "migrate", "runtime
 rust-embed = "5.9.0"
 mime_guess = "2.0.3"
 sha2 = "0.9.3"
-rust-s3 = "=0.27.0-beta11"
+rust-s3 = { version = "=0.27.0-beta11", features = ["tokio-rustls-tls"]}
 dashmap = "4.0.2"
 weighted-rs = "0.1.2"
 metrics = "0.14.2"
