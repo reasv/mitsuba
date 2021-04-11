@@ -2,6 +2,10 @@ use std::collections::HashSet;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
+mod board_archiver;
+mod image_archiver;
+mod thread_archiver;
+
 use crate::http::HttpClient;
 use crate::models::{Board, BoardsList};
 use crate::db::DBClient;

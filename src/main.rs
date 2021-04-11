@@ -6,20 +6,17 @@ use std::env;
 use log::{info, warn, error, debug};
 use clap::{Clap};
 
-mod board_archiver;
 #[allow(dead_code)]
 mod db;
 mod models;
 mod http;
-mod api;
-mod frontend;
 mod util;
-mod thread_archiver;
-mod image_archiver;
-mod archiver;
 mod object_storage;
 mod metric;
-use api::web_main;
+mod archiver;
+mod web;
+
+use web::web_main;
 use archiver::{Archiver};
 use http::HttpClient;
 
