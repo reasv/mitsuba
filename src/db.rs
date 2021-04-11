@@ -411,7 +411,10 @@ impl DBClient {
                 SET
                 closed = $5,
                 sticky = $4,
+                com = $15,
                 filedeleted = $25,
+                spoiler = $26,
+                custom_spoiler = $27,
                 replies = $28,
                 images = $29,
                 bumplimit = $30,
