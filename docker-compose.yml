@@ -5,7 +5,6 @@ services:
     build: .
     container_name: "mitsuba"
     restart: always
-    network_mode: bridge
     command: "./mitsuba start"
     volumes:
       - ./data:/data
@@ -18,8 +17,8 @@ services:
       - "DATABASE_URL=postgres://mitsuba:postgres1@db/mitsuba"
   db:
     image: postgres:13.2
+    container_name: "mitsuba-postgres"
     restart: always
-    network_mode: bridge
     environment:
       POSTGRES_PASSWORD: postgres1
       POSTGRES_USER: mitsuba
