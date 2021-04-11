@@ -15,7 +15,7 @@ services:
     environment:
       - "DATA_ROOT=/data"
       - "RUST_LOG=mitsuba=warn"
-      - "DATABASE_URL=postgres://mitsuba:postgres1@db/mitsuba7"
+      - "DATABASE_URL=postgres://mitsuba:postgres1@db/mitsuba"
   db:
     image: postgres:13.2
     restart: always
