@@ -73,15 +73,15 @@ impl Archiver {
             tx.send(job_id).await.ok();
         })
     }
-    pub async fn archive_thread(&self, job: ThreadJob) -> Result<(), ThreadJob> {
+    pub async fn archive_thread(&self, job: ThreadJob) -> Result<(), ()> {
         let thread_opt = self.get_thread(&job.board, &job.no.to_string()).await
-        .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no); job.clone()})?;
+        .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no);})?;
         counter!("threads_fetched", 1);
 
         if thread_opt.is_none() { // Thread was 404
             warn!("Thread /{}/{} 404, deleting from backlog.", job.board, job.no);
             self.db_client.delete_thread_job(job.id).await
-            .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e); job})?;
+            .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e);})?;
             counter!("thread_404", 1);
             return Ok(())
         }
@@ -90,17 +90,17 @@ impl Archiver {
         let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = job.board.clone(); post.last_modified = job.last_modified; post}).collect();
         
         let inserted_posts = self.db_client.insert_posts(&posts).await
-        .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", job.board, job.no, e); job.clone()})?;
+        .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", job.board, job.no, e);})?;
 
         let image_jobs = inserted_posts.iter().filter_map(|post| self.get_post_image_info(&job.board, job.page, post))
         .collect::<Vec<ImageInfo>>();
 
         for image_info in image_jobs {
             self.db_client.insert_image_job(&image_info).await
-            .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", job.board, image_info.no, e); job.clone()})?;
+            .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", job.board, image_info.no, e);})?;
         }
         self.db_client.delete_thread_job(job.id).await
-        .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e); job})?;
+        .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e);})?;
         Ok(())
     }
     pub fn run_thread_cycle(&self) -> tokio::task::JoinHandle<()> {
