@@ -153,12 +153,17 @@ impl HttpClient {
         }
         None
     }
-    pub async fn download_file_checksum(&self, url: &String, ext: &String, is_thumb: bool) -> Option<String> {
+    pub async fn download_file_checksum(&self, url: &String, ext: &String, is_thumb: bool) -> Result<String, ()> {
         let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
             Ok(b) => b,
-            Err(msg) => {
-                error!("Failed to download {} Error: {}", url, msg);
-                return None
+            Err(err) => {
+                error!("Failed to download {} Error: {}", url, err);
+                if let Some(status) = err.status() {
+                    if status == StatusCode::NOT_FOUND {
+                        return Ok("".to_string());
+                    }
+                }
+                return Err(())
             }
         };
         if is_thumb {
@@ -167,9 +172,9 @@ impl HttpClient {
             histogram!("http_size_file", bytes.len() as f64);
         }
         if self.oclient.enabled {
-            self.upload_file(bytes, ext, is_thumb).await
+            self.upload_file(bytes, ext, is_thumb).await.ok_or(())
         } else {
-            self.save_file(bytes, ext, is_thumb).await
+            self.save_file(bytes, ext, is_thumb).await.ok_or(())
         }
     }
 }

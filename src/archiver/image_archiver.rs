@@ -72,8 +72,7 @@ impl Archiver {
         let mut file_sha256 = job.file_sha256.clone();
 
         if thumbnail_sha256.is_empty() {
-            thumbnail_sha256 = self.http_client.download_file_checksum(&job.thumbnail_url, &".jpg".to_string(), true).await
-            .unwrap_or(thumbnail_sha256);
+            thumbnail_sha256 = self.http_client.download_file_checksum(&job.thumbnail_url, &".jpg".to_string(), true).await?;
             counter!("thumbnails_fetched", 1);
             info!("Processed thumbnail for /{}/{}", job.board, job.no);
             self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
@@ -81,8 +80,7 @@ impl Archiver {
         }
 
         if file_sha256.is_empty() && need_full_image {
-            file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await
-            .unwrap_or(file_sha256);
+            file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
             counter!("files_fetched", 1);
             info!("Processed full image for /{}/{}", job.board, job.no);
             self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
