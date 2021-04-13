@@ -79,7 +79,7 @@ impl Archiver {
         counter!("threads_fetched", 1);
 
         if thread_opt.is_none() { // Thread was 404
-            warn!("Thread /{}/{} 404, deleting from backlog.", job.board, job.no);
+            warn!("Thread /{}/{} 404, deleting from backlog ({}).", job.board, job.no, job.id);
             self.db_client.delete_thread_job(job.id).await
             .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e);})?;
             counter!("thread_404", 1);
