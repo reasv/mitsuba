@@ -5,6 +5,8 @@ appenders:
   # An appender named "stdout" that writes to stdout
   stdout:
     kind: console
+    encoder:
+      pattern: "[{d(%Y-%m-%d %H:%M:%S %Z)(utc)} {h({l})}  {M}] {m}{n}"
 
   # An appender named "filelog" that writes to a rolling file
   filelog:
@@ -13,6 +15,8 @@ appenders:
     # Specifies if the appender should append to or truncate the log file if it
     # already exists. Defaults to `true`.
     append: true
+    encoder:
+      pattern: "[{d(%Y-%m-%d %H:%M:%S %Z)(utc)} {h({l})}  {M}] {m}{n}"
     policy:
       # Identifies which policy is to be used. If no kind is specified, it will
       # default to "compound".
@@ -38,4 +42,5 @@ loggers:
     level: warn
     appenders:
       - filelog
+      - stdout
     additive: false
