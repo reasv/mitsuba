@@ -55,9 +55,10 @@ impl Archiver {
                 replies,
                 page: 0,
             };
-            self.db_client.insert_thread_job(&thread_info).await
-            .map_err(|e| {error!("Error inserting thread job into database: {}", e); false})?;
-            counter!("thread_archived_jobs_scheduled", 1);
+            if let Some(job) = self.db_client.insert_thread_job(&thread_info).await
+            .map_err(|e| {error!("Error inserting thread job into database: {}", e); false})? {
+                counter!("thread_archived_jobs_scheduled", 1);
+            }
         }
         Ok(())
     }
