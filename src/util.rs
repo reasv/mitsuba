@@ -45,6 +45,9 @@ pub fn shorten_string(maxlen: usize, s: String) -> String {
 pub fn get_board_page_api_url(board: &String) -> String {
     format!("https://a.4cdn.org/{}/threads.json", board)
 }
+pub fn get_board_archive_api_url(board: &String) -> String {
+    format!("https://a.4cdn.org/{}/archive.json", board)
+}
 pub fn get_thread_api_url(board: &String, tid: &String) -> String {
     format!("https://a.4cdn.org/{}/thread/{}.json", board, tid)
 }

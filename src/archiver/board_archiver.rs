@@ -6,8 +6,8 @@ use log::{info, warn, error, debug};
 #[allow(unused_imports)]
 use metrics::{gauge, counter, histogram};
 
-use crate::models::{ThreadsPage};
-use crate::util::{get_board_page_api_url};
+use crate::models::{ThreadsPage, ThreadInfo};
+use crate::util::{get_board_page_api_url, get_board_archive_api_url};
 use crate::archiver::Archiver;
 
 impl Archiver {
@@ -31,6 +31,36 @@ impl Archiver {
         }
         Ok(added_jobs)
     }
+    pub async fn get_board_archive(&self, board: &String) -> Result<Vec<i64>, bool> {
+        self.http_client.fetch_json::<Vec<i64>>(&get_board_archive_api_url(board)).await
+    }
+    pub async fn push_archived_threads(&self, board: &String) -> anyhow::Result<(), bool> {
+        let tids = self.get_board_archive(board).await?;
+        for tid in tids {
+            let mut last_modified = 0;
+            let mut replies = 0;
+            if let Some(op_post) = self.db_client.get_post(board, tid).await // We have this thread somewhere
+            .map_err(|e| {error!("Error getting post from database: {}", e); false})? {
+                if op_post.archived == 1 { // We already have the archive version of this, skip
+                    continue;
+                }
+                last_modified = op_post.last_modified;
+                replies = op_post.replies;
+            }
+            info!("Scheduling archived thread /{}/{}", board, tid);
+            let thread_info = ThreadInfo {
+                board: board.clone(),
+                no: tid,
+                last_modified,
+                replies,
+                page: 0,
+            };
+            self.db_client.insert_thread_job(&thread_info).await
+            .map_err(|e| {error!("Error inserting thread job into database: {}", e); false})?;
+            counter!("thread_archived_jobs_scheduled", 1);
+        }
+        Ok(())
+    }
     pub async fn board_cycle(&self) -> anyhow::Result<u64, bool> {
 
         let boards = self.db_client.get_all_boards().await
@@ -41,6 +71,8 @@ impl Archiver {
                 continue;
             }
             added_jobs += self.push_new_threads(&board.name).await?;
+            self.push_archived_threads(&board.name).await?;
+
         }
         Ok(added_jobs)
     }
