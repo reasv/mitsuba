@@ -288,6 +288,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
 
 [[package]]
+name = "arc-swap"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dabe5a181f83789739c194cbe5a897dde195078fac08568d09221fd6137a7ba8"
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -809,6 +815,17 @@ checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
 dependencies = [
  "cfg-if 1.0.0",
  "num_cpus",
+]
+
+[[package]]
+name = "derivative"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1442,6 +1459,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if 1.0.0",
+ "serde",
+]
+
+[[package]]
+name = "log-mdc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a94d21414c1f4a51209ad204c1776a3d0765002c76c6abcb602a6f09f1e881c7"
+
+[[package]]
+name = "log4rs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1572a880d1115ff867396eee7ae2bc924554225e67a0d3c85c745b3e60ca211"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "chrono",
+ "derivative",
+ "fnv",
+ "humantime",
+ "libc",
+ "log",
+ "log-mdc",
+ "parking_lot",
+ "regex",
+ "serde",
+ "serde-value",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "thread-id",
+ "typemap",
+ "winapi",
 ]
 
 [[package]]
@@ -1651,6 +1702,7 @@ dependencies = [
  "instant",
  "lazy_static",
  "log",
+ "log4rs",
  "metrics",
  "metrics-exporter-prometheus",
  "mime_guess",
@@ -2342,6 +2394,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-value"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
+dependencies = [
+ "ordered-float",
+ "serde",
+]
+
+[[package]]
 name = "serde-xml-rs"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2735,6 +2797,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "thread-id"
+version = "3.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7fbf4c9d56b320106cd64fd024dadfa0be7cb4706725fc44a7d7ce952d820c1"
+dependencies = [
+ "libc",
+ "redox_syscall 0.1.57",
+ "winapi",
+]
+
+[[package]]
 name = "time"
 version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2903,10 +2976,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "traitobject"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efd1f82c56340fdf16f2a953d7bda4f8fdffba13d93b00844c25572110b26079"
+
+[[package]]
 name = "try-lock"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
+
+[[package]]
+name = "typemap"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "653be63c80a3296da5551e1bfd2cca35227e13cdd08c6668903ae2f4f77aa1f6"
+dependencies = [
+ "unsafe-any",
+]
 
 [[package]]
 name = "typenum"
@@ -2979,6 +3067,15 @@ name = "unicode_categories"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39ec24b3121d976906ece63c9daad25b85969647682eee313cb5779fdd69e14e"
+
+[[package]]
+name = "unsafe-any"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f30360d7979f5e9c6e6cea48af192ea8fab4afb3cf72597154b8f08935bc9c7f"
+dependencies = [
+ "traitobject",
+]
 
 [[package]]
 name = "untrusted"

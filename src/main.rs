@@ -103,8 +103,11 @@ fn main() {
 
 async fn real_main() {
     dotenv::dotenv().ok();
-    env_logger::init();
-    
+    if let Err(err) = log4rs::init_file("log4rs.yml", Default::default()) {
+        println!("Did not initialize log4rs ({:?}), fallback to env_logger.\nIf you want to use log4rs, make sure to create a valid log4rs.yml file.", err);
+        env_logger::init();
+    }
+
     let opts: Opts = Opts::parse();
     let arc_opt = match opts.subcmd.clone() {
         SubCommand::Start(a) => a,
