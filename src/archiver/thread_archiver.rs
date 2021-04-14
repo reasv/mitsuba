@@ -87,17 +87,18 @@ impl Archiver {
         }
         let thread = thread_opt.unwrap_or_default();
 
-        let posts: Vec<Post> = thread.posts.clone().into_iter().map(|mut post|{post.board = job.board.clone(); post.last_modified = job.last_modified; post}).collect();
+        let posts: Vec<Post> = thread.posts.clone().into_iter()
+        .map(|mut post|{post.board = job.board.clone(); post.last_modified = job.last_modified; post}).collect();
         
         let inserted_posts = self.db_client.insert_posts(&posts).await
         .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", job.board, job.no, e);})?;
 
-        let image_jobs = inserted_posts.iter().filter_map(|post| self.get_post_image_info(&job.board, job.page, post))
-        .collect::<Vec<ImageInfo>>();
-
-        for image_info in image_jobs {
-            self.db_client.insert_image_job(&image_info).await
-            .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", job.board, image_info.no, e);})?;
+        for post in inserted_posts {
+            if let Some(image_info) = self.get_post_image_info(&job.board, job.page, &post) {
+                self.db_client.insert_image_job(&image_info).await
+                .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", 
+                job.board, image_info.no, e);})?;
+            }
         }
         self.db_client.delete_thread_job(job.id).await
         .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e);})?;
