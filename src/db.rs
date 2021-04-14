@@ -366,6 +366,40 @@ impl DBClient {
         .await?;
         Ok(post)
     }
+    pub async fn set_post_deleted(&self, board: &String, no: i64, deleted_time: i64) -> anyhow::Result<Option<Post>> {
+        let post = sqlx::query_as!(Post,
+            "
+            UPDATE posts
+            SET 
+            deleted_on = $1
+            WHERE board = $2 AND no = $3
+            RETURNING *
+            ",
+            deleted_time,
+            board,
+            no
+        ).fetch_optional(&self.pool)
+        .await?;
+        Ok(post)
+    }
+    pub async fn set_missing_posts_deleted(&self, board: &String, thread_no: i64, current_posts: Vec<i64>, deleted_time: i64) -> anyhow::Result<Vec<Post>> {
+        // Given the current list of post ids in a thread, it sets all posts not in the list as deleted.
+        let post = sqlx::query_as!(Post,
+            "
+            UPDATE posts
+            SET 
+            deleted_on = $1
+            WHERE board = $2 AND resto = $3 AND no != ANY($4)
+            RETURNING *
+            ",
+            deleted_time,
+            board,
+            thread_no,
+            &current_posts
+        ).fetch_all(&self.pool)
+        .await?;
+        Ok(post)
+    }
     pub async fn get_files_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<String>> {
         struct Sha256Field {
             file_sha256: Option<String>
@@ -450,11 +484,12 @@ impl DBClient {
                     archived_on, -- 38
                     last_modified, -- 39
                     file_sha256, -- 40
-                    thumbnail_sha256 -- 41
+                    thumbnail_sha256, -- 41
+                    deleted_on -- 42
                 )
                 VALUES
                 ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
-                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
+                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42)
                 ON CONFLICT (board, no) DO 
                 UPDATE 
                 SET
@@ -471,7 +506,8 @@ impl DBClient {
                 unique_ips = CASE WHEN posts.unique_ips < $35 THEN $35 ELSE posts.unique_ips END,
                 archived = $37,
                 archived_on = $38,
-                last_modified = $39
+                last_modified = $39,
+                deleted_on = $42
 
                 WHERE posts.board = $1 AND posts.no = $2
                 RETURNING *;
@@ -516,7 +552,8 @@ impl DBClient {
                 entry.archived_on, //38
                 entry.last_modified, //39
                 entry.file_sha256, //40,
-                entry.thumbnail_sha256 //41
+                entry.thumbnail_sha256, //41
+                entry.deleted_on // 42
             )
             .fetch_one(&self.pool)
             .await?;

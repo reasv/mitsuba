@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use std::collections::HashMap;
 use futures::future::FutureExt;
 use std::panic::AssertUnwindSafe;
@@ -74,12 +74,18 @@ impl Archiver {
         })
     }
     pub async fn archive_thread(&self, job: ThreadJob) -> Result<(), ()> {
+        let timestamp: i64 = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
+        .map_err(|_| {error!("SystemTime before UNIX EPOCH!");})?.as_secs() as i64;
+
         let thread_opt = self.get_thread(&job.board, &job.no.to_string()).await
         .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no);})?;
         counter!("threads_fetched", 1);
 
         if thread_opt.is_none() { // Thread was 404
             warn!("Thread /{}/{} [{}] 404, deleting from backlog ({}).", job.board, job.no, job.last_modified, job.id);
+            self.db_client.set_post_deleted(&job.board, job.no, timestamp).await
+            .map_err(|e| {error!("Failed to set thread /{}/{} as deleted: {}", job.board, job.no, e);})?;
+
             self.db_client.delete_thread_job(job.id).await
             .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e);})?;
             counter!("thread_404", 1);
@@ -89,6 +95,12 @@ impl Archiver {
 
         let posts: Vec<Post> = thread.posts.clone().into_iter()
         .map(|mut post|{post.board = job.board.clone(); post.last_modified = job.last_modified; post}).collect();
+
+        // Handle detecting posts that have been deleted
+        let post_ids: Vec<i64> = thread.posts.iter().map(|p| p.no).collect();
+        let deleted_posts = self.db_client.set_missing_posts_deleted(&job.board, job.no, post_ids, timestamp).await
+        .map_err(|e| {error!("Failed to set deleted posts for /{}/{} in database: {}", job.board, job.no, e);})?;
+        counter!("post_deleted", deleted_posts.len() as u64);
         
         let inserted_posts = self.db_client.insert_posts(&posts).await
         .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", job.board, job.no, e);})?;

@@ -81,7 +81,9 @@ pub struct Post {
     #[serde(default)]
     pub file_sha256: String,
     #[serde(default)]
-    pub thumbnail_sha256: String
+    pub thumbnail_sha256: String,
+    #[serde(default)]
+    pub deleted_on: i64
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PostUpdate {

@@ -213,6 +213,11 @@
           "ordinal": 41,
           "name": "thumbnail_sha256",
           "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -223,6 +228,7 @@
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -298,8 +304,8 @@
       ]
     }
   },
-  "2aaa2c43fa568b3ff288dea6fa8d6ab30c8e7cb833d9559933268ceae299a046": {
-    "query": "\n                INSERT INTO posts(\n                    board, -- 1\n                    no, -- 2\n                    resto, -- 3\n                    sticky, -- 4\n                    closed, -- 5\n                    now, -- 6\n                    time, -- 7\n                    name, -- 8\n                    trip, -- 9\n                    id, -- 10\n                    capcode, -- 11\n                    country, -- 12\n                    country_name, -- 13\n                    sub, -- 14\n                    com, -- 15\n                    tim, -- 16\n                    filename, -- 17\n                    ext, -- 18\n                    fsize, -- 19\n                    md5, -- 20\n                    w, -- 21\n                    h, -- 22\n                    tn_w, -- 23\n                    tn_h, -- 24\n                    filedeleted, -- 25\n                    spoiler, -- 26\n                    custom_spoiler, -- 27\n                    replies, -- 28\n                    images, -- 29\n                    bumplimit, -- 30\n                    imagelimit, -- 31\n                    tag, -- 32\n                    semantic_url, -- 33\n                    since4pass, -- 34\n                    unique_ips, -- 35\n                    m_img, -- 36\n                    archived, -- 37\n                    archived_on, -- 38\n                    last_modified, -- 39\n                    file_sha256, -- 40\n                    thumbnail_sha256 -- 41\n                )\n                VALUES\n                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, \n                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)\n                ON CONFLICT (board, no) DO \n                UPDATE \n                SET\n                closed = $5,\n                sticky = $4,\n                com = $15,\n                filedeleted = $25,\n                spoiler = $26,\n                custom_spoiler = $27,\n                replies = $28,\n                images = $29,\n                bumplimit = $30,\n                imagelimit = $31,\n                unique_ips = CASE WHEN posts.unique_ips < $35 THEN $35 ELSE posts.unique_ips END,\n                archived = $37,\n                archived_on = $38,\n                last_modified = $39\n\n                WHERE posts.board = $1 AND posts.no = $2\n                RETURNING *;\n                ",
+  "0dbb33774a2c483df392be8e77c48e2d3b596d27b6753005246989d28eb0ddd9": {
+    "query": "\n            UPDATE posts\n            SET \n            deleted_on = $1\n            WHERE board = $2 AND no = $3\n            RETURNING *\n            ",
     "describe": {
       "columns": [
         {
@@ -511,54 +517,297 @@
           "ordinal": 41,
           "name": "thumbnail_sha256",
           "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
         "Left": [
-          "Varchar",
-          "Int8",
-          "Int8",
-          "Int8",
           "Int8",
           "Text",
-          "Int8",
-          "Text",
-          "Text",
-          "Varchar",
-          "Text",
-          "Varchar",
-          "Text",
-          "Text",
-          "Text",
-          "Int8",
-          "Text",
-          "Text",
-          "Int8",
-          "Text",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Text",
-          "Text",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Int8",
-          "Text",
-          "Text"
+          "Int8"
         ]
       },
       "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "27b33c353a3dda60581fc82cf9c496abf010dda8cd617a28d33d5a37b0e29bd6": {
+    "query": "\n            UPDATE posts\n            SET \n            deleted_on = $1\n            WHERE board = $2 AND resto = $3 AND no != ANY($4)\n            RETURNING *\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "post_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "board",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "no",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "resto",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 4,
+          "name": "sticky",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 5,
+          "name": "closed",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "now",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "time",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 8,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "trip",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "id",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "capcode",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 12,
+          "name": "country",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 13,
+          "name": "country_name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 14,
+          "name": "sub",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 15,
+          "name": "com",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 16,
+          "name": "tim",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 17,
+          "name": "filename",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 18,
+          "name": "ext",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 19,
+          "name": "fsize",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 20,
+          "name": "md5",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 21,
+          "name": "w",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 22,
+          "name": "h",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 23,
+          "name": "tn_w",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 24,
+          "name": "tn_h",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 25,
+          "name": "filedeleted",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 26,
+          "name": "spoiler",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 27,
+          "name": "custom_spoiler",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 28,
+          "name": "replies",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 29,
+          "name": "images",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 30,
+          "name": "bumplimit",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 31,
+          "name": "imagelimit",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 32,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 33,
+          "name": "semantic_url",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 34,
+          "name": "since4pass",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 35,
+          "name": "unique_ips",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 36,
+          "name": "m_img",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 37,
+          "name": "archived",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 38,
+          "name": "archived_on",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 39,
+          "name": "last_modified",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 40,
+          "name": "file_sha256",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 41,
+          "name": "thumbnail_sha256",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text",
+          "Int8",
+          "Int8Array"
+        ]
+      },
+      "nullable": [
+        false,
         false,
         false,
         false,
@@ -776,6 +1025,319 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "98a761e0203bf2441225e74f3f247f68d03fce10c44ff160c877e02ccf548046": {
+    "query": "\n                INSERT INTO posts(\n                    board, -- 1\n                    no, -- 2\n                    resto, -- 3\n                    sticky, -- 4\n                    closed, -- 5\n                    now, -- 6\n                    time, -- 7\n                    name, -- 8\n                    trip, -- 9\n                    id, -- 10\n                    capcode, -- 11\n                    country, -- 12\n                    country_name, -- 13\n                    sub, -- 14\n                    com, -- 15\n                    tim, -- 16\n                    filename, -- 17\n                    ext, -- 18\n                    fsize, -- 19\n                    md5, -- 20\n                    w, -- 21\n                    h, -- 22\n                    tn_w, -- 23\n                    tn_h, -- 24\n                    filedeleted, -- 25\n                    spoiler, -- 26\n                    custom_spoiler, -- 27\n                    replies, -- 28\n                    images, -- 29\n                    bumplimit, -- 30\n                    imagelimit, -- 31\n                    tag, -- 32\n                    semantic_url, -- 33\n                    since4pass, -- 34\n                    unique_ips, -- 35\n                    m_img, -- 36\n                    archived, -- 37\n                    archived_on, -- 38\n                    last_modified, -- 39\n                    file_sha256, -- 40\n                    thumbnail_sha256, -- 41\n                    deleted_on -- 42\n                )\n                VALUES\n                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, \n                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42)\n                ON CONFLICT (board, no) DO \n                UPDATE \n                SET\n                closed = $5,\n                sticky = $4,\n                com = $15,\n                filedeleted = $25,\n                spoiler = $26,\n                custom_spoiler = $27,\n                replies = $28,\n                images = $29,\n                bumplimit = $30,\n                imagelimit = $31,\n                unique_ips = CASE WHEN posts.unique_ips < $35 THEN $35 ELSE posts.unique_ips END,\n                archived = $37,\n                archived_on = $38,\n                last_modified = $39,\n                deleted_on = $42\n\n                WHERE posts.board = $1 AND posts.no = $2\n                RETURNING *;\n                ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "post_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "board",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "no",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "resto",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 4,
+          "name": "sticky",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 5,
+          "name": "closed",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "now",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "time",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 8,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "trip",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "id",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "capcode",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 12,
+          "name": "country",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 13,
+          "name": "country_name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 14,
+          "name": "sub",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 15,
+          "name": "com",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 16,
+          "name": "tim",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 17,
+          "name": "filename",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 18,
+          "name": "ext",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 19,
+          "name": "fsize",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 20,
+          "name": "md5",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 21,
+          "name": "w",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 22,
+          "name": "h",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 23,
+          "name": "tn_w",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 24,
+          "name": "tn_h",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 25,
+          "name": "filedeleted",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 26,
+          "name": "spoiler",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 27,
+          "name": "custom_spoiler",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 28,
+          "name": "replies",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 29,
+          "name": "images",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 30,
+          "name": "bumplimit",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 31,
+          "name": "imagelimit",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 32,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 33,
+          "name": "semantic_url",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 34,
+          "name": "since4pass",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 35,
+          "name": "unique_ips",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 36,
+          "name": "m_img",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 37,
+          "name": "archived",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 38,
+          "name": "archived_on",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 39,
+          "name": "last_modified",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 40,
+          "name": "file_sha256",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 41,
+          "name": "thumbnail_sha256",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Text",
+          "Int8",
+          "Text",
+          "Text",
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Text",
+          "Text",
+          "Text",
+          "Int8",
+          "Text",
+          "Text",
+          "Int8",
+          "Text",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Text",
+          "Text",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Int8",
+          "Text",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "9bcad7852359332d2adedb9fb499598f09e4bae997f6a142328ac52e3c4cc6b3": {
@@ -1005,6 +1567,11 @@
           "ordinal": 41,
           "name": "thumbnail_sha256",
           "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -1014,6 +1581,7 @@
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -1272,6 +1840,11 @@
           "ordinal": 41,
           "name": "thumbnail_sha256",
           "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -1283,6 +1856,7 @@
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -1609,6 +2183,11 @@
           "ordinal": 41,
           "name": "thumbnail_sha256",
           "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -1618,6 +2197,7 @@
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -1938,6 +2518,11 @@
           "ordinal": 41,
           "name": "thumbnail_sha256",
           "type_info": "Text"
+        },
+        {
+          "ordinal": 42,
+          "name": "deleted_on",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -1947,6 +2532,7 @@
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false,

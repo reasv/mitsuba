@@ -41,6 +41,7 @@ CREATE TABLE posts (
   last_modified BIGINT NOT NULL,
   file_sha256 TEXT NOT NULL,
   thumbnail_sha256 TEXT NOT NULL,
+  deleted_on BIGINT NOT NULL,
   UNIQUE(board, no)
 );
 CREATE INDEX resto_index ON posts (resto);
@@ -49,3 +50,7 @@ CREATE INDEX md5_index ON posts (md5);
 CREATE INDEX file_sha256_index ON posts (file_sha256);
 CREATE INDEX thumb_sha256_index ON posts (thumbnail_sha256);
 CREATE INDEX timestamp_index ON posts (time);
+CREATE INDEX deleted_on_index ON posts (deleted_on);
+CREATE INDEX archived_on_index ON posts (archived_on);
+CREATE INDEX archived_index ON posts (archived);
+CREATE INDEX filedeleted_index ON posts (filedeleted);
