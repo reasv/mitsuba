@@ -41,6 +41,7 @@ fn register_metrics() {
     register_histogram!("http_size_file", Unit::Bytes, "File sizes");
     register_histogram!("http_size_thumbnail", Unit::Bytes, "Thumbnail sizes");
     register_counter!("thread_archived_jobs_scheduled", "Total number of archived threads scheduled for retrieval");
+    register_counter!("thread_archived_jobs_skipped", "Total number of archived threads skipped checking");
     register_counter!("thread_archived_checked", "Total number of archived threads checked for scheduling");
     register_counter!("files_fetched", "Total number of files fetched");
     register_counter!("thumbnails_fetched", "Total number of thumbnails fetched");
@@ -55,6 +56,9 @@ fn register_metrics() {
     register_gauge!("thread_jobs_running", "Number of thread jobs running at any given time");
     register_gauge!("file_jobs_running", "Number of file jobs running at any given time");
     register_gauge!("http_requests_running", "Number of http requests currently being executed");
+    register_gauge!("thread_archived_hashes", "Number of known thread id hashes of archived threads");
+    register_gauge!("thread_jobs_hashes", "Number of known thread job hashes of previously added jobs");
+    register_gauge!("post_hashes", "Number of known post hashes of previously added or updated posts");
 }
 
 fn reset_metrics() {

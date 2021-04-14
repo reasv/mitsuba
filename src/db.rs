@@ -191,6 +191,17 @@ impl DBClient {
         tinfo.hash(& mut hasher);
         hasher.finish()
     }
+    fn insert_threadinfo_hash(&self, tinfo_hash: u64) {
+        // Clear if it goes over 100 million items (~800MB)
+        if self.tinfo_hashes.len() > 100000000 {
+            warn!("Thread Job hash store reached over 100 million entries, clearing.");
+            self.tinfo_hashes.clear();
+            self.tinfo_hashes.shrink_to_fit();
+        }
+
+        self.tinfo_hashes.insert(tinfo_hash);
+        gauge!("thread_jobs_hashes", self.tinfo_hashes.len() as f64);
+    }
     pub async fn insert_thread_job(&self, tinfo: &ThreadInfo) -> anyhow::Result<Option<ThreadJob>> {
         let tinfo_hash = self.get_threadinfo_hash(&tinfo);
         if self.tinfo_hashes.contains(&tinfo_hash) {
@@ -202,6 +213,7 @@ impl DBClient {
         if let Some(post) = self.get_post(&tinfo.board, tinfo.no).await? {
             // if post is more recent or equal to thread_info date
             if post.last_modified >= tinfo.last_modified {
+                self.insert_threadinfo_hash(tinfo_hash);
                 return Ok(None)
             }
         }
@@ -227,13 +239,7 @@ impl DBClient {
         
         counter!("thread_job_writes", 1);
         
-        // Clear if it goes over 100 million items (~800MB)
-        if self.tinfo_hashes.len() > 100000000 {
-            warn!("Thread Job hash store reached over 100 million entries, clearing.");
-            self.tinfo_hashes.clear();
-        }
-
-        self.tinfo_hashes.insert(tinfo_hash);
+        self.insert_threadinfo_hash(tinfo_hash);
 
         // Delete earlier updates to thread
         let res: u64 = sqlx::query!(
@@ -520,8 +526,10 @@ impl DBClient {
             if self.post_hashes.len() > 100000000 {
                 warn!("Post hash store reached over 100 million entries, clearing.");
                 self.post_hashes.clear();
+                self.post_hashes.shrink_to_fit();
             }
             self.post_hashes.insert(hash);
+            gauge!("post_hashes", self.post_hashes.len() as f64);
             // we will only return new or updated posts.
             posts.push(post);
         }

@@ -40,6 +40,15 @@ impl Archiver {
         (board.clone(), tid).hash(& mut hasher);
         hasher.finish()
     }
+    pub fn insert_archived_hash(&self, tid_hash: u64) {
+        if self.archived_ids.len() > 100000000 {
+            warn!("Archived thread ids store reached over 100 million entries, clearing.");
+            self.archived_ids.clear();
+            self.archived_ids.shrink_to_fit();
+        }
+        self.archived_ids.insert(tid_hash);
+        gauge!("thread_archived_hashes", self.archived_ids.len() as f64);
+    }
     pub async fn get_board_archive(&self, board: &String) -> Result<Vec<i64>, bool> {
         self.http_client.fetch_json::<Vec<i64>>(&get_board_archive_api_url(board)).await
     }
@@ -49,6 +58,7 @@ impl Archiver {
             let tid_hash = self.get_archived_hash(board, tid);
             if self.archived_ids.contains(&tid_hash) {
                 debug!("Skip checking archived thread /{}/{}", board, tid);
+                counter!("thread_archived_jobs_skipped", 1);
                 continue;
             }
             counter!("thread_archived_checked", 1);
@@ -57,6 +67,7 @@ impl Archiver {
             if let Some(op_post) = self.db_client.get_post(board, tid).await // We have this thread somewhere
             .map_err(|e| {error!("Error getting post from database: {}", e); false})? {
                 if op_post.archived == 1 { // We already have the archive version of this, skip
+                    self.insert_archived_hash(tid_hash);
                     continue;
                 }
                 last_modified = op_post.last_modified;
@@ -75,11 +86,7 @@ impl Archiver {
                 counter!("thread_archived_jobs_scheduled", 1);
                 debug!("Archived thread /{}/{} [{}] scheduled", job.board, job.no, job.last_modified)
             }
-            if self.archived_ids.len() > 100000000 {
-                warn!("Archived thread ids store reached over 100 million entries, clearing.");
-                self.archived_ids.clear();
-            }
-            self.archived_ids.insert(tid_hash);
+            self.insert_archived_hash(tid_hash);
         }
         Ok(())
     }
