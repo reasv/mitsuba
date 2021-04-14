@@ -37,6 +37,9 @@ impl Archiver {
     pub async fn push_archived_threads(&self, board: &String) -> anyhow::Result<(), bool> {
         let tids = self.get_board_archive(board).await?;
         for tid in tids {
+            if self.archived_ids.contains(&tid) {
+                continue;
+            }
             let mut last_modified = 0;
             let mut replies = 0;
             if let Some(op_post) = self.db_client.get_post(board, tid).await // We have this thread somewhere
@@ -58,7 +61,13 @@ impl Archiver {
             if let Some(job) = self.db_client.insert_thread_job(&thread_info).await
             .map_err(|e| {error!("Error inserting thread job into database: {}", e); false})? {
                 counter!("thread_archived_jobs_scheduled", 1);
+                debug!("Archived thread /{}/{} [{}] scheduled", job.board, job.no, job.last_modified)
             }
+            if self.archived_ids.len() > 100000000 {
+                warn!("Archived thread ids store reached over 100 million entries, clearing.");
+                self.archived_ids.clear();
+            }
+            self.archived_ids.insert(tid);
         }
         Ok(())
     }

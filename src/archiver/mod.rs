@@ -1,6 +1,9 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
+
+use dashmap::DashSet;
 
 mod board_archiver;
 mod image_archiver;
@@ -13,7 +16,8 @@ use crate::db::DBClient;
 #[derive(Clone)]
 pub struct Archiver {
     pub http_client: HttpClient,
-    pub db_client: DBClient
+    pub db_client: DBClient,
+    pub archived_ids: Arc<DashSet<i64>>
 }
 
 
@@ -21,7 +25,8 @@ impl Archiver {
     pub async fn new(client: HttpClient) -> Self {
         Self {
             http_client: client,
-            db_client: DBClient::new().await
+            db_client: DBClient::new().await,
+            archived_ids: Arc::new(DashSet::new())
         }
     }
     pub fn run_archivers(&self) -> tokio::task::JoinHandle<()> {
