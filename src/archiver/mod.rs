@@ -17,7 +17,7 @@ use crate::db::DBClient;
 pub struct Archiver {
     pub http_client: HttpClient,
     pub db_client: DBClient,
-    pub archived_ids: Arc<DashSet<i64>>
+    pub archived_ids: Arc<DashSet<u64>>
 }
 
 

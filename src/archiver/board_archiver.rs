@@ -1,6 +1,10 @@
 use std::time::{Duration, Instant};
-use futures::future::FutureExt;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
 use std::panic::AssertUnwindSafe;
+
+use futures::future::FutureExt;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 #[allow(unused_imports)]
@@ -31,13 +35,19 @@ impl Archiver {
         }
         Ok(added_jobs)
     }
+    pub fn get_archived_hash(&self, board: &String, tid: i64) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        (board.clone(), tid).hash(& mut hasher);
+        hasher.finish()
+    }
     pub async fn get_board_archive(&self, board: &String) -> Result<Vec<i64>, bool> {
         self.http_client.fetch_json::<Vec<i64>>(&get_board_archive_api_url(board)).await
     }
     pub async fn push_archived_threads(&self, board: &String) -> anyhow::Result<(), bool> {
         let tids = self.get_board_archive(board).await?;
         for tid in tids {
-            if self.archived_ids.contains(&tid) {
+            let tid_hash = self.get_archived_hash(board, tid);
+            if self.archived_ids.contains(&tid_hash) {
                 debug!("Skip checking archived thread /{}/{}", board, tid);
                 continue;
             }
@@ -69,7 +79,7 @@ impl Archiver {
                 warn!("Archived thread ids store reached over 100 million entries, clearing.");
                 self.archived_ids.clear();
             }
-            self.archived_ids.insert(tid);
+            self.archived_ids.insert(tid_hash);
         }
         Ok(())
     }
