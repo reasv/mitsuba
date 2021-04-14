@@ -130,7 +130,7 @@ pub struct ThreadsPage {
     pub threads: Vec<ThreadInfo>
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Hash)]
 pub struct ThreadInfo {
     #[serde(default)]
     pub board: String,

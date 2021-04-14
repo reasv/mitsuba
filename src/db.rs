@@ -4,12 +4,13 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use dashmap::DashSet;
-use log::debug;
+use log::{debug, warn};
 #[allow(unused_imports)]
 use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
 #[allow(unused_imports)]
-use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob, ThreadInfo, ThreadJob, ThreadNo};
+use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
+     ThreadInfo, ThreadJob, ThreadNo};
 
 #[allow(unused_imports)]
 use crate::util::strip_nullchars;
@@ -28,14 +29,16 @@ pub async fn sqlx_connection() -> sqlx::Pool<sqlx::Postgres> {
 #[derive(Clone)]
 pub struct DBClient {
     pub pool: sqlx::Pool<sqlx::Postgres>,
-    post_hashes: Arc<DashSet<u64>>
+    post_hashes: Arc<DashSet<u64>>,
+    tinfo_hashes: Arc<DashSet<u64>>
 }
 
 impl DBClient {
     pub async fn new() -> Self {
         Self {
             pool: sqlx_connection().await,
-            post_hashes: Arc::new(DashSet::new())
+            post_hashes: Arc::new(DashSet::new()),
+            tinfo_hashes: Arc::new(DashSet::new())
         }
     }
     pub async fn get_latest_images(&self, limit: i64, offset: i64, boards: Vec<String>) -> anyhow::Result<Vec<Post>> {
@@ -183,13 +186,26 @@ impl DBClient {
         .await?;
         Ok(jobs)
     }
+    fn get_threadinfo_hash(&self, tinfo: &ThreadInfo) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        tinfo.hash(& mut hasher);
+        hasher.finish()
+    }
     pub async fn insert_thread_job(&self, tinfo: &ThreadInfo) -> anyhow::Result<Option<ThreadJob>> {
+        let tinfo_hash = self.get_threadinfo_hash(&tinfo);
+        if self.tinfo_hashes.contains(&tinfo_hash) {
+            debug!("Skip adding duplicate thread job for /{}/{} [{}] ({} - {})", 
+            tinfo.board, tinfo.no, tinfo.last_modified, tinfo.replies, tinfo.page);
+            return Ok(None)
+        }
+
         if let Some(post) = self.get_post(&tinfo.board, tinfo.no).await? {
             // if post is more recent or equal to thread_info date
             if post.last_modified >= tinfo.last_modified {
                 return Ok(None)
             }
         }
+        
         let job = sqlx::query_as!(ThreadJob,
             "
             INSERT INTO thread_backlog (board, no, last_modified, replies, page)
@@ -208,6 +224,16 @@ impl DBClient {
             tinfo.page
         ).fetch_one(&self.pool)
         .await?;
+        
+        counter!("thread_job_writes", 1);
+        
+        // Clear if it goes over 100 million items (~800MB)
+        if self.tinfo_hashes.len() > 100000000 {
+            warn!("Thread Job hash store reached over 100 million entries, clearing.");
+            self.tinfo_hashes.clear();
+        }
+
+        self.tinfo_hashes.insert(tinfo_hash);
 
         // Delete earlier updates to thread
         let res: u64 = sqlx::query!(
@@ -489,6 +515,12 @@ impl DBClient {
             .fetch_one(&self.pool)
             .await?;
             counter!("post_writes", 1);
+
+            // Clear if it goes over 100 million items (~800MB)
+            if self.post_hashes.len() > 100000000 {
+                warn!("Post hash store reached over 100 million entries, clearing.");
+                self.post_hashes.clear();
+            }
             self.post_hashes.insert(hash);
             // we will only return new or updated posts.
             posts.push(post);

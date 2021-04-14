@@ -50,6 +50,7 @@ fn register_metrics() {
     register_counter!("http_warn", "Total number of http non-404 error codes");
     register_counter!("bytes_fetched", Unit::Bytes, "Total number of bytes fetched");
     register_counter!("post_writes", "Posts inserted or updated to database");
+    register_counter!("thread_job_writes", "Thread jobs inserted or updated to database");
     register_gauge!("thread_jobs_running", "Number of thread jobs running at any given time");
     register_gauge!("file_jobs_running", "Number of file jobs running at any given time");
     register_gauge!("http_requests_running", "Number of http requests currently being executed");
