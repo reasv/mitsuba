@@ -41,6 +41,7 @@ fn register_metrics() {
     register_histogram!("http_size_file", Unit::Bytes, "File sizes");
     register_histogram!("http_size_thumbnail", Unit::Bytes, "Thumbnail sizes");
     register_counter!("thread_archived_jobs_scheduled", "Total number of archived threads scheduled for retrieval");
+    register_counter!("thread_archived_checked", "Total number of archived threads checked for scheduling");
     register_counter!("files_fetched", "Total number of files fetched");
     register_counter!("thumbnails_fetched", "Total number of thumbnails fetched");
     register_counter!("file_jobs_scheduled", "Total number of file jobs that were scheduled");
