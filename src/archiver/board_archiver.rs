@@ -58,10 +58,8 @@ impl Archiver {
             let tid_hash = self.get_archived_hash(board, tid);
             if self.archived_ids.contains(&tid_hash) {
                 debug!("Skip checking archived thread /{}/{}", board, tid);
-                counter!("thread_archived_jobs_skipped", 1);
                 continue;
             }
-            counter!("thread_archived_checked", 1);
             let mut last_modified = 0;
             let mut replies = 0;
             if let Some(op_post) = self.db_client.get_post(board, tid).await // We have this thread somewhere
