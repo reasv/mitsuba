@@ -1682,7 +1682,7 @@ dependencies = [
 
 [[package]]
 name = "mitsuba"
-version = "1.8.0"
+version = "1.10.0"
 dependencies = [
  "actix-files",
  "actix-web",

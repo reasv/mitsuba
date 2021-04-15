@@ -1,6 +1,6 @@
 [package]
 name = "mitsuba"
-version = "1.8.0"
+version = "1.10.0"
 authors = ["reasv", "moot"]
 edition = "2018"
 license = "AGPL-3.0"
