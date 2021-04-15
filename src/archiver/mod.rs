@@ -8,6 +8,7 @@ use dashmap::DashSet;
 mod board_archiver;
 mod image_archiver;
 mod thread_archiver;
+mod archiver_metrics;
 
 use crate::http::HttpClient;
 use crate::models::{Board, BoardsList};
@@ -30,6 +31,7 @@ impl Archiver {
         }
     }
     pub fn run_archivers(&self) -> tokio::task::JoinHandle<()> {
+        self.run_metrics_cycle();
         self.run_board_cycle();
         self.run_thread_cycle();
         self.run_image_cycle()

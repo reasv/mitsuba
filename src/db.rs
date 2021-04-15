@@ -41,6 +41,80 @@ impl DBClient {
             tinfo_hashes: Arc::new(DashSet::new())
         }
     }
+    pub async fn get_image_backlog_size(&self, min_page: i32) -> anyhow::Result<i64> {
+        struct Count {
+            count: Option<i64>
+        }
+        let count = sqlx::query_as!(Count,
+            "
+            SELECT
+            count(*)
+            FROM image_backlog
+            WHERE page >= $1
+            ",
+            min_page
+        ).fetch_one(&self.pool).await?;
+        Ok(count.count.unwrap_or(0))
+    }
+    pub async fn get_thread_backlog_size(&self, min_page: i32) -> anyhow::Result<i64> {
+        struct Count {
+            count: Option<i64>
+        }
+        let count = sqlx::query_as!(Count,
+            "
+            SELECT
+            count(*)
+            FROM thread_backlog
+            WHERE page >= $1
+            ",
+            min_page
+        ).fetch_one(&self.pool).await?;
+        Ok(count.count.unwrap_or(0))
+    }
+    pub async fn get_stored_files(&self) -> anyhow::Result<i64> {
+        struct Count {
+            count: Option<i64>
+        }
+        let count = sqlx::query_as!(Count,
+            "
+            SELECT
+            count(*)
+            FROM posts
+            WHERE file_sha256 != ''
+            "
+        ).fetch_one(&self.pool).await?;
+        Ok(count.count.unwrap_or(0))
+    }
+    pub async fn get_stored_thumbnails(&self) -> anyhow::Result<i64> {
+        struct Count {
+            count: Option<i64>
+        }
+        let count = sqlx::query_as!(Count,
+            "
+            SELECT
+            count(*)
+            FROM posts
+            WHERE thumbnail_sha256 != ''
+            "
+        ).fetch_one(&self.pool).await?;
+        Ok(count.count.unwrap_or(0))
+    }
+    pub async fn get_missing_thumbnails(&self) -> anyhow::Result<i64> {
+        struct Count {
+            count: Option<i64>
+        }
+        let count = sqlx::query_as!(Count,
+            "
+            SELECT
+            count(*)
+            FROM posts
+            WHERE thumbnail_sha256 = ''
+            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0
+            "
+        ).fetch_one(&self.pool).await?;
+        Ok(count.count.unwrap_or(0))
+    }
+
     pub async fn get_latest_images(&self, limit: i64, offset: i64, boards: Vec<String>) -> anyhow::Result<Vec<Post>> {
         let posts = sqlx::query_as!(Post,
             "
@@ -806,5 +880,14 @@ mod tests {
         let dbc = DBClient::new().await;
         let hashes = dbc.get_files_exclusive_to_board(&"vip".to_string()).await.unwrap();
         println!("{}", hashes.len());
+    }
+
+    #[test]
+    fn test_count(){
+        run_async(get_image_backlog_count());
+    }
+    async fn get_image_backlog_count(){
+        let dbc = DBClient::new().await;
+        println!("{}", dbc.get_image_backlog_size(2).await.unwrap());
     }
 }

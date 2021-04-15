@@ -948,6 +948,42 @@
       ]
     }
   },
+  "512500f264da6ce576a49da6e8dcd2e9dee4cd5540624c7dd4032e2f31d77408": {
+    "query": "\n            SELECT\n            count(*)\n            FROM posts\n            WHERE file_sha256 != ''\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "6c69616c0928fb68e0046d7ca3f09b2d1fd071274fb49fb20beb6268771f116d": {
+    "query": "\n            SELECT\n            count(*)\n            FROM posts\n            WHERE thumbnail_sha256 = ''\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "72ba56d05d319b7aed233f7817ff018ab308eefcf61c0ec197fa521309f35d2d": {
     "query": "\n            SELECT t1.resto FROM posts t1\n            LEFT JOIN posts t2\n            ON t1.resto = t2.resto AND t1.no < t2.no\n            WHERE t2.no IS NULL and t1.board = $1\n            ORDER BY t1.no DESC OFFSET $2 LIMIT $3\n            ",
     "describe": {
@@ -967,6 +1003,26 @@
       },
       "nullable": [
         false
+      ]
+    }
+  },
+  "797d0fe1396092138685fdd852d529c05dab7a29da450e39e4f3d7cc7a9c2516": {
+    "query": "\n            SELECT\n            count(*)\n            FROM thread_backlog\n            WHERE page >= $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        null
       ]
     }
   },
@@ -1354,6 +1410,24 @@
       "nullable": []
     }
   },
+  "a5a70b0003f3ac6721b54ef68f8bb65c1ffb44c14dfc6b8ed85eb358a0a4c584": {
+    "query": "\n            SELECT\n            count(*)\n            FROM posts\n            WHERE thumbnail_sha256 != ''\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "b38f0f9c75b8de884a076b9ea794fcb9cea76fe8c95b99b57fe81e8867e81db3": {
     "query": "\n            SELECT *\n            FROM posts\n            WHERE board = $1\n            AND tim = $2\n            ",
     "describe": {
@@ -1624,6 +1698,26 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "b3a709e9ca2d3475be32b0c5ed5bd9755891b7fd3495a8911711096b8270e4e0": {
+    "query": "\n            SELECT\n            count(*)\n            FROM image_backlog\n            WHERE page >= $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        null
       ]
     }
   },

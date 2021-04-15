@@ -52,12 +52,20 @@ fn register_metrics() {
     register_counter!("post_writes", "Posts inserted or updated to database");
     register_counter!("thread_job_writes", "Thread jobs inserted or updated to database");
     register_counter!("post_deleted", "Posts that we detected as having been deleted");
+    register_gauge!("files_stored", "Stored files");
+    register_gauge!("thumbnails_stored", "Stored thumbnails");
+    register_gauge!("thumbnails_missing", "Missing thumbnails");
     register_gauge!("thread_jobs_running", "Number of thread jobs running at any given time");
     register_gauge!("file_jobs_running", "Number of file jobs running at any given time");
     register_gauge!("http_requests_running", "Number of http requests currently being executed");
     register_gauge!("thread_archived_hashes", "Number of known thread id hashes of archived threads");
     register_gauge!("thread_jobs_hashes", "Number of known thread job hashes of previously added jobs");
     register_gauge!("post_hashes", "Number of known post hashes of previously added or updated posts");
+    register_gauge!("file_backlog_size", "Current size of the file backlog");
+    register_gauge!("thread_backlog_size", "Current size of the thread backlog");
+    register_gauge!("file_backlog_size_live", "Current size of the file backlog, counting only non-archive data");
+    register_gauge!("thread_backlog_size_live", "Current size of the thread backlog, counting only non-archive data");
+    register_histogram!("metric_scan_duration", Unit::Milliseconds, "Time to completion for metric cycle");
 }
 
 fn reset_metrics() {
