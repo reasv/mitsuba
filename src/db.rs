@@ -389,7 +389,7 @@ impl DBClient {
             UPDATE posts
             SET 
             deleted_on = $1
-            WHERE board = $2 AND resto = $3 AND no != ANY($4)
+            WHERE board = $2 AND resto = $3 AND deleted_on = 0 AND no != ALL($4)
             RETURNING *
             ",
             deleted_time,
@@ -696,6 +696,57 @@ mod tests {
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
         assert_eq!(30, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().unique_ips);
         assert_eq!(1u64, dbc.delete_post(&post1.board, post1.no).await.unwrap());
+        assert_eq!(None, dbc.get_post(&post1.board, post1.no).await.unwrap());
+    }
+    #[test]
+    fn test_post_deleted_detection(){
+        run_async(post_deleted());
+    }
+    async fn post_deleted(){
+        let dbc = DBClient::new().await;
+        let mut post1 = Post::default();
+        post1.board = "test".to_string();
+        post1.resto = 1;
+        post1.no = 1;
+        
+        let mut post2 = Post::default();
+        post2.board = "test".to_string();
+        post2.resto = 1;
+        post2.no = 2;
+        
+        let mut post3 = Post::default();
+        post3.board = "test".to_string();
+        post3.resto = 1;
+        post3.no = 3;
+
+        let mut post4 = Post::default();
+        post4.board = "test".to_string();
+        post4.resto = 1;
+        post4.no = 4;
+
+        dbc.insert_posts(&vec![post1.clone(), post2.clone(), post3.clone(), post4.clone()]).await.unwrap();
+
+        assert_eq!(0usize, dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no, post2.no, post3.no, post4.no], 10).await.unwrap().len());
+
+        let nos: Vec<(i64, i64)> = dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no, post2.no, post4.no], 10).await
+        .unwrap().iter().map(|p| (p.no, p.deleted_on)).collect();
+        assert_eq!(1, nos.len());
+        assert_eq!((3, 10), nos[0]);
+
+        let nos: Vec<(i64, i64)> = dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no, post2.no], 20).await
+        .unwrap().iter().map(|p| (p.no, p.deleted_on)).collect();
+        assert_eq!(1, nos.len());
+        assert_eq!((4, 20), nos[0]);
+        let nos: Vec<(i64, i64)> = dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no], 30).await
+        .unwrap().iter().map(|p| (p.no, p.deleted_on)).collect();
+        assert_eq!(1, nos.len());
+        assert_eq!((2, 30), nos[0]);
+        assert_eq!(0usize, dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no], 10).await.unwrap().len());
+
+        assert_eq!(1u64, dbc.delete_post(&post1.board, post1.no).await.unwrap());
+        assert_eq!(1u64, dbc.delete_post(&post2.board, post2.no).await.unwrap());
+        assert_eq!(1u64, dbc.delete_post(&post3.board, post3.no).await.unwrap());
+        assert_eq!(1u64, dbc.delete_post(&post4.board, post4.no).await.unwrap());
         assert_eq!(None, dbc.get_post(&post1.board, post1.no).await.unwrap());
     }
     #[test]

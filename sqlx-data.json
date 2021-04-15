@@ -578,8 +578,8 @@
       ]
     }
   },
-  "27b33c353a3dda60581fc82cf9c496abf010dda8cd617a28d33d5a37b0e29bd6": {
-    "query": "\n            UPDATE posts\n            SET \n            deleted_on = $1\n            WHERE board = $2 AND resto = $3 AND no != ANY($4)\n            RETURNING *\n            ",
+  "1533d4513123fa112298e15460c0a1915fc29c9177c637b965ca900693534123": {
+    "query": "\n            UPDATE posts\n            SET \n            deleted_on = $1\n            WHERE board = $2 AND resto = $3 AND deleted_on = 0 AND no != ALL($4)\n            RETURNING *\n            ",
     "describe": {
       "columns": [
         {
