@@ -2,7 +2,7 @@ version: 2
 
 updates:
   - package-ecosystem: cargo
-    directory:
+    directory: /
     schedule:
       interval: weekly
     commit-message:
