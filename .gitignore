@@ -2,3 +2,4 @@
 .env
 data/
 Cargo.lock
+.idea
