@@ -38,7 +38,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: ghcr.io/thesilkky/mitsuba:latest
+          tags: ghcr.io/AndreVuillemot160/mitsuba:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new
       - name: Move Cache
