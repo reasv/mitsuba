@@ -36,7 +36,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./Dockerfile
+          file: ./docker/Dockerfile
           push: true
           tags: ghcr.io/thesilkky/mitsuba:latest
           cache-from: type=local,src=/tmp/.buildx-cache
