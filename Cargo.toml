@@ -52,7 +52,7 @@ sqlx = { version = "0.5", features = [
 rust-embed = "5.9.0"
 mime_guess = "2.0.3"
 sha2 = "0.10.0"
-rust-s3 = { version = "=0.27.0-beta11", features = [
+rust-s3 = { version = "=0.28.0", features = [
     "tokio-rustls-tls",
 ], default-features = false }
 dashmap = "5.0.0"
