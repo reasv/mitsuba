@@ -4,7 +4,7 @@ use std::env;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
-use clap::{Clap};
+use clap::Parser;
 
 #[allow(dead_code)]
 mod db;
@@ -21,14 +21,14 @@ use archiver::{Archiver};
 use http::HttpClient;
 
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = "1.0", about="High performance board archiver software. Add boards with `add`, then start with `start` command. See `help add` and `help start`")]
 struct Opts {
     #[clap(subcommand)]
     subcmd: SubCommand
 }
 
-#[derive(Clap, Clone)]
+#[derive(Parser, Clone)]
 enum SubCommand {
     #[clap(about = "Start the archiver, API, and webserver")]
     Start(StartArc),
@@ -42,41 +42,41 @@ enum SubCommand {
     List(ListBoards)
 }
 
-#[derive(Clap, Default, Debug, Clone)]
+#[derive(Parser, Default, Debug, Clone)]
 struct StartArc {
-    #[clap(long, long_about = "(Optional) If true, will only run the archiver and not the web ui or the web API. If false, run everything. Default is false.")]
+    #[clap(long, long_help = "(Optional) If true, will only run the archiver and not the web ui or the web API. If false, run everything. Default is false.")]
     archiver_only: Option<bool>,
-    #[clap(long, long_about = "(Optional) Max requests per minute. Default is 60.")]
+    #[clap(long, long_help = "(Optional) Max requests per minute. Default is 60.")]
     rpm: Option<NonZeroU32>,
 
-    #[clap(long, long_about = "(Optional) Max burst of requests started at once. Default is 10.")]
+    #[clap(long, long_help = "(Optional) Max burst of requests started at once. Default is 10.")]
     burst: Option<NonZeroU32>,
 
-    #[clap(long, long_about = "(Optional) Minimum amount of jitter to add to rate-limiting to ensure requests don't start at the same time, in milliseconds. Default is 200ms", global=true)]
+    #[clap(long, long_help = "(Optional) Minimum amount of jitter to add to rate-limiting to ensure requests don't start at the same time, in milliseconds. Default is 200ms", global=true)]
     jitter_min: Option<u32>,
 
-    #[clap(long, long_about = "(Optional) Variance for jitter, in milliseconds. Default is 800ms. Jitter will be a random value between min and min+variance.")]
+    #[clap(long, long_help = "(Optional) Variance for jitter, in milliseconds. Default is 800ms. Jitter will be a random value between min and min+variance.")]
     jitter_variance: Option<u32>,
 
-    #[clap(long, long_about = "(Optional) Maximum amount of time to spend retrying a failed image download, in seconds. Default is 600s (10m).")]
+    #[clap(long, long_help = "(Optional) Maximum amount of time to spend retrying a failed image download, in seconds. Default is 600s (10m).")]
     max_time: Option<u32>
 }
 
-#[derive(Clap, Clone)]
+#[derive(Parser, Clone)]
 struct ReadOnlyMode;
-#[derive(Clap, Clone)]
+#[derive(Parser, Clone)]
 struct Add {
-    #[clap(about = "Board name (eg. 'po')")]
+    #[clap(help = "Board name (eg. 'po')")]
     name: String,
-    #[clap(long, long_about = "(Optional) If false, will only download thumbnails for this board. If true, thumbnails and full images. Default is false.")]
+    #[clap(long, long_help = "(Optional) If false, will only download thumbnails for this board. If true, thumbnails and full images. Default is false.")]
     full_images: Option<bool>,
 }
-#[derive(Clap, Clone)]
+#[derive(Parser, Clone)]
 struct Remove {
-    #[clap(about = "Board name (eg. 'po')")]
+    #[clap(help = "Board name (eg. 'po')")]
     name: String,
 }
-#[derive(Clap, Clone)]
+#[derive(Parser, Clone)]
 struct ListBoards;
 
 
@@ -166,8 +166,8 @@ async fn real_main() {
         },
         SubCommand::Add(add_opt) => {
             use models::Board;
-            let board = Board { 
-                name: add_opt.name, 
+            let board = Board {
+                name: add_opt.name,
                 full_images: add_opt.full_images.unwrap_or(false),
                 archive: true
             };

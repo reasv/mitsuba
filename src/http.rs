@@ -83,7 +83,7 @@ impl HttpClient {
         self.limiter.until_key_ready_with_jitter(rlimit_key, *self.jitter).await; // wait for rate limiter
         increment_gauge!("http_requests_running", 1.0);
         let s = Instant::now();
-        let resp = self.rclient.get(url).send().await.map_err(backoff::Error::Transient)?;
+        let resp = self.rclient.get(url).send().await.map_err(backoff::Error::transient)?;
         histogram!("http_request_duration", s.elapsed().as_millis() as f64);
         decrement_gauge!("http_requests_running", 1.0);
         
@@ -91,7 +91,7 @@ impl HttpClient {
 
         info!("Fetching: {} (Attempt {})", url, attempt);
         match resp.status() {
-            StatusCode::OK => Ok(resp.bytes().await.map_err(backoff::Error::Transient)?),
+            StatusCode::OK => Ok(resp.bytes().await.map_err(backoff::Error::transient)?),
             StatusCode::NOT_FOUND => {
                 error!("Error fetching {} (Status: 404)", url);
                 counter!("http_404", 1);
@@ -100,7 +100,7 @@ impl HttpClient {
             _ => {
                 warn!("Retry fetching {} after bad status code (Status: {})", url, resp.status());
                 counter!("http_warn", 1);
-                Err(backoff::Error::Transient(resp.error_for_status().unwrap_err()))
+                Err(backoff::Error::transient(resp.error_for_status().unwrap_err()))
             }
         }
     }

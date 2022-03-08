@@ -24,7 +24,7 @@ pub async fn web_main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let obc = ObjectStorage::new();
         let mut app = App::new()
-        .data(dbc.clone())
+        .app_data(web::Data::new(dbc.clone()))
         .app_data(handlebars_ref.clone())
         .wrap(NormalizePath::default())
         .service(api::get_index)
@@ -39,7 +39,7 @@ pub async fn web_main() -> std::io::Result<()> {
 
         if obc.enabled {
             app = app.service(web::resource("/img/{_:.*}").route(web::get().to(api::get_file_object_storage_handler)))
-                    .data(obc)
+                    .app_data(web::Data::new(obc))
                     .service(api::get_full_image_object_storage)
                     .service(api::get_thumbnail_image_object_storage);
         } else {

@@ -1,13 +1,12 @@
-use std::borrow::Cow;
 use std::env;
 use std::collections::HashSet;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
-use actix_web::{get, web, HttpResponse, Result, body::Body};
+use actix_web::{get, web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use rust_embed::RustEmbed;
-use mime_guess::from_path;
+use new_mime_guess::from_path;
 
 use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
 use handlebars::handlebars_helper;
@@ -52,17 +51,17 @@ fn get_home_boards(boards: &Vec<Board>) -> Vec<String> {
 
 #[get("/")]
 pub(crate) async fn home_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>) 
--> Result<HttpResponse, HttpResponse> {
+-> actix_web::Result<HttpResponse> {
     let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
-            HttpResponse::InternalServerError().finish()
+            actix_web::error::ErrorInternalServerError("")
         })?;
     let home_boards = get_home_boards(&boards);
     let posts = db.get_latest_images(500i64, 0i64, home_boards).await
     .map_err(|e| {
         error!("Error getting posts from DB: {}", e);
-        HttpResponse::InternalServerError().finish()
+        actix_web::error::ErrorInternalServerError("")
     })?;
 
     let body = hb.render("home", &TemplateHomePage{
@@ -75,20 +74,20 @@ pub(crate) async fn home_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<
 
 #[get("/{board:[A-z0-9]+}/thread/{no:\\d+}{foo:/?[^/]*}")]
 pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
--> Result<HttpResponse, HttpResponse> {
+-> actix_web::Result<HttpResponse> {
     let (board, no) = info.into_inner();
     let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
-            HttpResponse::InternalServerError().finish()
+            actix_web::error::ErrorInternalServerError("")
         })?;
     
     let thread = db.get_thread(&board, no).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
-            HttpResponse::InternalServerError().finish()
+            actix_web::error::ErrorInternalServerError("")
         })?
-        .ok_or(HttpResponse::NotFound().finish())?;
+        .ok_or(actix_web::error::ErrorNotFound(""))?;
     
     let body = hb.render("thread", &TemplateThread{
         boards,
@@ -100,20 +99,20 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
 
 #[get("/{board:[A-z0-9]+}/{idx:\\d+}")]
 pub(crate) async fn index_page_handler(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
--> Result<HttpResponse, HttpResponse> {
+-> actix_web::Result<HttpResponse> {
     let (board, index) = info.into_inner();
     index_page(db, hb, board, index).await
 }
 
 #[get("/{board:[A-z0-9]+}")]
 pub(crate) async fn board_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<String>)
--> Result<HttpResponse, HttpResponse> {
+-> actix_web::Result<HttpResponse> {
     let board = info.into_inner();
     index_page(db, hb, board, 1).await
 }
 
 async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, board: String, index: i64) 
--> Result<HttpResponse, HttpResponse> {
+-> actix_web::Result<HttpResponse> {
     let mut nonzero_index = 1;
     if index > 0 {
         nonzero_index = index;
@@ -122,15 +121,15 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
     let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
-            HttpResponse::InternalServerError().finish()
+            actix_web::error::ErrorInternalServerError("")
         })?;
     let threads = db.get_thread_index(&board, nonzero_index-1, 15).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
-            HttpResponse::InternalServerError().finish()
+            actix_web::error::ErrorInternalServerError("")
         })?;
     if threads.len() == 0 {
-        return Err(HttpResponse::NotFound().finish())
+        return Err(actix_web::error::ErrorNotFound(""))
     }
     let index_threads: Vec<IndexThread> = threads.clone().into_iter().map(|t| t.into()).collect();
     let prev = match nonzero_index == 1 {
@@ -210,11 +209,8 @@ struct Asset;
 fn handle_embedded_file(path: &str) -> HttpResponse {
     match Asset::get(path) {
         Some(content) => {
-        let body: Body = match content {
-            Cow::Borrowed(bytes) => bytes.into(),
-            Cow::Owned(bytes) => bytes.into(),
-        };
-        HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(body)
+        let content  = content.into_owned();
+        HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(content)
         }
         None => HttpResponse::NotFound().body("404 Not Found"),
     }
