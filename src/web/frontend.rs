@@ -1,5 +1,6 @@
 use std::env;
 use std::collections::HashSet;
+use std::convert::AsRef;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
@@ -157,7 +158,8 @@ pub(crate) fn build_handlebars() -> Handlebars<'static> {
         if let Some(template_file) = Templates::get(&template_path) {
             let path_vec: Vec<&str> = template_path.split(".").collect();
             let name = path_vec[0];
-            let template_str: String = std::str::from_utf8(template_file.as_ref()).unwrap().to_string();
+            //let template_str: String = std::str::from_utf8(template_file.as_ref()).unwrap().to_string();
+            let template_str: String = std::str::from_utf8(template_file.data.as_ref()).unwrap().to_string();
             handlebars.register_template_string(&name, &template_str).unwrap();
         }
     }
@@ -208,13 +210,13 @@ struct Asset;
 
 fn handle_embedded_file(path: &str) -> HttpResponse {
     match Asset::get(path) {
-        Some(content) => {
-        let content  = content.into_owned();
-        HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(content)
-        }
-        None => HttpResponse::NotFound().body("404 Not Found"),
+      Some(content) => HttpResponse::Ok()
+        .content_type(from_path(path).first_or_octet_stream().as_ref())
+        .body(content.data.into_owned()),
+      None => HttpResponse::NotFound().body("404 Not Found"),
     }
-}
-pub(crate) fn dist(path: web::Path<String>) -> HttpResponse {
+  }
+  
+pub(crate) async fn dist(path: web::Path<String>) -> HttpResponse {
     handle_embedded_file(&path.into_inner())
 }
