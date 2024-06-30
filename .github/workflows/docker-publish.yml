@@ -42,7 +42,11 @@ jobs:
           [ "${{ github.ref }}" == "refs/heads/master" ] && VERSION=master
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
-          if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
+          # Push to the tag version if it's a tag
+          if [[ -n "$TAG_VERSION" ]]; then
+            docker tag $IMAGE_NAME $IMAGE_ID:$TAG_VERSION
+            docker push $IMAGE_ID:$TAG_VERSION
+            # Also push to latest
             docker tag $IMAGE_NAME $IMAGE_ID:latest
             docker push $IMAGE_ID:latest
           fi
@@ -59,7 +63,11 @@ jobs:
           [ "${{ github.ref }}" == "refs/heads/master" ] && VERSION=master
           docker tag $IMAGE_NAME $DOCKERHUB_IMAGE_ID:$VERSION
           docker push $DOCKERHUB_IMAGE_ID:$VERSION
-          if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
+          # Push to the tag version if it's a tag
+          if [[ -n "$TAG_VERSION" ]]; then
+            docker tag $IMAGE_NAME $DOCKERHUB_IMAGE_ID:$TAG_VERSION
+            docker push $DOCKERHUB_IMAGE_ID:$TAG_VERSION
+            # Also push to latest
             docker tag $IMAGE_NAME $DOCKERHUB_IMAGE_ID:latest
             docker push $DOCKERHUB_IMAGE_ID:latest
           fi
