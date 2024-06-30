@@ -39,12 +39,13 @@ jobs:
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           # Strip "v" prefix from tag name
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-          # Use Docker `latest` tag convention
-          [ "$VERSION" == "master" ] && VERSION=latest
-          echo IMAGE_ID=$IMAGE_ID
-          echo VERSION=$VERSION
+          [ "${{ github.ref }}" == "refs/heads/master" ] && VERSION=master
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
+          if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
+            docker tag $IMAGE_NAME $IMAGE_ID:latest
+            docker push $IMAGE_ID:latest
+          fi
 
       - name: Push image to Docker Hub
         run: |
@@ -55,9 +56,10 @@ jobs:
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           # Strip "v" prefix from tag name
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-          # Use Docker `latest` tag convention
-          [ "$VERSION" == "master" ] && VERSION=latest
-          echo DOCKERHUB_IMAGE_ID=$DOCKERHUB_IMAGE_ID
-          echo VERSION=$VERSION
+          [ "${{ github.ref }}" == "refs/heads/master" ] && VERSION=master
           docker tag $IMAGE_NAME $DOCKERHUB_IMAGE_ID:$VERSION
           docker push $DOCKERHUB_IMAGE_ID:$VERSION
+          if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
+            docker tag $IMAGE_NAME $DOCKERHUB_IMAGE_ID:latest
+            docker push $DOCKERHUB_IMAGE_ID:latest
+          fi
