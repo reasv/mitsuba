@@ -9,6 +9,7 @@ on:
     # Publish `v1.2.3` tags as releases.
     tags:
       - v*
+
 env:
   IMAGE_NAME: mitsuba
 
@@ -16,7 +17,6 @@ jobs:
   # Push image to GitHub Packages and Docker Hub.
   push:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v2
@@ -35,8 +35,13 @@ jobs:
           docker pull $IMAGE_ID:latest || true
         continue-on-error: true
 
-      - name: Build image
-        run: docker build . --file Dockerfile --tag $IMAGE_NAME --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:master --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:latest
+      - name: Build image with cache
+        run: |
+          docker build . \
+            --file Dockerfile \
+            --tag $IMAGE_NAME \
+            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:master \
+            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:latest
 
       - name: Push image to GitHub Packages
         run: |
