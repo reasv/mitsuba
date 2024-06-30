@@ -34,12 +34,22 @@ jobs:
           docker pull $IMAGE_ID:master || true
         continue-on-error: true
 
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build image with cache
         run: |
           docker build . \
             --file Dockerfile \
             --tag $IMAGE_NAME \
-            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:master
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:master \
+            --cache-to type=local,dest=/tmp/.buildx-cache
 
       - name: Push image to GitHub Packages
         run: |
