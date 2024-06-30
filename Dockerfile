@@ -1,4 +1,4 @@
-FROM rust:1.63.0-slim-buster AS build
+FROM rust:1.79.0-slim-buster AS build
 WORKDIR /usr/src
 RUN apt update && apt install build-essential g++ pkg-config musl musl-tools -y
 RUN rustup target add x86_64-unknown-linux-musl
