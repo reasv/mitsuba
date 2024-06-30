@@ -41,15 +41,19 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+            ${{ runner.os }}-buildx-${{ github.sha }}
 
       - name: Build image with cache
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
-          docker build . \
+          docker buildx create --use
+          docker buildx build . \
             --file Dockerfile \
             --tag $IMAGE_NAME \
             --cache-from type=local,src=/tmp/.buildx-cache \
-            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:master \
-            --cache-to type=local,dest=/tmp/.buildx-cache
+            --cache-to type=local,dest=/tmp/.buildx-cache \
+            --load
 
       - name: Push image to GitHub Packages
         run: |
