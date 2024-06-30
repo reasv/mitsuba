@@ -32,7 +32,6 @@ jobs:
           IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           docker pull $IMAGE_ID:master || true
-          docker pull $IMAGE_ID:latest || true
         continue-on-error: true
 
       - name: Build image with cache
@@ -40,8 +39,7 @@ jobs:
           docker build . \
             --file Dockerfile \
             --tag $IMAGE_NAME \
-            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:master \
-            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:latest
+            --cache-from ghcr.io/${{ github.repository }}/$IMAGE_NAME:master
 
       - name: Push image to GitHub Packages
         run: |
