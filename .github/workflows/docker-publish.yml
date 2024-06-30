@@ -38,7 +38,8 @@ jobs:
           # Strip git ref prefix from version
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           # Strip "v" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && TAG_VERSION=$(echo $VERSION | sed -e 's/^v//')
+          # Always push to master
           [ "${{ github.ref }}" == "refs/heads/master" ] && VERSION=master
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
@@ -59,7 +60,8 @@ jobs:
           # Strip git ref prefix from version
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           # Strip "v" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && TAG_VERSION=$(echo $VERSION | sed -e 's/^v//')
+          # Always push to master
           [ "${{ github.ref }}" == "refs/heads/master" ] && VERSION=master
           docker tag $IMAGE_NAME $DOCKERHUB_IMAGE_ID:$VERSION
           docker push $DOCKERHUB_IMAGE_ID:$VERSION
