@@ -48,28 +48,34 @@ This will only get posts and thumbnails but not full images.
 
 Use `mitsuba add po --full-images=true` to change that.
 
-Mitsuba will not fetch full images for a post it has already archived previously, unless it has to visit that post again. Currently this means if you enable full images on a board you were already archiving with only thumbnails, Mitsuba won't fetch full images for posts on threads until that particular thread gets a new post.
+Mitsuba will not attempt to fetch images for a post it has already archived previously, unless it visits the post again and detects it as changed in some way.
+Moreover, if an image or thumbnail was already fetched for a particular post, mitsuba will never attempt to fetch the image or thumbnail or both, depending on the case, for that post again.
 
-`mitsuba add BOARD` and `mitsuba remove BOARD` are safe to use while mitsuba is running. But in that scenario, they will not take effect until the current archive cycle is completed.
+*Mitsuba does not check whether images are still present on disk or object storage and trusts the database instead. During the archival process, image files/objects are only written to, never read from*
+
+However, if you enable full images on a board you were already archiving with thumbnails only, this will trigger the creation of an image fetch job for every post on that board which has not yet been deleted from 4chan. Eventually, all available full images should get fetched. There is a race condition where if a specific post was being processed right when you enabled full images on the board, that post would never end up having its full image downloaded.
+This rare edge case can be prevented by having full images on from the start when you first add a board, or by shutting mitsuba down before enabling full images on an existing board.  
+
+`mitsuba add BOARD` and `mitsuba remove BOARD` are safe to use while mitsuba is running. But in that scenario, they will not take effect until the current board archive cycle is completed, if they're adding a new board. Enabling full images on an existing board is effective immediately.
 
 ## Setup Guide
 Mitsuba is designed to be easy and quick to set up.
-Download a binary build for your system, or clone the repository and build your executable.
-Currently all static files mitsuba uses are embedded in the executable. You should just be able to run Mitsuba in an empty folder.
+Download a binary build for your system, or clone the repository and build your executable. Docker containers are available and there is a `docker-compose.yml` file.
 
-Some options need to be passed as environment variables. Mitsuba uses `dotenv`, which means that instead of setting the environment variables yourself, you can specify their values in a file called `.env` which must be in the directory you are running the mitsuba executable in. Mitsuba will read this file and apply the environment variables specified with their values.
+
+Currently all static files mitsuba uses are embedded in the executable. You should be able to run Mitsuba's binary in an empty folder.
+
+Some options need to be passed as environment variables. Mitsuba uses `dotenv`, which means that instead of setting the environment variables yourself, you can specify their values in a file called `.env` which must be in the directory you are running the mitsuba executable in. Mitsuba will read this file and apply the values specified to the corresponding environment variables.
 
 You will find an `example.env` file in this repository. Copy it and rename it to just `.env`, then edit its configuration as needed.
-There are a couple of settings that you need to be aware of right now:
+There are a couple of settings that you need to be aware of:
 
 - DATABASE_URL: you need to specify the connection URI for your Postgresql instance here. In the example file it's `postgres://user:password@127.0.0.1/mitsuba` .
    Replace with the correct username and password, as well as address, port and database name. The user needs to either be the owner of the specified database (in this case called `mitsuba`) if it already exists, or you need to create it yourself.
 
 - DATA_ROOT: the directory in which to save the image files. This is an optional setting. If you leave it out entirely, Mitsuba will just create a "data" folder in the current working directory, and use that.
 
-- RUST_LOG: the recommended setting for this is "mitsuba=info". This controls the mitsuba's log output. For now mitsuba uses `env_logger` which just prints the log information to standard output (the console). If this is not set, you will only see errors and warnings and no other feedback. 
-  
-The only required setting is DATABASE_URL but RUST_LOG="info" is also recommended. Just use the `example.env` file contents and change the database URI.
+- RUST_LOG: the recommended setting for this is "mitsuba=info". Controls the mitsuba's log output. Instead of setting this, you can create a `log4rs.yml` file (or copy the example in this repository) in order to get more fine grained control over logging.
 
 We will refer to the executable as `mitsuba` in this guide from now on, but on Windows® it is of course called `mitsuba.exe` .
 
