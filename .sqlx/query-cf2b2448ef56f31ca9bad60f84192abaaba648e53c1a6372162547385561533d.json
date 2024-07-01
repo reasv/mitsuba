@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT * FROM thread_backlog\n            ORDER BY page DESC, id ASC\n            LIMIT $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "board",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "no",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_modified",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "replies",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "page",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cf2b2448ef56f31ca9bad60f84192abaaba648e53c1a6372162547385561533d"
+}

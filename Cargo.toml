@@ -31,14 +31,14 @@ instant = "0.1.12"
 regex = "1.5.5"
 base64 = "0.13.0"
 base32 = "0.4.0"
-actix-web = { version = "4.0.1", features = ["rustls"] }
-actix-files = "0.6.0"
+actix-web = { version = "4.8.0", features = ["rustls"] }
+actix-files = "0.6.6"
 clap = { version = "3.1.18", features = ["derive"] }
 clap_derive = "3.1.18"
 handlebars = { version = "4.2.2", features = ["dir_source"] }
 unicode-truncate = "0.2.0"
 handlebars_misc_helpers = { version = "0.12.1", features = ["string", "json"], default-features = false }
-sqlx = { version = "0.5.13", features = [ "postgres", "macros", "migrate", "runtime-tokio-rustls", "offline" ] }
+sqlx = {  version = "0.7.4", features = [ "postgres", "macros", "migrate", "runtime-tokio"] }
 rust-embed = "6.4.0"
 #mime_guess = "2.0.3"
 new_mime_guess = "4.0.1"

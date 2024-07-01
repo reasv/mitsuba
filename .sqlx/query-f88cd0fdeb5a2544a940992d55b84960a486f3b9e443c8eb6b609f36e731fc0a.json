@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT * FROM image_backlog\n            ORDER BY page DESC, id ASC\n            LIMIT $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "board",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "no",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "thumbnail_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "ext",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "page",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "file_sha256",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "thumbnail_sha256",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f88cd0fdeb5a2544a940992d55b84960a486f3b9e443c8eb6b609f36e731fc0a"
+}

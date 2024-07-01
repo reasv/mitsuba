@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT t1.resto FROM posts t1\n            LEFT JOIN posts t2\n            ON t1.resto = t2.resto AND t1.no < t2.no\n            WHERE t2.no IS NULL and t1.board = $1\n            ORDER BY t1.no DESC OFFSET $2 LIMIT $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "resto",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "72ba56d05d319b7aed233f7817ff018ab308eefcf61c0ec197fa521309f35d2d"
+}

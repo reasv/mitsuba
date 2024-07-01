@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO thread_backlog (board, no, last_modified, replies, page)\n            VALUES\n            ($1, $2, $3, $4, $5)\n            ON CONFLICT(board, no, last_modified) DO\n            UPDATE SET\n            replies = $4,\n            page = $5\n            RETURNING *;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "board",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "no",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_modified",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "replies",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "page",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e2a506eca1644ec72666c07852281f8a96cb4058ecbd4b539945c1c3fca72002"
+}
