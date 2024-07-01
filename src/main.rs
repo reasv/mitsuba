@@ -17,7 +17,7 @@ mod archiver;
 mod web;
 
 use web::web_main;
-use archiver::{Archiver};
+use archiver::Archiver;
 use http::HttpClient;
 
 
