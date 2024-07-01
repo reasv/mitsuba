@@ -8,8 +8,8 @@ use log::{info, warn, error, debug};
 #[allow(unused_imports)]
 use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
-use crate::models::{ThreadJob, ImageInfo, Post, Thread};
-use crate::util::get_thread_api_url;
+use crate::models::{ThreadJob, Post, Thread};
+use crate::util::{get_post_image_info, get_thread_api_url};
 use crate::archiver::Archiver;
 
 impl Archiver {
@@ -24,14 +24,6 @@ impl Archiver {
                 }
             }
         }
-    }
-    pub fn get_post_image_info(&self, board: &String, page: i32, post: &Post) -> Option<ImageInfo> {
-        if post.tim == 0 || post.filedeleted == 1 {
-            return None // no image
-        }
-        let url = format!("https://i.4cdn.org/{}/{}{}", board, post.tim, post.ext);
-        let thumbnail_url = format!("https://i.4cdn.org/{}/{}s.jpg", board, post.tim);
-        Some(ImageInfo{url, thumbnail_url, ext: post.ext.clone(), file_sha256: post.file_sha256.clone(), thumbnail_sha256: post.thumbnail_sha256.clone(), page, no: post.no, board: board.clone()})
     }
     pub async fn thread_cycle(&self) -> anyhow::Result<()> {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
@@ -106,7 +98,7 @@ impl Archiver {
         .map_err(|e| {error!("Failed to insert thread /{}/{} into database: {}", job.board, job.no, e);})?;
 
         for post in inserted_posts {
-            if let Some(image_info) = self.get_post_image_info(&job.board, job.page, &post) {
+            if let Some(image_info) = get_post_image_info(&job.board, job.page, &post) {
                 self.db_client.insert_image_job(&image_info).await
                 .map_err(|e| {error!("Failed to insert image job /{}/{} into database: {}", 
                 job.board, image_info.no, e);})?;

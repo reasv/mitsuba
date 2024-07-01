@@ -9,6 +9,8 @@ use unicode_truncate::UnicodeTruncateStr;
 use sha2::{Sha256, Digest};
 use weighted_rs::{SmoothWeight, Weight};
 
+use crate::models::{ImageInfo, Post};
+
 pub fn hash_file(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
@@ -52,6 +54,16 @@ pub fn get_board_archive_api_url(board: &String) -> String {
 pub fn get_thread_api_url(board: &String, tid: &String) -> String {
     format!("https://a.4cdn.org/{}/thread/{}.json", board, tid)
 }
+
+pub fn get_post_image_info(board: &String, page: i32, post: &Post) -> Option<ImageInfo> {
+    if post.tim == 0 || post.filedeleted == 1 {
+        return None // no image
+    }
+    let url = format!("https://i.4cdn.org/{}/{}{}", board, post.tim, post.ext);
+    let thumbnail_url = format!("https://i.4cdn.org/{}/{}s.jpg", board, post.tim);
+    Some(ImageInfo{url, thumbnail_url, ext: post.ext.clone(), file_sha256: post.file_sha256.clone(), thumbnail_sha256: post.thumbnail_sha256.clone(), page, no: post.no, board: board.clone()})
+}
+
 pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
     let binary = STANDARD.decode(b64)?;
     let s = encode(Alphabet::Rfc4648{padding: false}, binary.as_slice());
