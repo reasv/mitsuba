@@ -4,9 +4,9 @@ use s3::region::Region;
 use crate::util::bool_from_env;
 
 pub struct ObjectStorage {
-    pub region: Region,
-    pub credentials: Credentials,
-    pub bucket_name: String,
+    // pub region: Region,
+    // pub credentials: Credentials,
+    // pub bucket_name: String,
     pub bucket: Bucket,
     pub enabled: bool
 }
@@ -35,9 +35,9 @@ impl ObjectStorage {
         bucket.add_header("x-amz-acl", "public-read");
         bucket.add_header("Content-Disposition", "inline");
         Self {
-            credentials,
-            bucket_name,
-            region,
+            // credentials,
+            // bucket_name,
+            // region,
             bucket,
             enabled: true
         }
@@ -47,9 +47,9 @@ impl Default for ObjectStorage {
     fn default() -> Self {
         Self {
             // dummy values
-            credentials: Credentials::anonymous().unwrap(),
-            bucket_name: "bucket".to_string(),
-            region: "us-east-1".parse().unwrap(),
+            // credentials: Credentials::anonymous().unwrap(),
+            // bucket_name: "bucket".to_string(),
+            // region: "us-east-1".parse().unwrap(),
             bucket: Bucket::new(&"bucket".to_string(), "us-east-1".parse().unwrap(), Credentials::anonymous().unwrap()).unwrap(),
             enabled: false
         }
