@@ -24,3 +24,5 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres1
       POSTGRES_USER: mitsuba
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
