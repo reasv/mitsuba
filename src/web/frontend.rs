@@ -4,7 +4,7 @@ use std::convert::AsRef;
 
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
-use actix_web::{get, web, HttpResponse, Result};
+use actix_web::{get, web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use rust_embed::RustEmbed;
 use new_mime_guess::from_path;
