@@ -7,8 +7,6 @@ The intended usage is self-hosting an archive on a low budget, however the Actix
 
 Mitsuba does not support "ghost posting" as it's not an imageboard engine. This could be supported in the future with some work (mostly on the front-end) but it requires actual administration tools and an accounts system, neither of which are actually present. What few options Mitsuba has are set through the CLI and environment variables (see `example.env`)
 
-If you want to check it out in the wild, https://mitsuba.world/ always has the latest release running. Most boards there are thumbnail-only, but `/vip/` and a few others have full images and files archived.
-
 ## Features
 - Very quick and easy to set up
 - No runtime dependencies except a running Postgresql database
