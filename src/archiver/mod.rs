@@ -52,6 +52,21 @@ impl Archiver {
             error!("Board /{}/ does not exist, skipping", board.name);
             return Ok(None)
         }
+        // If full_images is being set to true, check if the board is already in the database
+        if board.full_images {
+            if let Some(b) = self.db_client.get_board(&board.name).await? {
+                if !b.full_images {
+                    // The board is being enabled for full images, but it's already in the database with full_images = false
+                    let result = self.db_client.insert_board(&board).await?;
+                    // We need to make sure existing posts have their full images downloaded
+                    let jobs_scheduled = self.db_client.schedule_missing_full_files(&board.name).await?;
+                    if jobs_scheduled > 0 {
+                        info!("Scheduled {} missing full images for board /{}/", jobs_scheduled, board.name);
+                    }
+                    return Ok(Some(result))
+                }
+            }
+        }
         Ok(Some(self.db_client.insert_board(&board).await?))
     }
     pub async fn stop_board(&self, board_name: &String) -> anyhow::Result<Option<Board>> {

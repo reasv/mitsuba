@@ -12,6 +12,7 @@ use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
      ThreadInfo, ThreadJob, ThreadNo};
 
+use crate::util::get_post_image_info;
 #[allow(unused_imports)]
 use crate::util::strip_nullchars;
 
@@ -114,6 +115,62 @@ impl DBClient {
         ).fetch_one(&self.pool).await?;
         Ok(count.count.unwrap_or(0))
     }
+
+    pub async fn schedule_missing_full_files(&self, board: &String) -> anyhow::Result<usize> {
+        let posts_missing_full_images: Vec<Post> = sqlx::query_as!(Post,
+            "
+            SELECT
+            *
+            FROM posts
+            WHERE file_sha256 = ''
+            AND board = $1
+            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0
+            ",
+            board
+        ).fetch_all(&self.pool).await?;
+
+        let image_infos: Vec<ImageInfo> = posts_missing_full_images.into_iter()
+        .map(|post| {
+            get_post_image_info(board, 5, &post) // page 5 gives it a middle priority
+        })
+        .filter_map(|img| img).collect();
+
+        let mut job_counter = 0;
+        for img in &image_infos {
+            let job = sqlx::query_as!(ImageJob,
+                "
+                INSERT INTO image_backlog (
+                    board, -- 1
+                    no, -- 2
+                    url, -- 3
+                    thumbnail_url, -- 4
+                    ext, -- 5
+                    page, -- 6
+                    file_sha256, -- 7
+                    thumbnail_sha256 -- 8
+                )
+                VALUES
+                ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT(board, no) DO NOTHING
+                RETURNING *;
+                ",
+                img.board, //1
+                img.no, //2
+                img.url, //3
+                img.thumbnail_url, //4
+                img.ext, //5
+                img.page, //6
+                img.file_sha256, //7
+                img.thumbnail_sha256 //8
+            ).fetch_optional(&self.pool)
+            .await?;
+            if job.is_some() {
+                job_counter += 1;
+            }
+        }
+        Ok(job_counter)
+    }
+
 
     pub async fn get_latest_images(&self, limit: i64, offset: i64, boards: Vec<String>) -> anyhow::Result<Vec<Post>> {
         let posts = sqlx::query_as!(Post,
