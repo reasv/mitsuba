@@ -8,6 +8,8 @@ services:
     command: "./mitsuba start"
     volumes:
       - ./data:/data
+    # Optional: Use custom log4rs configuration instead of the fallback env_logger
+    # - ./log4rs.yml:/log4rs.yml
     ports:
       - "8085:8080"
       - "9025:9000"
@@ -16,7 +18,7 @@ services:
       - "RUST_LOG=mitsuba=info"
       - "DATABASE_URL=postgres://mitsuba:postgres1@db/mitsuba"
   db:
-    image: postgres:13.2
+    image: postgres:13
     container_name: "mitsuba-postgres"
     restart: always
     environment:
