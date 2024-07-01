@@ -25,7 +25,7 @@ RUN cargo build --release
 # Copy the rest of the source files
 COPY static ./static
 COPY migrations ./migrations
-COPY sqlx-data.json ./sqlx-data.json
+COPY .sqlx ./.sqlx
 COPY src ./src
 
 # Set environment variable for offline mode
