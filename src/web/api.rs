@@ -118,16 +118,17 @@ pub(crate) async fn get_file_object_storage_handler(obc: web::Data<ObjectStorage
 }
 
 pub(crate) async fn get_file_object_storage(obc: web::Data<ObjectStorage>, path: &String) -> actix_web::Result<HttpResponse> {
-    let (data, code) = obc.bucket.get_object(path).await.map_err(|e| {
+    let response_data = obc.bucket.get_object(path).await.map_err(|e| {
         error!("Error getting file ({}) from bucket: {}", path, e);
         actix_web::error::ErrorInternalServerError("")
     })?;
+    let code = response_data.status_code();
+    let data = response_data.bytes().to_owned();
     if code == 404 {
         Err(actix_web::error::ErrorNotFound("404 Not Found (Object storage)"))
     } else if code == 200 {
         let region = obc.bucket.url();
         debug!("{}{}", region, path);
-        // Ok(HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).streaming(data))
         Ok(HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(data))
     } else {
         error!("Error getting file ({}) from bucket: {}", path, code);

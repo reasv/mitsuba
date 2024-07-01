@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
-use governor::{Quota, RateLimiter, Jitter, state::{keyed::DashMapStateStore}, clock::QuantaClock};
+use governor::{Quota, RateLimiter, Jitter, state::keyed::DashMapStateStore, clock::QuantaClock};
 use nonzero_ext::nonzero;
 use backoff::{default, ExponentialBackoff};
 use tokio::fs::File;
@@ -143,9 +143,10 @@ impl HttpClient {
         let hash = hash_file(&bytes);
         let filename = get_file_url(&hash, &ext, is_thumb);
         info!("Uploading: {}", filename);
-        if let Some((_, code)) = self.oclient.bucket.put_object(filename.clone(), &bytes).await
+        if let Some(response_data) = self.oclient.bucket.put_object(filename.clone(), &bytes).await
         .map_err(|e| {error!("Error uploading file ({}) to object storage: {}", filename, e);})
         .ok() {
+            let code = response_data.status_code();
             if code == 200 {
                 return Some(hash);
             }
