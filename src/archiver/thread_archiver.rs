@@ -68,6 +68,13 @@ impl Archiver {
     pub async fn archive_thread(&self, job: ThreadJob) -> Result<(), ()> {
         let timestamp: i64 = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
         .map_err(|_| {error!("SystemTime before UNIX EPOCH!");})?.as_secs() as i64;
+        let board_opt = self.db_client.get_board(&job.board).await
+        .map_err(|_| {error!("Failed to get board /{}/ from database", job.board)})?;
+
+        if board_opt.is_none() || !board_opt.unwrap_or_default().archive {
+            error!("Board /{}/ does not exist or is not enabled for archival, skipping", job.board);
+            return Ok(())
+        }
 
         let thread_opt = self.get_thread(&job.board, &job.no.to_string()).await
         .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no);})?;

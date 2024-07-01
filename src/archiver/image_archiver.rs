@@ -68,8 +68,8 @@ impl Archiver {
             if let Some(board) = self.db_client.get_board(&job.board).await
             .map_err(|e| {error!("Failed to get board info for file job: /{}/{}: {}", job.board, job.no, e);})?
             {
-                // If full_images is enabled for the board, download the full image
-                if board.full_images {
+                // If full_images is enabled for the board (and the board is still enabled), download the full image
+                if board.full_images && board.archive {
                     file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
                     counter!("files_fetched", 1);
                     info!("Processed full image for /{}/{}", job.board, job.no);
