@@ -1,5 +1,4 @@
 use std::time::{Duration, Instant};
-use std::collections::HashSet;
 use std::collections::HashMap;
 use futures::future::FutureExt;
 use std::panic::AssertUnwindSafe;
@@ -13,18 +12,6 @@ use crate::models::ImageJob;
 use crate::archiver::Archiver;
 
 impl Archiver {
-    pub async fn get_boards_with_full_images(&self) -> Result<HashSet<String>, ()> {
-        let boards = self.db_client.get_all_boards().await
-        .map_err(|e| {error!("Failed to get boards from database: {}", e);})?;
-
-        let mut full_images = HashSet::new();
-        for board in boards {
-            if board.full_images{
-                full_images.insert(board.name);
-            }
-        }
-        Ok(full_images)
-    }
     pub async fn image_cycle(&self) -> Result<(),()> {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
         let mut running_jobs = HashMap::new();
