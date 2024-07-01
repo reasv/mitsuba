@@ -35,14 +35,12 @@ impl Archiver {
             if jobs.len() == 0 { // No more jobs available
                 tokio::time::sleep(Duration::from_secs(10)).await;
                 continue;
-            };
-            let full_image_boards = self.get_boards_with_full_images().await?;
-            
+            };            
             while let Some(job) = jobs.pop() {
                 if running_jobs.contains_key(&job.id) { // Don't schedule the same job twice
                     continue;
                 }
-                running_jobs.insert(job.id, self.dispatch_archive_image(tx.clone(),  full_image_boards.contains(&job.board), job));
+                running_jobs.insert(job.id, self.dispatch_archive_image(tx.clone(), job));
                 if running_jobs.len() < 20 {continue}; // Dispatch up to 20 jobs at once
 
                 if let Some(job_id) = rx.recv().await { // wait for a job to complete before dispatching the next
@@ -54,20 +52,20 @@ impl Archiver {
             }
         }
     }
-    pub fn dispatch_archive_image(&self, tx: tokio::sync::mpsc::Sender<i64>, need_full_image: bool, job: ImageJob) -> tokio::task::JoinHandle<()> {
+    pub fn dispatch_archive_image(&self, tx: tokio::sync::mpsc::Sender<i64>, job: ImageJob) -> tokio::task::JoinHandle<()> {
         let c = self.clone();
         tokio::task::spawn(
             async move {
                 increment_gauge!("file_jobs_running", 1.0);
                 let s = Instant::now();
-                AssertUnwindSafe(c.archive_image(&job.clone(), need_full_image)).catch_unwind().await.ok();
+                AssertUnwindSafe(c.archive_image(&job.clone())).catch_unwind().await.ok();
                 histogram!("file_job_duration", s.elapsed().as_millis() as f64);
                 decrement_gauge!("file_jobs_running", 1.0);
                 tx.send(job.id).await.ok();
             }
         )
     }
-    pub async fn archive_image(&self, job: &ImageJob, need_full_image: bool) -> Result<(),()> {
+    pub async fn archive_image(&self, job: &ImageJob) -> Result<(),()> {
         let mut thumbnail_sha256 = job.thumbnail_sha256.clone();
         let mut file_sha256 = job.file_sha256.clone();
 
@@ -79,12 +77,15 @@ impl Archiver {
             .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
         }
 
-        if file_sha256.is_empty() && need_full_image {
-            file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
-            counter!("files_fetched", 1);
-            info!("Processed full image for /{}/{}", job.board, job.no);
-            self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
-            .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+        if file_sha256.is_empty() {
+            let full_image_boards = self.get_boards_with_full_images().await?;
+            if full_image_boards.contains(&job.board) {
+                file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
+                counter!("files_fetched", 1);
+                info!("Processed full image for /{}/{}", job.board, job.no);
+                self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
+                .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+            }
         }
         self.db_client.delete_image_job(job.id).await
         .map_err(|e| {error!("Failed to delete file job {} from backlog: {}", job.id, e);})?;
