@@ -33,11 +33,11 @@ base64 = "0.22.1"
 base32 = "0.5.0"
 actix-web = { version = "4.8.0", features = ["rustls"] }
 actix-files = "0.6.6"
-clap = { version = "3.1.18", features = ["derive"] }
-clap_derive = "3.1.18"
-handlebars = { version = "4.2.2", features = ["dir_source"] }
+clap = { version = "4.5.8", features = ["derive"] }
+clap_derive = "4.5.8"
+handlebars = { version = "5.1.2", features = ["dir_source"] }
 unicode-truncate = "1.0.0"
-handlebars_misc_helpers = { version = "0.12.1", features = ["string", "json"], default-features = false }
+handlebars_misc_helpers = { version = "0.16.3", features = ["string", "json"], default-features = false }
 sqlx = {  version = "0.7.4", features = [ "postgres", "macros", "migrate", "runtime-tokio"] }
 rust-embed = "8.4.0"
 #mime_guess = "2.0.3"
@@ -46,8 +46,8 @@ sha2 = "0.10.8"
 rust-s3 = { version = "0.33.0", features = ["tokio-rustls-tls"], default-features = false }
 dashmap = "6.0.1"
 weighted-rs = "0.1.3"
-metrics = "0.18.1"
-metrics-exporter-prometheus = "0.9.0"
+metrics = "0.18.1" # Not up to date
+metrics-exporter-prometheus = "0.9.0" # Not up to date
 futures = "0.3.30"
 log4rs = "1.3.0"
 

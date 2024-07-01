@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use rust_embed::RustEmbed;
 use new_mime_guess::from_path;
 
-use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderError};
+use handlebars::{Handlebars, RenderContext, Helper, Context, JsonRender, HelperResult, Output, RenderErrorReason};
 use handlebars::handlebars_helper;
 use handlebars_misc_helpers::register;
 
@@ -170,34 +170,34 @@ pub(crate) fn build_handlebars() -> Handlebars<'static> {
 
     handlebars.register_helper("shorten",
         Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
-            let length = h.param(0).ok_or(RenderError::new("Length not found"))?;
-            let text = h.param(1).ok_or(RenderError::new("String not found"))?.value().render();
+            let length = h.param(0).ok_or(RenderErrorReason::Other("Length not found".to_string()))?;
+            let text = h.param(1).ok_or(RenderErrorReason::Other("String not found".to_string()))?.value().render();
             let sz = length.value().as_u64().unwrap_or_default();
             out.write(shorten_string(sz as usize, text).as_ref())?;
             Ok(())
         }));
     handlebars.register_helper("id_color",
         Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
-            let id_text = h.param(0).ok_or(RenderError::new("ID not found"))?.value().render();
+            let id_text = h.param(0).ok_or(RenderErrorReason::Other("ID not found".to_string()))?.value().render();
             out.write(string_to_idcolor(id_text).as_ref())?;
             Ok(())
         }));
     handlebars.register_helper("base64_to_32",
         Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
-            let b64_text = h.param(0).ok_or(RenderError::new("base64 not found"))?.value().render();
+            let b64_text = h.param(0).ok_or(RenderErrorReason::Other("base64 not found".to_string()))?.value().render();
             out.write(base64_to_32(b64_text).unwrap_or_default().as_ref())?;
             Ok(())
         }));
     handlebars.register_helper("get_file_url",
     Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
-        let sha256 = h.param(0).ok_or(RenderError::new("sha256 not found"))?.value().render();
-        let ext = h.param(1).ok_or(RenderError::new("ext not found"))?.value().render();
+        let sha256 = h.param(0).ok_or(RenderErrorReason::Other("sha256 not found".to_string()))?.value().render();
+        let ext = h.param(1).ok_or(RenderErrorReason::Other("ext not found".to_string()))?.value().render();
         out.write(get_file_url(&sha256, &ext, false).as_ref())?;
         Ok(())
     }));
     handlebars.register_helper("get_thumbnail_url",
     Box::new(|h: &Helper, _r: &Handlebars, _: &Context, _rc: &mut RenderContext, out: &mut dyn Output| -> HelperResult {
-        let sha256 = h.param(0).ok_or(RenderError::new("sha256 not found"))?.value().render();
+        let sha256 = h.param(0).ok_or(RenderErrorReason::Other("sha256 not found".to_string()))?.value().render();
         out.write(get_file_url(&sha256, &".jpg".to_string(), true).as_ref())?;
         Ok(())
     }));

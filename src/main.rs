@@ -22,7 +22,7 @@ use http::HttpClient;
 
 
 #[derive(Parser)]
-#[clap(version = "1.0", about="High performance board archiver software. Add boards with `add`, then start with `start` command. See `help add` and `help start`")]
+#[clap(version = "1.11", about="High performance board archiver software. Add boards with `add`, then start with `start` command. See `help add` and `help start`")]
 struct Opts {
     #[clap(subcommand)]
     subcmd: SubCommand
