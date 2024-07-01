@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::env;
 
-use base64::decode;
+use base64::engine::general_purpose::STANDARD;
 use base32::{Alphabet, encode};
+use base64::Engine;
 use unicode_truncate::UnicodeTruncateStr;
 use sha2::{Sha256, Digest};
 use weighted_rs::{SmoothWeight, Weight};
@@ -11,7 +12,7 @@ use weighted_rs::{SmoothWeight, Weight};
 pub fn hash_file(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
-    encode(Alphabet::RFC4648{padding: false}, hasher.finalize().as_slice())
+    encode(Alphabet::Rfc4648{padding: false}, hasher.finalize().as_slice())
 }
 
 fn bad_hash(s: String) -> i64 {
@@ -52,8 +53,8 @@ pub fn get_thread_api_url(board: &String, tid: &String) -> String {
     format!("https://a.4cdn.org/{}/thread/{}.json", board, tid)
 }
 pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
-    let binary = decode(b64)?;
-    let s = encode(Alphabet::RFC4648{padding: false}, binary.as_slice());
+    let binary = STANDARD.decode(b64)?;
+    let s = encode(Alphabet::Rfc4648{padding: false}, binary.as_slice());
     Ok(s)
 }
 
