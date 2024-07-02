@@ -84,12 +84,12 @@ pub struct Post {
     pub thumbnail_sha256: String,
     #[serde(default)]
     pub deleted_on: i64,
-    // #[serde(default)]
-    // pub mitsuba_post_hidden: bool,
-    // #[serde(default)]
-    // pub mitsuba_com_hidden: bool,
-    // #[serde(default)]
-    // pub mitsuba_file_hidden: bool,
+    #[serde(default)]
+    pub mitsuba_post_hidden: bool,
+    #[serde(default)]
+    pub mitsuba_com_hidden: bool,
+    #[serde(default)]
+    pub mitsuba_file_hidden: bool,
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PostUpdate {

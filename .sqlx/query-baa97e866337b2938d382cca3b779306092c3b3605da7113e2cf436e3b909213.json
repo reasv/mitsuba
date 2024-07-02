@@ -217,6 +217,21 @@
         "ordinal": 42,
         "name": "deleted_on",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 43,
+        "name": "mitsuba_post_hidden",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 44,
+        "name": "mitsuba_com_hidden",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 45,
+        "name": "mitsuba_file_hidden",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -226,6 +241,9 @@
       ]
     },
     "nullable": [
+      false,
+      false,
+      false,
       false,
       false,
       false,
