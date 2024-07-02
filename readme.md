@@ -201,60 +201,6 @@ You can start a read-only instance of mitsuba, which will only serve the web UI 
 You can separate the archiver and the public web UI/API by running the archiver by itself using `mitsuba start --archiver-only=true`, and then launch `mitsuba start-read-only` separately. This means you can stop or restart the archiver without any visible disruption to users who are just browsing your archive.
 You can also run multiple instances of `mitsuba start-read-only` if you want, or run the full archiver and web UI with `mitsuba start` along with additional read-only instances.
 
-## The `Purge <board>` command
-The cli supports a `purge` command to delete all data associated with a specific board:
-```
-$ mitsuba help purge
-Purge archive data from a specific board from the database
-
-Usage: mitsuba purge [OPTIONS] <NAME>
-
-Arguments:
-  <NAME>
-          Board name (eg. 'po')
-
-Options:
-      --only-purge-full-images <ONLY_PURGE_FULL_IMAGES>
-          (Optional) If true, will only delete full images and files saved for this board. If false, everything, including posts and thumnails. Default is false.
-
-          [possible values: true, false]
-
-  -h, --help
-          Print help (see a summary with '-h')
-```
-By default, all data is deleted, including full images/files (if present), thumbnails, and posts.
-Only files and thumbnails not present on other archived boards are selected for deletion.
-if you specify `--only-purge-full-images=true`, then only full images will be deleted (and further archival of full images for that board will be disabled). Posts and thumbnails will remain untouched, and you can always go back to archiving full images by re-enabling full image archival using `mitsuba add`.
-
-### Warning
-This command is only considered fully safe to execute ***while the archiver is not running***.
-It's recommended that you *shut down the mitsuba archiver* before running `purge`.
-
-It will still run either way, and it has no way of even knowing if an archiver is running, but you *may* run into some issues.
-
-Doing this operation while the archiver is working is **not** recommended and could result in some inconsistencies, such as a few from other unrelated boards potentially also being deleted (more details below) or, more likely, some of the data related to the board remaining undeleted. You can always try to run the purge command multiple times, although this is generally only really effective with `only-purge-full-images=true`.
-
-In any case, if you experience problems, please open an issue, even if you went against this recommendation.
-Mitsuba's archiver *should* never *crash* or stop working no matter what, and if it did, that would be a bug.
-
-### Running purge on a live archive
-If you're planning on running `purge` while the archiver is running (again, not recommended), you should first disable the board you're about to purge using the `remove` command, and wait for all pending archival jobs and image fetch jobs to complete.
-
-This ensures new data for that board isn't being written while existing data is being deleted, which could result in some being missed and remaining on disk/object storage.
-
-Additionally, if you have full-image fetching enabled for the board in question, it would be advisable to run `purge` with `only-purge-full-images=true` on it first, and ensure that all full images have been properly deleted before proceeding with the remaining data.
-
-#### Issues
-As mentioned above, issues with running purge on an archive that is actively adding new data is that new data is being written while the board is being purged.
-
-The first problem you may encounter is that any image download jobs that already started fetching an image will still complete and save it to disk before updating the database with that information, meaning that the purge command has no way to remove those images because it's not aware of them. This will result in some of the board's data still being on disk with no way to find and purge it in the future.
-
-A possible solution besides shutting the entire archiver down is to disable archiving of the board in question and waiting for a while before beginning the purge, until all pending jobs for that board have been completed.
-
-The second problem you may encounter is that occasionally, `purge` may delete thumbnails and files/full images from the store which are also present on other boards, leaving you with missing data.
-The purge process checks that any item being deleted does not exist on posts belonging to boards other than the one being purged before deleting each item. However, if you're extraordinarily unlucky, you could run into a situation where an archiver for a different board is downloading a file for its own archival process at the same time as that exact file is being purged. While unlikely, this could result in unwanted deletion of that file, and it will remain missing, forever.
-The time window for this to happen is quite small however.
-
 ## Web UI
 The web UI is currently made to look and work exactly like 4chan's Yotsuba Blue theme, except it's the same on every board (even non-worksafe boards).
 We also include 4chan's official default "inline extension" with all of its features and options (the inline extension is licensed as MIT).
@@ -386,6 +332,62 @@ The option `--archiver-only=true` will only start the archiver without the API o
 `mitsuba start-read-only`
 
 Starts the web UI and API, without the archivers. You can run as many instances of Mitsuba in this read-only mode as you wish.
+
+## The `Purge <board>` command
+`mitsuba purge BOARD`
+
+The cli supports a `purge` command to delete all data associated with a specific board:
+```
+$ mitsuba help purge
+Purge all archive data from a specific board from the database. Use with caution.
+
+Usage: mitsuba purge [OPTIONS] <NAME>
+
+Arguments:
+  <NAME>
+          Board name (eg. 'po')
+
+Options:
+      --only-purge-full-images <ONLY_PURGE_FULL_IMAGES>
+          (Optional) If true, will only delete full images and files saved for this board, preserving posts and thumbnails. If false, everything, including posts and thumbnails. Default is false. If false, board must be disabled using the `remove` command first.
+
+          [possible values: true, false]
+
+  -h, --help
+          Print help (see a summary with '-h')
+```
+By default, all data is deleted, including full images/files (if present), thumbnails, and posts.
+Only files and thumbnails not present on other archived boards are selected for deletion.
+if you specify `--only-purge-full-images=true`, then only full images will be deleted (and further archival of full images for that board will be disabled). Posts and thumbnails will remain untouched, and you can always go back to archiving full images by re-enabling full image archival using `mitsuba add`.
+
+### Warning
+This command is only considered fully safe to execute ***while the archiver is not running***.
+It's recommended that you *shut down the mitsuba archiver for all boards* before running `purge`.
+
+It will still run either way, and it has no way of even knowing if an archiver is running, but you *may* run into some issues.
+
+Doing this operation while the archiver is working is **not** recommended and could result in some inconsistencies, such as a few from other unrelated boards potentially also being deleted (more details below) or, more likely, some of the data related to the board remaining undeleted. You can always try to run the purge command multiple times, although this is generally only really effective with `only-purge-full-images=true`.
+
+In any case, if you experience problems, please open an issue, even if you went against this recommendation.
+Mitsuba's archiver *should* never *crash* or stop working no matter what, and if it did, that would be a bug.
+
+### Running purge on a live archive
+If you're planning on running `purge` while the archiver is running (again, not recommended), you should first disable the board you're about to purge using the `remove` command, and wait for all pending archival jobs and image fetch jobs to complete.
+
+This ensures new data for that board isn't being written while existing data is being deleted, which could result in some being missed and remaining on disk/object storage.
+
+Additionally, if you have full-image fetching enabled for the board in question, it would be advisable to run `purge` with `only-purge-full-images=true` on it first, and ensure that all full images have been properly deleted before proceeding with the remaining data.
+
+#### Issues
+As mentioned above, issues with running purge on an archive that is actively adding new data is that new data is being written while the board is being purged.
+
+The first problem you may encounter is that any image download jobs that already started fetching an image will still complete and save it to disk before updating the database with that information, meaning that the purge command has no way to remove those images because it's not aware of them. This will result in some of the board's data still being on disk with no way to find and purge it in the future.
+
+A possible solution besides shutting the entire archiver down is to disable archiving of the board in question and waiting for a while before beginning the purge, until all pending jobs for that board have been completed.
+
+The second problem you may encounter is that occasionally, `purge` may delete thumbnails and files/full images from the store which are also present on other boards, leaving you with missing data.
+The purge process checks that any item being deleted does not exist on posts belonging to boards other than the one being purged before deleting each item. However, if you're extraordinarily unlucky, you could run into a situation where an archiver for a different board is downloading a file for its own archival process at the same time as that exact file is being purged. While unlikely, this could result in unwanted deletion of that file, and it will remain missing, forever.
+The time window for this to happen is quite small however.
 
 ## Administration
 Mitsuba does not come with any admin UI besides the CLI commands above.

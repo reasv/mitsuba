@@ -81,6 +81,14 @@ impl Archiver {
         self.db_client.get_all_boards().await
     }
 
+    pub async fn is_board_enabled(&self, board_name: &String) -> anyhow::Result<bool> {
+        if let Some(board) = self.db_client.get_board(board_name).await? {
+            Ok(board.archive)
+        } else {
+            Ok(false)
+        }
+    }
+
     pub async fn purge_board(&self, board_name: &String, only_full_images: bool) -> anyhow::Result<PurgeReport> {
         let mut report = PurgeReport::default();
         if only_full_images {

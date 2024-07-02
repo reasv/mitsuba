@@ -40,7 +40,7 @@ enum SubCommand {
     Remove(Remove),
     #[clap(about = "List all boards in the database and their current settings. Includes disabled ('removed') boards")]
     List(ListBoards),
-    #[clap(about = "Purge archive data from a specific board from the database")]
+    #[clap(about = "Purge all archive data from a specific board from the database. Use with caution.")]
     Purge(Purge)
 }
 
@@ -85,7 +85,7 @@ struct ListBoards;
 struct Purge {
     #[clap(help = "Board name (eg. 'po')")]
     name: String,
-    #[clap(long, long_help = "(Optional) If true, will only delete full images and files saved for this board. If false, everything, including posts and thumnails. Default is false.")]
+    #[clap(long, long_help = "(Optional) If true, will only delete full images and files saved for this board, preserving posts and thumbnails. If false, everything, including posts and thumbnails. Default is false. If false, board must be disabled using the `remove` command first.")]
     only_purge_full_images: Option<bool>,
 }
 
@@ -200,6 +200,10 @@ async fn real_main() {
             if only_full_images {
                 println!("Purging full images and files for /{}/ from disk", board);
             } else {
+                if client.is_board_enabled(&board).await.unwrap() {
+                    println!("You must disable archiving of {} using the `remove` command before proceeding with a purge.", board);
+                    return;
+                }
                 println!("Purging all data for /{}/", board);
             }
             let report = client.purge_board(&board, only_full_images).await.unwrap();
