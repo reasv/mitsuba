@@ -236,14 +236,7 @@ There's also one extra endpoint that's entirely specific to Mitsuba: `/boards-st
 
 ### Differences with 4chan API
 The main difference with 4chan's API is that every post also contains a `board` field with the name of the board it is in.
-
-Moreover, in any situation where 4chan's API would omit a field, we instead include that field with a default value.
-
-The only types present in 4chan's API are integers and strings, so for integers the value would be `0` and for strings it's an empty string.
-This means that all JSON posts returned by our API are guaranteed to contain *all 37 fields* that a post could contain, no matter the board or type of post.
-For example, on 4chan's side, the `sticky` field is only ever set on OP posts, and its value is `1` if it is set. On our side, for non-sticky posts, it would be present and set to `0`.
-
-In practice this should not cause any issues with existing code targeting 4chan's API as long as you are checking the truthiness of each field rather than just its presence.
+In practice this should not cause any issues with existing code targeting 4chan's API.
 
 Two extra fields present on posts returned by our API are `file_sha256` and `thumbnail_sha256`.
 These represent the SHA256 hashes of the attached file and thumbnail for each post.

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-
+use std::string::String;
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq, Hash)]
 pub struct Post {
     #[serde(skip)]
@@ -8,89 +8,102 @@ pub struct Post {
     pub board: String,
     pub no: i64,
     pub resto: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub sticky: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub closed: i64,
     pub now: String,
     pub time: i64,
     #[serde(default)]
     pub name: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub trip: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub id: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub capcode: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub country: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub country_name: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub sub: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub com: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub tim: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub filename: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub ext: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub fsize: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub md5: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub w: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub h: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub tn_w: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub tn_h: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub filedeleted: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub spoiler: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub custom_spoiler: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub replies: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub images: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub bumplimit: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub imagelimit: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub tag: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub semantic_url: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub since4pass: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub unique_ips: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub m_img: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub archived: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub archived_on: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub last_modified: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub file_sha256: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_empty_string")]
     pub thumbnail_sha256: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     pub deleted_on: i64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub mitsuba_post_hidden: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub mitsuba_com_hidden: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub mitsuba_file_hidden: bool,
 }
+
+fn is_empty_string(s: &String) -> bool {
+    s.is_empty()
+}
+
+fn is_zero(i: &i64) -> bool {
+    *i == 0
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PostUpdate {
     pub closed: i64,
