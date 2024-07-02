@@ -390,19 +390,7 @@ The purge process checks that any item being deleted does not exist on posts bel
 The time window for this to happen is quite small however.
 
 ## Administration
-Mitsuba does not come with any admin UI besides the CLI commands above.
-
-There are no commands to purge a board from the database or delete its images.
-
-Images are stored in the same folders for all boards so you can't easily remove all the images just for one board, and some images might have been posted on multiple boards.
-
-Thumbnails and full images **are** stored in different folders (`full` and `thumb`) so you can delete all full images (for all boards) by just deleting that entire folder if you want to.
-
-However, if you really need to delete a particular image, you can just delete the file. The images on disk are never read, and whether an image has been downloaded or not is tracked in the database. So Mitsuba doesn't know that the image was removed from disk, and will never download it again, because it would be marked as already present.
-
-It's safe to delete any of the images on disk, but of course they will return 404s if someone tries to access them.
-
-We want to eventually have some convenient CLI tools for administration. Maybe a web UI in the future, but that's a bigger endeavour.
+Mitsuba does not come with any admin UI besides the CLI commands.
 
 ## Future
 
