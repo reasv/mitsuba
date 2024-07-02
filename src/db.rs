@@ -829,6 +829,26 @@ impl DBClient {
         
         Ok(posts)
     }
+    pub async fn set_post_hidden_status(&self, board: &String, no: i64, hidden: bool, com_hidden: bool, file_hidden: bool) -> anyhow::Result<u64> {
+        let res = sqlx::query!(
+            "
+            UPDATE posts
+            SET 
+            mitsuba_post_hidden = $1,
+            mitsuba_com_hidden = $2,
+            mitsuba_file_hidden = $3
+            WHERE board = $4 AND no = $5
+            ",
+            hidden,
+            com_hidden,
+            file_hidden,
+            board,
+            no
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
 }
 
 impl std::panic::UnwindSafe for DBClient {}

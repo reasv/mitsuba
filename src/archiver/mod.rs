@@ -145,6 +145,18 @@ impl Archiver {
         }
         Ok(report)
     }
+
+    pub async fn hide_post(&self, board_name: &String, no: i64, hide_comment: bool, hide_image: bool) -> anyhow::Result<()> {
+        // Only hide the whole post if neither the comment nor the image are hidden
+        let post_hidden = !hide_comment && !hide_image;
+        self.db_client.set_post_hidden_status(&board_name, no, post_hidden, hide_comment, hide_image).await?;
+        Ok(())
+    }
+
+    pub async fn unhide_post(&self, board_name: &String, no: i64) -> anyhow::Result<()> {
+        self.db_client.set_post_hidden_status(&board_name, no, false, false, false).await?;
+        Ok(())
+    }
     
 }
 

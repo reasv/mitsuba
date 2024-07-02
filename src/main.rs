@@ -41,7 +41,11 @@ enum SubCommand {
     #[clap(about = "List all boards in the database and their current settings. Includes disabled ('removed') boards")]
     List(ListBoards),
     #[clap(about = "Purge all archive data from a specific board from the database. Use with caution.")]
-    Purge(Purge)
+    Purge(Purge),
+    #[clap(about = "Hide a specific post/thread from the public webui and API")]
+    Hide(Hide),
+    #[clap(about = "Unhide a previously hidden post, making it visible again")]
+    Unhide(Unhide)
 }
 
 #[derive(Parser, Default, Debug, Clone)]
@@ -87,6 +91,26 @@ struct Purge {
     name: String,
     #[clap(long, long_help = "(Optional) If true, will only delete full images and files saved for this board, preserving posts and thumbnails. If false, everything, including posts and thumbnails. Default is false. If false, board must be disabled using the `remove` command first.")]
     only_purge_full_images: Option<bool>,
+}
+
+#[derive(Parser, Clone)]
+struct Hide {
+    #[clap(help = "Board name (eg. 'po')")]
+    board_name: String,
+    #[clap(help = "Post number (eg. 123456)")]
+    post: i64,
+    #[clap(long, long_help = "(Optional) If true, will hide the comment text (post body) rather than the whole post. Default is false.")]
+    hide_comment: Option<bool>,
+    #[clap(long, long_help = "(Optional) If true, will hide the image and thumbnail rather than the whole post. Default is false.")]
+    hide_image: Option<bool>
+}
+
+#[derive(Parser, Clone)]
+struct Unhide {
+    #[clap(help = "Board name (eg. 'po')")]
+    board_name: String,
+    #[clap(help = "Post number (eg. 123456)")]
+    post: i64
 }
 
 
@@ -209,6 +233,21 @@ async fn real_main() {
             let report = client.purge_board(&board, only_full_images).await.unwrap();
             println!("Purged {} posts, {} thumbnails, {} full images / files", report.removed_posts, report.thumbnails_deleted, report.full_files_deleted);
             println!("Failed to delete {} thumbnails and {} full images/files", report.thumbnails_failed, report.full_files_failed);
+        },
+        SubCommand::Hide(hide_opt) => {
+            let board = hide_opt.board_name;
+            let post = hide_opt.post;
+            let hide_comment = hide_opt.hide_comment.unwrap_or(false);
+            let hide_image = hide_opt.hide_image.unwrap_or(false);
+            client.hide_post(&board, post, hide_comment, hide_image).await.unwrap();
+            let hide_post = !hide_comment && !hide_image;
+            println!("Hid post /{}/{} (Entire post hidden: {}, Only comment field hidden: {}, Only image hidden: {})", board, post, hide_post, hide_comment, hide_image);
+        },
+        SubCommand::Unhide(unhide_opt) => {
+            let board = unhide_opt.board_name;
+            let post = unhide_opt.post;
+            client.unhide_post(&board, post).await.unwrap();
+            println!("Unhid post /{}/{}", board, post);
         }
     }
 }
