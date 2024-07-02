@@ -55,30 +55,27 @@ impl Archiver {
     pub async fn archive_image(&self, job: &ImageJob) -> Result<(),()> {
         let mut thumbnail_sha256 = job.thumbnail_sha256.clone();
         let mut file_sha256 = job.file_sha256.clone();
-
-        if thumbnail_sha256.is_empty() {
-            thumbnail_sha256 = self.http_client.download_file_checksum(&job.thumbnail_url, &".jpg".to_string(), true).await?;
-            counter!("thumbnails_fetched", 1);
-            info!("Processed thumbnail for /{}/{}", job.board, job.no);
-            self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
-            .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
-        }
-
-        if file_sha256.is_empty() {
-            if let Some(board) = self.db_client.get_board(&job.board).await
+        
+        if let Some(board) = self.db_client.get_board(&job.board).await
             .map_err(|e| {error!("Failed to get board info for file job: /{}/{}: {}", job.board, job.no, e);})?
-            {
-                // If full_images is enabled for the board (and the board is still enabled), download the full image
-                if board.full_images && board.archive {
-                    file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
-                    counter!("files_fetched", 1);
-                    info!("Processed full image for /{}/{}", job.board, job.no);
-                    self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
-                    .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
-                }
+        {
+            if thumbnail_sha256.is_empty() && board.archive {
+                thumbnail_sha256 = self.http_client.download_file_checksum(&job.thumbnail_url, &".jpg".to_string(), true).await?;
+                counter!("thumbnails_fetched", 1);
+                info!("Processed thumbnail for /{}/{}", job.board, job.no);
+                self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
+                .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+            }
+    
+            // If full_images is enabled for the board (and the board is still enabled), download the full image
+            if file_sha256.is_empty() && board.full_images && board.archive {
+                file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
+                counter!("files_fetched", 1);
+                info!("Processed full image for /{}/{}", job.board, job.no);
+                self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
+                .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
             }
         }
-        
         self.db_client.delete_image_job(job.id).await
         .map_err(|e| {error!("Failed to delete file job {} from backlog: {}", job.id, e);})?;
         Ok(())
