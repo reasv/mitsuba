@@ -71,14 +71,14 @@ impl Archiver {
         let board_opt = self.db_client.get_board(&job.board).await
         .map_err(|_| {error!("Failed to get board /{}/ from database", job.board)})?;
 
+        let thread_opt = self.get_thread(&job.board, &job.no.to_string()).await
+        .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no);})?;
+        counter!("threads_fetched", 1);
+        
         if board_opt.is_none() || !board_opt.unwrap_or_default().archive {
             error!("Board /{}/ does not exist or is not enabled for archival, skipping", job.board);
             return Ok(())
         }
-
-        let thread_opt = self.get_thread(&job.board, &job.no.to_string()).await
-        .map_err(|_| {error!("Failed to fetch thread /{}/{}", job.board, job.no);})?;
-        counter!("threads_fetched", 1);
 
         if thread_opt.is_none() { // Thread was 404
             warn!("Thread /{}/{} [{}] 404, deleting from backlog ({}).", job.board, job.no, job.last_modified, job.id);
