@@ -2,6 +2,7 @@ use std::path::Path;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use std::io::ErrorKind;
 
 use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
@@ -10,6 +11,7 @@ use nonzero_ext::nonzero;
 use backoff::{default, ExponentialBackoff};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use s3::error::S3Error;
 
 use log::{info, warn, error, debug};
 #[allow(unused_imports)]
@@ -181,13 +183,29 @@ impl HttpClient {
     pub async fn delete_downloaded_file(&self, hash: &String, ext: &String, is_thumb: bool) -> anyhow::Result<()> {
         if self.oclient.enabled {
             let filename = get_file_url(hash, ext, is_thumb);
-            self.oclient.bucket.delete_object(filename.clone()).await
-            .map_err(|e| {error!("Failed to delete file {} from object storage: {}", filename, e); e})?;
+            match self.oclient.bucket.delete_object(filename.clone()).await {
+                Ok(_) => {},
+                Err(S3Error::Http(404, _)) => {
+                    warn!("File {} not found on object storage", filename);
+                },
+                Err(e) => {
+                    error!("Failed to delete file {} from object storage: {}", filename, e);
+                    return Err(e.into());
+                }
+            }
         } else {
             let folder = get_file_folder(hash, is_thumb);
             let filename = folder.join(hash.clone() + ext);
-            tokio::fs::remove_file(&filename).await
-            .map_err(|e| {error!("Failed to delete file {} from disk storage: {}", filename.to_str().unwrap_or_default(), e); e})?;
+            match tokio::fs::remove_file(&filename).await {
+                Ok(_) => {},
+                Err(e) if e.kind() == ErrorKind::NotFound => {
+                    warn!("File {} not found on disk storage", filename.to_str().unwrap_or_default());
+                },
+                Err(e) => {
+                    error!("Failed to delete file {} from disk storage: {}", filename.to_str().unwrap_or_default(), e);
+                    return Err(e.into());
+                }
+            }
         }
         Ok(())
     }
