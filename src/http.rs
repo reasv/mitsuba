@@ -87,8 +87,6 @@ impl HttpClient {
         histogram!("http_request_duration", s.elapsed().as_millis() as f64);
         decrement_gauge!("http_requests_running", 1.0);
         
-        
-
         info!("Fetching: {} (Attempt {})", url, attempt);
         match resp.status() {
             StatusCode::OK => Ok(resp.bytes().await.map_err(backoff::Error::transient)?),
@@ -105,7 +103,7 @@ impl HttpClient {
         }
     }
 
-    pub async fn fetch_url_backoff(&self, url: &str, rlimit_key: &String) -> Result<bytes::Bytes, reqwest::Error> {
+    async fn fetch_url_backoff(&self, url: &str, rlimit_key: &String) -> Result<bytes::Bytes, reqwest::Error> {
         let back = self.new_backoff();
         let mut attempt: u64 = 0;
         let bytes = backoff::future::retry(back, || {
@@ -154,6 +152,7 @@ impl HttpClient {
         }
         None
     }
+
     pub async fn download_file_checksum(&self, url: &String, ext: &String, is_thumb: bool) -> Result<String, ()> {
         let bytes = match self.fetch_url_backoff(url, &"download".to_string()).await {
             Ok(b) => b,
@@ -177,6 +176,20 @@ impl HttpClient {
         } else {
             self.save_file(bytes, ext, is_thumb).await.ok_or(())
         }
+    }
+
+    pub async fn delete_downloaded_file(&self, hash: &String, ext: &String, is_thumb: bool) -> anyhow::Result<()> {
+        if self.oclient.enabled {
+            let filename = get_file_url(hash, ext, is_thumb);
+            self.oclient.bucket.delete_object(filename.clone()).await
+            .map_err(|e| {error!("Failed to delete file {} from object storage: {}", filename, e); e})?;
+        } else {
+            let folder = get_file_folder(hash, is_thumb);
+            let filename = folder.join(hash.clone() + ext);
+            tokio::fs::remove_file(&filename).await
+            .map_err(|e| {error!("Failed to delete file {} from disk storage: {}", filename.to_str().unwrap_or_default(), e); e})?;
+        }
+        Ok(())
     }
 }
 
