@@ -65,6 +65,8 @@ impl Archiver {
                 info!("Processed thumbnail for /{}/{}", job.board, job.no);
                 self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
                 .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+                self.handle_blacklist(&job.board, job.no, &thumbnail_sha256, &".jpg".to_string(), true)
+                .await.map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
             }
     
             // If full_images is enabled for the board (and the board is still enabled), download the full image
@@ -74,12 +76,26 @@ impl Archiver {
                 info!("Processed full image for /{}/{}", job.board, job.no);
                 self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
                 .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+                self.handle_blacklist(&job.board, job.no, &thumbnail_sha256, &".jpg".to_string(), true)
+                .await.map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
             }
         }
         self.db_client.delete_image_job(job.id).await
         .map_err(|e| {error!("Failed to delete file job {} from backlog: {}", job.id, e);})?;
         Ok(())
     }
+
+    pub async fn handle_blacklist(&self, board_name: &String, no: i64, sha256: &String, ext: &String, is_thumb: bool) -> anyhow::Result<()> {
+        if !self.db_client.is_file_blacklisted(sha256).await? {
+            return Ok(());
+        }
+        // File is blacklisted, hide the image and delete it
+        warn!("Blacklisted file on /{}/{} ({}) detected, hiding and deleting", board_name, no, sha256);
+        self.db_client.set_post_hidden_status(board_name, no, false, false, true).await?;
+        self.http_client.delete_downloaded_file(sha256, ext, is_thumb).await?;
+        Ok(())
+    }
+
     pub fn run_image_cycle(&self) -> tokio::task::JoinHandle<()> {
         let c = self.clone();
         tokio::task::spawn(async move {

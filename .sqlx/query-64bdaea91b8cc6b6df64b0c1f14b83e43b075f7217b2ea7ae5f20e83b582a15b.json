@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO file_blacklist (sha256, reason)\n            VALUES ($1, $2)\n            ON CONFLICT(sha256)\n            DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "64bdaea91b8cc6b6df64b0c1f14b83e43b075f7217b2ea7ae5f20e83b582a15b"
+}

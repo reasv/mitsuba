@@ -42,10 +42,12 @@ enum SubCommand {
     List(ListBoards),
     #[clap(about = "Purge all archive data from a specific board from the database. Use with caution.")]
     Purge(Purge),
-    #[clap(about = "Hide a specific post/thread from the public webui and API")]
+    #[clap(about = "Hide a specific post/thread from the public webui and API. Nondestructive.")]
     Hide(Hide),
     #[clap(about = "Unhide a previously hidden post, making it visible again")]
-    Unhide(Unhide)
+    Unhide(Unhide),
+    #[clap(about = "Delete the image or file associated with a specific post and blacklist it from being downloaded again. Does not delete the post itself.")]
+    PurgeImage(DeleteImage)
 }
 
 #[derive(Parser, Default, Debug, Clone)]
@@ -111,6 +113,16 @@ struct Unhide {
     board_name: String,
     #[clap(help = "Post number (eg. 123456)")]
     post: i64
+}
+
+#[derive(Parser, Clone)]
+struct DeleteImage {
+    #[clap(help = "Board name (eg. 'po')")]
+    board_name: String,
+    #[clap(help = "Post number (eg. 123456)")]
+    post: i64,
+    #[clap(long, long_help = "(Optional) Reason for deletion. Will be logged in the database.")]
+    reason: Option<String>
 }
 
 
@@ -248,6 +260,15 @@ async fn real_main() {
             let post = unhide_opt.post;
             client.unhide_post(&board, post).await.unwrap();
             println!("Unhid post /{}/{}", board, post);
+        },
+        SubCommand::PurgeImage(purge_image_opt) => {
+            let board = purge_image_opt.board_name;
+            let post = purge_image_opt.post;
+            let reason = purge_image_opt.reason.unwrap_or("None".to_string());
+            let image_hashes = client.purge_image(&board, post, &reason).await.unwrap();
+            for sha256 in image_hashes {
+                println!("Purged image {} for post /{}/{}", sha256, board, post);
+            }
         }
     }
 }

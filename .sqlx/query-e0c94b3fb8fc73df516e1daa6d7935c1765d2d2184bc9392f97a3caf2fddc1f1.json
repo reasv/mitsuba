@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE posts\n            SET mitsuba_file_hidden = true\n            WHERE file_sha256 = $1 OR thumbnail_sha256 = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e0c94b3fb8fc73df516e1daa6d7935c1765d2d2184bc9392f97a3caf2fddc1f1"
+}

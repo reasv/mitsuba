@@ -157,6 +157,27 @@ impl Archiver {
         self.db_client.set_post_hidden_status(&board_name, no, false, false, false).await?;
         Ok(())
     }
+
+    pub async fn purge_image(&self, board_name: &String, no: i64, reason: &String) -> anyhow::Result<Vec<String>> {
+        let mut purged_files = Vec::new();
+        let post = self.db_client.get_post(board_name, no, false).await?;
+        if let Some(post) = post {
+            if !post.thumbnail_sha256.is_empty() {
+                self.http_client.delete_downloaded_file(&post.thumbnail_sha256, &".jpg".to_string(), true).await?;
+                purged_files.push(post.thumbnail_sha256.clone());
+            }
+            if !post.file_sha256.is_empty() {
+                self.http_client.delete_downloaded_file(&post.file_sha256, &post.ext, false).await?;
+                purged_files.push(post.file_sha256.clone());
+            }
+        } else {
+            warn!("Post /{}/{} not found.", board_name, no);
+        }
+        for sha256 in &purged_files {
+            self.db_client.blacklist_file(&sha256, &reason).await?;
+        }
+        Ok(purged_files)
+    }
     
 }
 

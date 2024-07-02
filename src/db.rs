@@ -452,6 +452,44 @@ impl DBClient {
         .rows_affected();
         Ok(res)
     }
+    pub async fn blacklist_file(&self, sha256: &String, reason: &String) -> anyhow::Result<(u64, u64)> {
+        let res: u64 = sqlx::query!(
+            "
+            INSERT INTO file_blacklist (sha256, reason)
+            VALUES ($1, $2)
+            ON CONFLICT(sha256)
+            DO NOTHING
+            ",
+            sha256,
+            reason
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        // Set image hidden on all posts that contain the blacklisted file.
+        let res2: u64 = sqlx::query!(
+            "
+            UPDATE posts
+            SET mitsuba_file_hidden = true
+            WHERE file_sha256 = $1 OR thumbnail_sha256 = $1
+            ",
+            sha256
+        ).execute(&self.pool).await?.rows_affected();
+        Ok((res, res2))
+    }
+    pub async fn is_file_blacklisted(&self, sha256: &String) -> anyhow::Result<bool> {
+        struct Sha256Field {
+            sha256: Option<String>
+        }
+        let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
+            "
+            SELECT sha256 FROM file_blacklist WHERE sha256 = $1
+            ",
+            sha256
+            ).fetch_all(&self.pool)
+            .await?;
+        Ok(!hashes.is_empty())
+    }
+
     pub async fn get_thread_index(&self, board: &String, index: i64, limit: i64, remove_hidden: bool) -> anyhow::Result<Vec<Thread>> {
         let thread_ids = sqlx::query_as!(ThreadNo, 
             "
