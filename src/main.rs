@@ -86,7 +86,7 @@ struct Purge {
     #[clap(help = "Board name (eg. 'po')")]
     name: String,
     #[clap(long, long_help = "(Optional) If true, will only delete full images and files saved for this board. If false, everything, including posts and thumnails. Default is false.")]
-    only_full_images: Option<bool>,
+    only_purge_full_images: Option<bool>,
 }
 
 
@@ -195,7 +195,7 @@ async fn real_main() {
 
         }
         SubCommand::Purge(purge_opt) => {
-            let only_full_images = purge_opt.only_full_images.unwrap_or(false);
+            let only_full_images = purge_opt.only_purge_full_images.unwrap_or(false);
             let board = purge_opt.name;
             if only_full_images {
                 println!("Purging full images and files for /{}/ from disk", board);
