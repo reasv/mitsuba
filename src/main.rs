@@ -39,7 +39,9 @@ enum SubCommand {
     #[clap(about = "Stop and disable archiver for a particular board. Does not delete any data. Archiver will only stop after completing the current cycle.")]
     Remove(Remove),
     #[clap(about = "List all boards in the database and their current settings. Includes disabled ('removed') boards")]
-    List(ListBoards)
+    List(ListBoards),
+    #[clap(about = "Purge archived data of a specific board from the database")]
+    Purge(Purge)
 }
 
 #[derive(Parser, Default, Debug, Clone)]
@@ -68,7 +70,7 @@ struct ReadOnlyMode;
 struct Add {
     #[clap(help = "Board name (eg. 'po')")]
     name: String,
-    #[clap(long, long_help = "(Optional) If false, will only download thumbnails for this board. If true, thumbnails and full images. Default is false.")]
+    #[clap(long, long_help = "(Optional) If false, will only download thumbnails for this board. If true, thumbnails and full images/files. Default is false.")]
     full_images: Option<bool>,
 }
 #[derive(Parser, Clone)]
@@ -78,6 +80,14 @@ struct Remove {
 }
 #[derive(Parser, Clone)]
 struct ListBoards;
+
+#[derive(Parser, Clone)]
+struct Purge {
+    #[clap(help = "Board name (eg. 'po')")]
+    name: String,
+    #[clap(long, long_help = "(Optional) If true, will only delete full images and files saved for this board. If false, everything, including posts and thumnails. Default is false.")]
+    only_full_images: Option<bool>,
+}
 
 
 fn get_env(name: &str, def: u32) -> u32 {
@@ -183,6 +193,18 @@ async fn real_main() {
             }
             println!("{} boards found in database", boards.len());
 
+        }
+        SubCommand::Purge(purge_opt) => {
+            let only_full_images = purge_opt.only_full_images.unwrap_or(false);
+            let board = purge_opt.name;
+            if only_full_images {
+                println!("Purging full images and files for /{}/ from disk", board);
+            } else {
+                println!("Purging all data for /{}/", board);
+            }
+            let report = client.purge_board(&board, only_full_images).await.unwrap();
+            println!("Purged {} posts, {} thumbnails, {} full images / files", report.removed_posts, report.thumbnails_deleted, report.full_files_deleted);
+            println!("Failed to delete {} thumbnails and {} full images/files", report.thumbnails_failed, report.full_files_failed);
         }
     }
 }

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT thumbnail_sha256 FROM posts WHERE board = $1 and thumbnail_sha256 != ''\n            EXCEPT\n            SELECT thumbnail_sha256 FROM posts WHERE board != $1 and thumbnail_sha256 != ''\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "thumbnail_sha256",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "93ecb90e200b1524a310de71d25c9d949939d6150aace6789a5b13f9a25e79c3"
+}

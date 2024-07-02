@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM thread_backlog WHERE board = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d4e58fafaaacd7adc29bd3f9268db6a0959d3ba432f50e09fd8c4082a6663397"
+}

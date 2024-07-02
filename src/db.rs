@@ -10,7 +10,7 @@ use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
-     ThreadInfo, ThreadJob, ThreadNo};
+     ThreadInfo, ThreadJob, ThreadNo, File};
 
 use crate::util::get_post_image_info;
 #[allow(unused_imports)]
@@ -531,22 +531,147 @@ impl DBClient {
         .await?;
         Ok(post)
     }
-    pub async fn get_files_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<String>> {
+    pub async fn get_files_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<File>> {
+        struct FileOpt {
+            file_sha256: Option<String>,
+            ext: Option<String>,
+        }
+        let files_opt: Vec<FileOpt> = sqlx::query_as!(FileOpt,
+            "
+            SELECT file_sha256, ext FROM posts WHERE board = $1 and file_sha256 != ''
+            EXCEPT
+            SELECT file_sha256, ext FROM posts WHERE board != $1 and file_sha256 != ''
+            ",
+            board
+            ).fetch_all(&self.pool)
+            .await?;
+
+        let files: Vec<File> = files_opt
+        .into_iter()
+        .filter_map(|h| {
+            if let (Some(file_sha256), Some(ext)) = (h.file_sha256, h.ext) {
+                Some(File { file_sha256, ext })
+            } else {
+                None
+            }
+        })
+        .collect();
+        Ok(files)
+    }
+
+    pub async fn get_thumbnails_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<String>> {
+        struct Sha256Field {
+            thumbnail_sha256: Option<String>
+        }
+        let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
+            "
+            SELECT thumbnail_sha256 FROM posts WHERE board = $1 and thumbnail_sha256 != ''
+            EXCEPT
+            SELECT thumbnail_sha256 FROM posts WHERE board != $1 and thumbnail_sha256 != ''
+            ",
+            board
+            ).fetch_all(&self.pool)
+            .await?;
+        Ok(hashes.into_iter().filter_map(|h| h.thumbnail_sha256).collect())
+    }
+
+    pub async fn is_file_on_other_boards(&self, sha256: &String, ext: &String, board: &String) -> anyhow::Result<bool> {
         struct Sha256Field {
             file_sha256: Option<String>
         }
         let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
             "
-            SELECT file_sha256 FROM posts WHERE board = $1 and file_sha256 != ''
-            EXCEPT
-            SELECT file_sha256 FROM posts WHERE board != $1 and file_sha256 != ''
+            SELECT file_sha256 FROM posts WHERE file_sha256 = $1 AND ext = $2 AND board != $3
             ",
+            sha256,
+            ext,
             board
             ).fetch_all(&self.pool)
             .await?;
-        Ok(hashes.into_iter().filter(|h| h.file_sha256.is_some())
-        .map(|h| h.file_sha256.unwrap_or_default()).collect())
+        Ok(!hashes.is_empty())
     }
+
+    pub async fn is_thumbnail_on_other_boards(&self, sha256: &String, ext: &String, board: &String) -> anyhow::Result<bool> {
+        struct Sha256Field {
+            thumbnail_sha256: Option<String>
+        }
+        let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
+            "
+            SELECT thumbnail_sha256 FROM posts WHERE thumbnail_sha256 = $1 AND ext = $2 AND board != $3
+            ",
+            sha256,
+            ext,
+            board
+            ).fetch_all(&self.pool)
+            .await?;
+        Ok(!hashes.is_empty())
+    }
+
+    pub async fn set_file_purged(&self, sha256: &String, ext: &String) -> anyhow::Result<u64> {
+        let res: u64 = sqlx::query!(
+            "
+            UPDATE posts SET file_sha256 = '' WHERE file_sha256 = $1 AND ext = $2
+            ",
+            sha256,
+            ext
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
+
+    pub async fn set_thumbnail_purged(&self, sha256: &String, ext: &String) -> anyhow::Result<u64> {
+        let res: u64 = sqlx::query!(
+            "
+            UPDATE posts SET thumbnail_sha256 = '' WHERE thumbnail_sha256 = $1 AND ext = $2
+            ",
+            sha256,
+            ext
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
+    
+    async fn purge_board_posts(&self, board_name: &String) -> anyhow::Result<u64> {
+        let res: u64 = sqlx::query!(
+            "
+            DELETE FROM posts WHERE board = $1
+            ",
+            board_name
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
+    
+    pub async fn purge_board_backlogs(&self, board_name: &String) -> anyhow::Result<(u64, u64)> {
+        let res_thread: u64 = sqlx::query!(
+            "
+            DELETE FROM thread_backlog WHERE board = $1
+            ",
+            board_name
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        let res_image: u64 = sqlx::query!(
+            "
+            DELETE FROM image_backlog WHERE board = $1
+            ",
+            board_name
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok((res_thread, res_image))
+    }
+
+    pub async fn purge_board_data(&self, board_name: &String) -> anyhow::Result<u64> {
+        self.delete_board(board_name).await?;
+        self.purge_board_backlogs(board_name).await?;
+        let posts_deleted = self.purge_board_posts(board_name).await?;
+        Ok(posts_deleted)
+    }
+
     fn get_post_hash(&self, post: &Post) -> u64 {
         let mut hasher = DefaultHasher::new();
         let mut hash_post = post.clone();

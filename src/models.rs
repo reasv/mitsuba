@@ -309,3 +309,18 @@ impl From<Thread> for IndexThread {
 pub struct BoardsStatus {
     pub boards: Vec<Board>,
 }
+
+pub struct File {
+    pub file_sha256: String,
+    pub ext: String
+}
+
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub struct PurgeReport {
+    pub full_files_deleted: u64,
+    pub thumbnails_deleted: u64,
+    pub full_files_failed: u64,
+    pub thumbnails_failed: u64,
+    pub removed_posts: u64,
+}

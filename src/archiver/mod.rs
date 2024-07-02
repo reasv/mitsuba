@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
+use anyhow::Ok;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
@@ -11,7 +12,7 @@ mod thread_archiver;
 mod archiver_metrics;
 
 use crate::http::HttpClient;
-use crate::models::{Board, BoardsList};
+use crate::models::{Board, BoardsList, PurgeReport};
 use crate::db::DBClient;
 
 #[derive(Clone)]
@@ -78,6 +79,56 @@ impl Archiver {
     }
     pub async fn get_all_boards(&self) -> anyhow::Result<Vec<Board>> {
         self.db_client.get_all_boards().await
+    }
+
+    pub async fn purge_board(&self, board_name: &String, only_full_images: bool) -> anyhow::Result<PurgeReport> {
+        let mut report = PurgeReport::default();
+        if only_full_images {
+            // If we only want to delete full images, we only disable full image downloads for the board
+            if let Some(mut board) = self.db_client.get_board(board_name).await? {
+                board.full_images = false;
+                self.db_client.insert_board(&board).await?;
+            }
+            // If the board is not in the database, no need to stop full image downloads
+        } else {
+            // If we want to delete everything, we stop the board archiver entirely
+            self.stop_board(board_name).await?;
+            // Try to avoid more images being downloaded while we're purging the board
+            self.db_client.purge_board_backlogs(board_name).await?;
+        }
+        
+        let full_files = self.db_client.get_files_exclusive_to_board(board_name).await?;
+        for file in &full_files {
+            // Double check in case the file was added by another board while we were iterating
+            if self.db_client.is_file_on_other_boards(&file.file_sha256, &file.ext, &board_name).await? {
+                continue;
+            }
+            if self.http_client.delete_downloaded_file(&file.file_sha256, &file.ext, false).await.is_ok() {
+                report.full_files_deleted += 1;
+                self.db_client.set_file_purged(&file.file_sha256, &file.ext).await?;
+            } else {
+                report.full_files_failed += 1;
+            }
+        }
+
+        if !only_full_images {
+            let thumbnail_hashes = self.db_client.get_thumbnails_exclusive_to_board(board_name).await?;
+            for hash in &thumbnail_hashes {
+                // Double check in case the thumbnail was added by another board while we were iterating
+                if self.db_client.is_thumbnail_on_other_boards(hash, &".jpg".to_string(), &board_name).await? {
+                    continue;
+                }
+                if self.http_client.delete_downloaded_file(hash, &".jpg".to_string(), true).await.is_ok() {
+                    report.thumbnails_deleted += 1;
+                    self.db_client.set_thumbnail_purged(hash, &".jpg".to_string()).await?;
+                } else {
+                    report.thumbnails_failed += 1;
+                }
+            }
+            let removed_posts = self.db_client.purge_board_data(board_name).await?;
+            report.removed_posts = removed_posts;
+        }
+        Ok(report)
     }
     
 }
