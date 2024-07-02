@@ -40,7 +40,7 @@ enum SubCommand {
     Remove(Remove),
     #[clap(about = "List all boards in the database and their current settings. Includes disabled ('removed') boards")]
     List(ListBoards),
-    #[clap(about = "Purge archived data of a specific board from the database")]
+    #[clap(about = "Purge archive data from a specific board from the database")]
     Purge(Purge)
 }
 
