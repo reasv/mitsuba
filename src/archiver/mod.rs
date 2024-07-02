@@ -98,14 +98,17 @@ impl Archiver {
         }
         
         let full_files = self.db_client.get_files_exclusive_to_board(board_name).await?;
+        info!("Purging {} full files", full_files.len());
         for file in &full_files {
             // Double check in case the file was added by another board while we were iterating
             if self.db_client.is_file_on_other_boards(&file.file_sha256, &file.ext, &board_name).await? {
+                info!("Skipping full file {}{} which was found on another board", file.file_sha256, file.ext);
                 continue;
             }
             if self.http_client.delete_downloaded_file(&file.file_sha256, &file.ext, false).await.is_ok() {
                 report.full_files_deleted += 1;
                 self.db_client.set_file_purged(&file.file_sha256, &file.ext).await?;
+                info!("Deleted full file {}{}", file.file_sha256, file.ext)
             } else {
                 report.full_files_failed += 1;
             }
@@ -113,19 +116,23 @@ impl Archiver {
 
         if !only_full_images {
             let thumbnail_hashes = self.db_client.get_thumbnails_exclusive_to_board(board_name).await?;
+            info!("Purging {} thumbnails", thumbnail_hashes.len());
             for hash in &thumbnail_hashes {
                 // Double check in case the thumbnail was added by another board while we were iterating
                 if self.db_client.is_thumbnail_on_other_boards(hash, &".jpg".to_string(), &board_name).await? {
+                    info!("Skipping thumbnail {} which was found on another board", hash);
                     continue;
                 }
                 if self.http_client.delete_downloaded_file(hash, &".jpg".to_string(), true).await.is_ok() {
                     report.thumbnails_deleted += 1;
                     self.db_client.set_thumbnail_purged(hash, &".jpg".to_string()).await?;
+                    info!("Deleted thumbnail {}", hash);
                 } else {
                     report.thumbnails_failed += 1;
                 }
             }
             let removed_posts = self.db_client.purge_board_data(board_name).await?;
+            info!("Purged {} posts", removed_posts);
             report.removed_posts = removed_posts;
         }
         Ok(report)
