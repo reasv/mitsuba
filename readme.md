@@ -249,7 +249,7 @@ For example, if an image on 4chan is served from https://i.4cdn.org/po/154629394
 
 This allows you to get an image from the archive *even if you only have the original link* (which might be dead now) and don't know the post or thread ID.
 
-Note that this is intended to help you find lost images, but it's not the correct way to serve them to many users. **Visiting these links involves a database lookup every time** because we store images differently compared to how 4chan does it.
+Note that this is intended to help you find lost images, but it's not the correct way to serve them to many users. **Visiting these links involves a database lookup each time** because we store images differently compared to how 4chan does it.
 
 You can see the correct link for static images being used on the web UI. The URL is based on the image's SHA256 hash calculated by mitsuba, as opposed to the MD5 hash as supplied by 4chan, encoded in Base32.
 
