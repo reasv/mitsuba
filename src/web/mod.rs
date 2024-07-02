@@ -27,7 +27,7 @@ pub async fn web_main() -> std::io::Result<()> {
         let mut app = App::new()
         .app_data(web::Data::new(dbc.clone()))
         .app_data(handlebars_ref.clone())
-        .wrap(NormalizePath::default())
+        .wrap(NormalizePath::new(middleware::TrailingSlash::Trim))
         .wrap(middleware::Compress::default())
         .service(api::get_index)
         .service(api::get_thread)
