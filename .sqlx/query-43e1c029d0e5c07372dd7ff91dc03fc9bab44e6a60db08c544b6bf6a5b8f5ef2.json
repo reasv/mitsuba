@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE posts\n            SET \n            mitsuba_post_hidden = $1,\n            mitsuba_com_hidden = $2,\n            mitsuba_file_hidden = $3\n            WHERE board = $4 AND no = $5\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Bool",
+        "Bool",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "43e1c029d0e5c07372dd7ff91dc03fc9bab44e6a60db08c544b6bf6a5b8f5ef2"
+}
