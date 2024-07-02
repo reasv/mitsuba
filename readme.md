@@ -366,7 +366,7 @@ It's recommended that you *shut down the mitsuba archiver for all boards* before
 
 It will still run either way, and it has no way of even knowing if an archiver is running, but you *may* run into some issues.
 
-Doing this operation while the archiver is working is **not** recommended and could result in some inconsistencies, such as a few from other unrelated boards potentially also being deleted (more details below) or, more likely, some of the data related to the board remaining undeleted. You can always try to run the purge command multiple times, although this is generally only really effective with `only-purge-full-images=true`.
+Doing this operation while the archiver is working is **not** recommended and could result in some inconsistencies, such as a few files from other unrelated boards potentially also being deleted (more details below) or, more likely, some of the data related to the board remaining undeleted. You can always try to run the purge command multiple times, although this is generally only really effective with `only-purge-full-images=true`.
 
 In any case, if you experience problems, please open an issue, even if you went against this recommendation.
 Mitsuba's archiver *should* never *crash* or stop working no matter what, and if it did, that would be a bug.
