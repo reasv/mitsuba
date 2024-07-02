@@ -79,7 +79,6 @@ impl Archiver {
             error!("Board /{}/ does not exist or is not enabled for archival, skipping", job.board);
             self.db_client.delete_thread_job(job.id).await
             .map_err(|e| {error!("Failed to delete thread /{}/{} from backlog: {}", job.board, job.no, e);})?;
-            counter!("thread_404", 1);
             return Ok(())
         }
 
