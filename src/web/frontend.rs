@@ -83,7 +83,7 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
             actix_web::error::ErrorInternalServerError("")
         })?;
     
-    let thread = db.get_thread(&board, no).await
+    let thread = db.get_thread(&board, no, true).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -124,7 +124,7 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
             error!("Error getting boards from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
         })?;
-    let threads = db.get_thread_index(&board, nonzero_index-1, 15).await
+    let threads = db.get_thread_index(&board, nonzero_index-1, 15, true).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")

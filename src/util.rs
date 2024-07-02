@@ -9,7 +9,7 @@ use unicode_truncate::UnicodeTruncateStr;
 use sha2::{Sha256, Digest};
 use weighted_rs::{SmoothWeight, Weight};
 
-use crate::models::{ImageInfo, Post};
+use crate::models::{ImageInfo, Post, Thread};
 
 pub fn hash_file(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
@@ -133,4 +133,28 @@ pub fn get_host_string(url_opt: &Option<reqwest::Url>) -> Option<String> {
 
 pub fn strip_nullchars(s: &String) -> String {
     s.replace("\u{00}", "\u{2400}")
+}
+
+pub fn process_hidden_post(post: &Post) -> Option<Post> {
+    if post.mitsuba_post_hidden {
+        return None;
+    }
+    let mut post = post.clone();
+    if post.mitsuba_file_hidden {
+        post.thumbnail_sha256 = "".to_string();
+        post.file_sha256 = "".to_string();
+    }
+    if post.mitsuba_com_hidden {
+        post.com = "<b><i>[Hidden]</i></b>".to_string();
+    }
+    Some(post)
+}
+
+pub fn process_hidden_thread(thread: &Thread) -> Option<Thread> {
+    if thread.posts[0].mitsuba_post_hidden {
+        return None;
+    }
+    let mut thread = thread.clone();
+    thread.posts = thread.posts.into_iter().filter_map(|p| process_hidden_post(&p)).collect();
+    Some(thread)
 }

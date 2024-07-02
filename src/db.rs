@@ -15,6 +15,7 @@ use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
 use crate::util::get_post_image_info;
 #[allow(unused_imports)]
 use crate::util::strip_nullchars;
+use crate::util::{process_hidden_post, process_hidden_thread};
 
 pub async fn sqlx_connection() -> sqlx::Pool<sqlx::Postgres> {
     use sqlx::postgres::PgPoolOptions;
@@ -341,7 +342,7 @@ impl DBClient {
             return Ok(None)
         }
 
-        if let Some(post) = self.get_post(&tinfo.board, tinfo.no).await? {
+        if let Some(post) = self.get_post(&tinfo.board, tinfo.no, false).await? {
             // if post is more recent or equal to thread_info date
             if post.last_modified >= tinfo.last_modified {
                 self.insert_threadinfo_hash(tinfo_hash);
@@ -387,7 +388,7 @@ impl DBClient {
         }
         Ok(Some(job))
     }
-    pub async fn image_tim_to_sha256(&self, board: &String, image_tim: i64, thumb: bool) -> anyhow::Result<Option<String>> {
+    pub async fn image_tim_to_sha256(&self, board: &String, image_tim: i64, thumb: bool, remove_hidden: bool) -> anyhow::Result<Option<String>> {
         let post_opt = sqlx::query_as!(Post,
             "
             SELECT *
@@ -399,7 +400,16 @@ impl DBClient {
             image_tim
         ).fetch_optional(&self.pool)
         .await?;
-        if let Some(post) = post_opt {
+        if let Some(post_raw) = post_opt {
+            let post = if remove_hidden {
+                if let Some(post_hidden) = process_hidden_post(&post_raw) {
+                    post_hidden
+                } else {
+                    return Ok(None)
+                }
+            } else {
+                post_raw
+            };
             if thumb && !post.thumbnail_sha256.is_empty() {
                 return Ok(Some(post.thumbnail_sha256))
             }
@@ -409,7 +419,7 @@ impl DBClient {
         }
         Ok(None)
     }
-    pub async fn get_post(&self, board: &String, post_no: i64) -> anyhow::Result<Option<Post>> {
+    pub async fn get_post(&self, board: &String, post_no: i64, remove_hidden: bool) -> anyhow::Result<Option<Post>> {
         let post = sqlx::query_as!(Post,
             "
             SELECT *
@@ -421,7 +431,14 @@ impl DBClient {
         )
         .fetch_optional(&self.pool)
         .await?;
-        Ok(post)
+        if let Some(post) = post {
+            if remove_hidden {
+                return Ok(process_hidden_post(&post));
+            }
+            return Ok(Some(post));
+        } else {
+            return Ok(None);
+        }
     }
     pub async fn delete_post(&self, board: &String, post_no: i64) -> anyhow::Result<u64> {
         let res: u64 = sqlx::query!(
@@ -435,7 +452,7 @@ impl DBClient {
         .rows_affected();
         Ok(res)
     }
-    pub async fn get_thread_index(&self, board: &String, index: i64, limit: i64) -> anyhow::Result<Vec<Thread>> {
+    pub async fn get_thread_index(&self, board: &String, index: i64, limit: i64, remove_hidden: bool) -> anyhow::Result<Vec<Thread>> {
         let thread_ids = sqlx::query_as!(ThreadNo, 
             "
             SELECT t1.resto FROM posts t1
@@ -451,13 +468,13 @@ impl DBClient {
         .await?;
         let mut threads = Vec::new();
         for thread_id in thread_ids {
-            if let Some(thread) = self.get_thread(board, thread_id.resto).await? {
+            if let Some(thread) = self.get_thread(board, thread_id.resto, remove_hidden).await? {
                 threads.push(thread);
             }
         }
         Ok(threads)
     }
-    pub async fn get_thread(&self, board: &String, no: i64) -> anyhow::Result<Option<Thread>> {
+    pub async fn get_thread(&self, board: &String, no: i64, remove_hidden: bool) -> anyhow::Result<Option<Thread>> {
         let posts = sqlx::query_as!(Post,
             "
             SELECT *
@@ -477,7 +494,11 @@ impl DBClient {
         if posts.len() == 1 && posts[0].resto != 0 {
             return Ok(None);
         }
-        Ok(Some(Thread{posts}))
+        let thread = Thread{posts};
+        if remove_hidden {
+            return Ok(process_hidden_thread(&thread));
+        }
+        Ok(Some(thread))
     }
     pub async fn set_post_files(&self, board: &String, no: i64, file_sha256: &String, thumbnail_sha256: &String) -> anyhow::Result<Option<Post>> {
         let post = sqlx::query_as!(Post,
@@ -901,9 +922,9 @@ mod tests {
         post1.images = 1111;
         assert_eq!(3usize, dbc.insert_posts(&vec![post1.clone(), post2.clone(), post3.clone()]).await.unwrap().len());
     
-        assert_eq!(1111, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().images);
-        assert_eq!(2222, dbc.get_post(&post2.board, post2.no).await.unwrap().unwrap().images);
-        assert_eq!(4444, dbc.get_post(&post3.board, post3.no).await.unwrap().unwrap().time);
+        assert_eq!(1111, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().images);
+        assert_eq!(2222, dbc.get_post(&post2.board, post2.no, false).await.unwrap().unwrap().images);
+        assert_eq!(4444, dbc.get_post(&post3.board, post3.no, false).await.unwrap().unwrap().time);
         
         assert_eq!(1, dbc.delete_post(&post1.board, post1.no).await.unwrap());
         assert_eq!(1, dbc.delete_post(&post2.board, post2.no).await.unwrap());
@@ -923,7 +944,7 @@ mod tests {
         post1.com = "test \u{00} test \u{00}".to_string();
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
     
-        assert_eq!(77, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().images);
+        assert_eq!(77, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().images);
         assert_eq!(1, dbc.delete_post(&post1.board, post1.no).await.unwrap());
     }
     #[test]
@@ -939,13 +960,13 @@ mod tests {
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
         post1.images = 77;
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
-        assert_eq!(77, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().images);
+        assert_eq!(77, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().images);
         post1.com = "Comment Changed".to_string();
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
         post1.com = "Comment Changed Again".to_string();
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
     
-        assert_eq!(post1.com, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().com);
+        assert_eq!(post1.com, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().com);
         assert_eq!(1, dbc.delete_post(&post1.board, post1.no).await.unwrap());
     }
 
@@ -961,18 +982,18 @@ mod tests {
         dbc.insert_posts(&vec![post1.clone()]).await.unwrap();
         post1.images = 55;
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
-        assert_eq!(55, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().images);
+        assert_eq!(55, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().images);
         post1.time = 500;
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
-        assert_eq!(0, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().time);
+        assert_eq!(0, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().time);
         post1.unique_ips = 30;
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
-        assert_eq!(30, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().unique_ips);
+        assert_eq!(30, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().unique_ips);
         post1.unique_ips = 0;
         assert_eq!(1usize, dbc.insert_posts(&vec![post1.clone()]).await.unwrap().len());
-        assert_eq!(30, dbc.get_post(&post1.board, post1.no).await.unwrap().unwrap().unique_ips);
+        assert_eq!(30, dbc.get_post(&post1.board, post1.no, false).await.unwrap().unwrap().unique_ips);
         assert_eq!(1u64, dbc.delete_post(&post1.board, post1.no).await.unwrap());
-        assert_eq!(None, dbc.get_post(&post1.board, post1.no).await.unwrap());
+        assert_eq!(None, dbc.get_post(&post1.board, post1.no, false).await.unwrap());
     }
     #[test]
     fn test_post_deleted_detection(){
@@ -1023,7 +1044,7 @@ mod tests {
         assert_eq!(1u64, dbc.delete_post(&post2.board, post2.no).await.unwrap());
         assert_eq!(1u64, dbc.delete_post(&post3.board, post3.no).await.unwrap());
         assert_eq!(1u64, dbc.delete_post(&post4.board, post4.no).await.unwrap());
-        assert_eq!(None, dbc.get_post(&post1.board, post1.no).await.unwrap());
+        assert_eq!(None, dbc.get_post(&post1.board, post1.no, false).await.unwrap());
     }
     #[test]
     fn test_job_update(){
@@ -1067,7 +1088,7 @@ mod tests {
     }
     async fn many_post_update(){
         let dbc = DBClient::new().await;
-        let mut post = dbc.get_post(&"vip".to_string(), 103205).await.unwrap().unwrap();
+        let mut post = dbc.get_post(&"vip".to_string(), 103205, false).await.unwrap().unwrap();
         post.board = "test".to_string();
         for i in 0..100000 {
             post.last_modified = i;

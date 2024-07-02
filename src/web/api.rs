@@ -23,7 +23,7 @@ pub(crate) async fn get_boards_status(db: web::Data<DBClient>) -> actix_web::Res
 #[get("/{board:[A-z0-9]+}/thread/{no:\\d+}.json")]
 pub(crate) async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> actix_web::Result<HttpResponse> {
     let (board, no) = info.into_inner();
-    let thread = db.get_thread(&board, no).await
+    let thread = db.get_thread(&board, no, true).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -36,7 +36,7 @@ pub(crate) async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String,
 #[get("/{board:[A-z0-9]+}/post/{no:\\d+}.json")]
 pub(crate) async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> actix_web::Result<HttpResponse> {
     let (board, no) = info.into_inner();
-    let post = db.get_post(&board, no).await
+    let post = db.get_post(&board, no, true).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -50,7 +50,7 @@ pub(crate) async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, 
     if index > 0 {
         index -= 1;
     }
-    let threads = db.get_thread_index(&board, index, 15).await
+    let threads = db.get_thread_index(&board, index, 15, true).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -71,14 +71,14 @@ pub(crate) async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path
 }
 
 pub(crate) async fn get_image_from_tim(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> actix_web::Result<NamedFile> {
-    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb).await
+    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb, true).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
         })?
         .ok_or(actix_web::error::ErrorNotFound(""))?;
     
-    let filename = match is_thumb { 
+    let filename = match is_thumb {
         true => format!("{}.jpg", sha256),
         false => format!("{}.{}", sha256, ext)
     };
@@ -101,7 +101,7 @@ pub(crate) async fn get_thumbnail_image_object_storage(db: web::Data<DBClient>, 
 }
 
 pub(crate) async fn get_image_from_tim_object_storage(db: web::Data<DBClient>, obc: web::Data<ObjectStorage>, board: String, tim: i64, ext: String, is_thumb: bool) -> actix_web::Result<HttpResponse> {
-    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb).await
+    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb, true).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
