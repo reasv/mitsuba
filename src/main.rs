@@ -47,7 +47,9 @@ enum SubCommand {
     #[clap(about = "Unhide a previously hidden post, making it visible again")]
     Unhide(Unhide),
     #[clap(about = "Delete the image or file associated with a specific post and blacklist it from being downloaded again. Does not delete the post itself.")]
-    PurgeImage(DeleteImage)
+    PurgeImage(DeleteImage),
+    #[clap(about = "If the image associated with the given post is blacklisted, remove it from the blacklist. Does not restore the image.")]
+    UnpurgeImage(Unhide)
 }
 
 #[derive(Parser, Default, Debug, Clone)]
@@ -268,6 +270,14 @@ async fn real_main() {
             let image_hashes = client.purge_image(&board, post, &reason).await.unwrap();
             for sha256 in image_hashes {
                 println!("Purged image {} for post /{}/{}", sha256, board, post);
+            }
+        },
+        SubCommand::UnpurgeImage(unpurge_image_opt) => {
+            let board = unpurge_image_opt.board_name;
+            let post = unpurge_image_opt.post;
+            let image_hashes = client.unpurge_image(&board, post).await.unwrap();
+            for sha256 in image_hashes {
+                println!("Unpurged image {} for post /{}/{}", sha256, board, post);
             }
         }
     }

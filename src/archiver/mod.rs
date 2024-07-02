@@ -178,6 +178,24 @@ impl Archiver {
         }
         Ok(purged_files)
     }
+
+    pub async fn unpurge_image(&self, board_name: &String, no: i64) -> anyhow::Result<Vec<String>> {
+        let mut purged_files = Vec::new();
+        let post = self.db_client.get_post(board_name, no, false).await?;
+        if let Some(post) = post {
+            if !post.thumbnail_sha256.is_empty() {
+                self.db_client.remove_file_blacklist(&post.thumbnail_sha256).await?;
+                purged_files.push(post.thumbnail_sha256.clone());
+            }
+            if !post.file_sha256.is_empty() {
+                self.db_client.remove_file_blacklist(&post.file_sha256).await?;
+                purged_files.push(post.thumbnail_sha256.clone());
+            }
+        } else {
+            warn!("Post /{}/{} not found.", board_name, no);
+        }
+        Ok(purged_files)
+    }
     
 }
 

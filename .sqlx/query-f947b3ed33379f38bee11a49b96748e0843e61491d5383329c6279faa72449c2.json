@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM file_blacklist\n            WHERE sha256 = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f947b3ed33379f38bee11a49b96748e0843e61491d5383329c6279faa72449c2"
+}

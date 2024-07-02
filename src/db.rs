@@ -490,6 +490,28 @@ impl DBClient {
         Ok(!hashes.is_empty())
     }
 
+    pub async fn remove_file_blacklist(&self, sha256: &String) -> anyhow::Result<(u64, u64)> {
+        let res: u64 = sqlx::query!(
+            "
+            DELETE FROM file_blacklist
+            WHERE sha256 = $1
+            ",
+            sha256,
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        // Set image back to visible on all posts that contain the blacklisted file
+        let res2: u64 = sqlx::query!(
+            "
+            UPDATE posts
+            SET mitsuba_file_hidden = false
+            WHERE file_sha256 = $1 OR thumbnail_sha256 = $1
+            ",
+            sha256
+        ).execute(&self.pool).await?.rows_affected();
+        Ok((res, res2))
+    }
+
     pub async fn get_thread_index(&self, board: &String, index: i64, limit: i64, remove_hidden: bool) -> anyhow::Result<Vec<Thread>> {
         let thread_ids = sqlx::query_as!(ThreadNo, 
             "
