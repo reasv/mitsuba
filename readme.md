@@ -22,14 +22,15 @@ Mitsuba does not support "ghost posting" as it's not an imageboard engine. This 
 - Reduced database writes: the hash of every post is kept in memory, if a post hasn't changed, no DB operation is performed
 - Can find an image from its original 4chan URL. `https://i.4cdn.org/po/1546293948883.png` can be found on mitsuba at `/po/1546293948883.png`
 - Can be configured to load balance requests to 4chan between multiple proxies with different weights, to bypass rate limits
+- Optional full text search through postgres. You can enable or disable postgres full text search indexing on a per board basis to avoid the performance hit.
+- Supports basic but granular moderation through hide command, allowing you to entirely hide a post, only hide its comment field, or hide its image.
+- Can delete an image associated with a post from disk and blacklist it through purge-image, so it will never be saved again
+- Can remove all archive contents belonging to a particular board if you no longer want it (purge command), or just the full images, keeping thumbnails and posts
 
 There are some important features missing:
 - No "ghost posting" or posting of any kind. Read only archive.
-- No full text search, or any search really. Can only get to a post or thread from the ID. We want to have search eventually.
-- No admin UI, administration CLI only (but there are only a few things you'd want to change anyways)
-- No administration tools to delete individual posts or images (but you can safely delete an image file from the folder if necessary, it won't be downloaded again)
-- No account system whatsoever (but this makes it inherently secure)
-- No tools for deleting all posts or images from a particular board (This is a planned feature, for now you could just run one instance per board)
+- No admin UI, administration CLI only
+- No account system
 
 ## Dependencies
 You need to have a Postgresql instance available somewhere Mitsuba can reach it with the DATABASE_URL env variable provided.
@@ -388,7 +389,6 @@ Mitsuba does not come with any admin UI besides the CLI commands.
 ## Future
 
 Some features that might be added:
-- Search: this is by far the biggest missing feature. I wanted to have this in 1.0 but I didn't have the time. Ideally, we should have full text search for post content and titles, names and such, plus all the advanced search options foolfuuka has. There are multiple ways to go about this, right now I am considering two. The first option is to use Postgresql full text search. This is limited, but it actually does have all the features realistically needed for our use case, and it doesn't add any external dependencies. This would ensure search is always available. The second option is using `meilisearch` which is a rust full text search engine that is both lightweight and easy to set up, it works well out of the box. This would give us more capabilities, it is very flexible. But it's an external dependency that users would have to download and run separately like Postgresql itself. So I am hesitant to add it, and it would have to be optional, making search not always available. On the other hand, using something like elasticsearch would be a huge dependency that I'm not willing to take, and it requires a lot more configuration. Also it's the opposite of lightweight among web servers.
 - `check` command, to check the image store for corruption or missing images. This would first scan the database to see all images that are marked as downloaded, and then ensure that they exist on disk, hash the files to compare MD5s to make sure they are not corrupted. If an image is missing or corrupted, it would correct the database, and mark it as absent. Might also delete images that are on disk but aren't tracked in the database.
 
 At the moment a full imageboard engine with posting and administration is considered out of scope, however if you are interested in working on that, you should make an issue to discuss it.
