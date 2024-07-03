@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM boards WHERE name = $1",
+  "query": "\n            INSERT INTO boards (name, full_images, archive, enable_search)\n            VALUES\n            ($1, $2, $3, $4)\n            ON CONFLICT(name) DO\n            UPDATE SET\n            full_images = $2,\n            archive = $3,\n            enable_search = $4\n            RETURNING *;\n            ",
   "describe": {
     "columns": [
       {
@@ -26,7 +26,10 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool"
       ]
     },
     "nullable": [
@@ -36,5 +39,5 @@
       false
     ]
   },
-  "hash": "95ed3315e557731aec7f4e384760994a9764d9680a3da57424fcef3b1c2ffaa6"
+  "hash": "b78220347ec69cfb6fc3b07eb3d43b08278f7dc8a58f56fd754d73270221be53"
 }
