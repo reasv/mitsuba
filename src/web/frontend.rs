@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::{env, vec};
 use std::collections::HashSet;
 use std::convert::AsRef;
@@ -174,6 +175,10 @@ async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>
     if index > 0 {
         nonzero_index = index;
     }
+    let prev = match nonzero_index == 1 {
+        true => nonzero_index,
+        false=> nonzero_index-1
+    };
 
     let boards = db.get_all_boards().await
         .map_err(|e| {
@@ -187,33 +192,41 @@ async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>
         return Err(actix_web::error::ErrorNotFound("Search disabled for this board"))
     }
 
-    let posts = db.posts_full_text_search(&board, search_query, nonzero_index-1, 15, true).await
+    let page_size = 15;
+
+    let (posts, total_results) = db
+        .posts_full_text_search(
+            &board,
+            search_query,
+            nonzero_index-1,
+            page_size,
+            true
+        ).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
         })?;
 
-    let threads = posts.into_iter()
-    .map(|p| Thread{posts: vec![p]})
-    .collect::<Vec<Thread>>();
-
-    let index_threads: Vec<IndexThread> = threads.clone().into_iter().map(|t| t.into()).collect();
-    let prev = match nonzero_index == 1 {
-        true => nonzero_index,
-        false=> nonzero_index-1
-    };
-
-    let op: Option<Post> = match threads.len() > 0 {
-        true => Some(threads[0].posts[0].clone()),
+    let op: Option<Post> = match posts.len() > 0 {
+        true  => Some(posts[0].clone()),
         false => None
     };
+
+    let index_threads: Vec<IndexThread> = posts.into_iter()
+        .map(|p| Thread{posts: vec![p]})
+        .map(|t| t.into()).collect();
+
+    // Calculate the number of pages, capped at 100
+    let num_pages = min((total_results as f64 / page_size as f64).ceil() as i64, 100);
+    // Generate `num_pages` page numbers
+    let pages: Vec<i64> = (1..=num_pages).collect();
 
     let body = hb.render("index_page", &TemplateThreadIndex {
         boards,
         next: nonzero_index+1,
         current: nonzero_index,
         prev,
-        pages: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        pages: pages,
         op: op,
         board: board.clone(),
         threads: index_threads.into_iter()

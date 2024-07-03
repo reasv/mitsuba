@@ -933,11 +933,35 @@ impl DBClient {
         Ok(res)
     }
 
-    pub async fn posts_full_text_search(&self, board: &String, text_query: &String, page: i64, page_size: i64, remove_hidden: bool) -> anyhow::Result<Vec<Post>> {
-        
+    pub async fn posts_full_text_search(&self, board: &String, text_query: &String, page: i64, page_size: i64, remove_hidden: bool) -> anyhow::Result<(Vec<Post>, i64)> {
         let offset = page * page_size;
+    
+        // Query to count the total number of matching results
+        let total_count_opt = sqlx::query_scalar!(
+            "
+            SELECT COUNT(*)
+            FROM posts
+            WHERE board = $1
+            AND (
+                $2 = '' OR to_tsvector('english', com) @@ plainto_tsquery('english', $2)
+                OR $3 = '' OR to_tsvector('english', name) @@ plainto_tsquery('english', $3)
+                OR $4 = '' OR to_tsvector('english', sub) @@ plainto_tsquery('english', $4)
+                OR $5 = '' OR to_tsvector('english', filename) @@ plainto_tsquery('english', $5)
+            )
+            ",
+            board,
+            text_query,
+            text_query,
+            text_query,
+            text_query
+        ).fetch_one(&self.pool).await?;
 
-        let posts = sqlx::query_as!(Post,
+        
+        let total_count = total_count_opt.unwrap_or(0);
+    
+        // Query to fetch the posts
+        let posts = sqlx::query_as!(
+            Post,
             "
             SELECT *
             FROM posts
@@ -959,10 +983,14 @@ impl DBClient {
             page_size,
             offset
         ).fetch_all(&self.pool).await?;
-        if remove_hidden {
-            return Ok(posts.into_iter().filter_map(|p| process_hidden_post(&p)).collect());
-        }
-        Ok(posts)
+    
+        let posts = if remove_hidden {
+            posts.into_iter().filter_map(|p| process_hidden_post(&p)).collect()
+        } else {
+            posts
+        };
+    
+        Ok((posts, total_count))
     }
 }
 
