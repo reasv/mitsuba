@@ -47,7 +47,10 @@ After some threads have been archived, you can visit http://127.0.0.1:8080/po/1 
 
 This will only get posts and thumbnails but not full images.
 
-Use `mitsuba add po --full-images=true` to change that.
+Use `mitsuba add po --full-images true` to change that.
+
+`mitsuba add po --full-images true --full-text-search true`
+In order to also enable full-text search.
 
 Mitsuba will not attempt to fetch images for a post it has already archived previously, unless it visits the post again and detects it as changed in some way.
 Moreover, if an image or thumbnail was already fetched for a particular post, mitsuba will never attempt to fetch the image or thumbnail or both, depending on the case, for that post again.
