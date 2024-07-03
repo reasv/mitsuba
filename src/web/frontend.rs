@@ -135,22 +135,30 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
         nonzero_index = index;
     }
 
+    let prev = match nonzero_index == 1 {
+        true  => nonzero_index,
+        false => nonzero_index-1
+    };
+
     let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
         })?;
-    let threads = db.get_thread_index(&board, nonzero_index-1, 15, true).await
+    let threads = db
+        .get_thread_index(
+            &board,
+            nonzero_index-1,
+            15,
+            true
+        ).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
         })?;
     
     let index_threads: Vec<IndexThread> = threads.clone().into_iter().map(|t| t.into()).collect();
-    let prev = match nonzero_index == 1 {
-        true  => nonzero_index,
-        false => nonzero_index-1
-    };
+    
     let op: Option<Post> = match threads.len() > 0 {
         true  => Some(threads[0].posts[0].clone()),
         false => None
