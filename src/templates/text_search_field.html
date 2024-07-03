@@ -1,0 +1,21 @@
+<input type="text" id="ft-search-box" placeholder="Search Text... (Enter)"><select name="ft-search-box-choice" id="ft-search-box-choice">
+    {{#each boards}}
+        {{#if (eq this.enable_search true)}}
+            <option {{#if (eq this.name ../op.board)}}selected{{/if}} value="{{name}}">/{{name}}/</option>
+        {{/if}}
+    {{/each}}
+</select>
+<script>
+    function searchPost(e){
+        if (e.keyCode != 13) {
+            return
+        }
+        let query = document.getElementById('ft-search-box').value;
+        let board = document.getElementById('ft-search-box-choice').value;
+        // Url encode the query
+        query = encodeURIComponent(query);
+        window.location = "/"+board+"/1/?s="+query
+    }
+    let ftel = document.getElementById('ft-search-box');
+    ftel.addEventListener('keydown', searchPost, false);
+</script>
