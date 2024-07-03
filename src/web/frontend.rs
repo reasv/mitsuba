@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, vec};
 use std::collections::HashSet;
 use std::convert::AsRef;
 
@@ -21,6 +21,7 @@ use crate::models::{IndexThread, Post, IndexPost, Board, Thread};
 struct TemplateThread {
     pub boards: Vec<Board>,
     pub op: Post,
+    pub board: String,
     pub posts: Vec<Post>
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -29,8 +30,11 @@ struct TemplateThreadIndex {
     pub next: i64,
     pub prev: i64,
     pub current: i64,
-    pub op: Post,
+    pub board: String,
+    pub op: Option<Post>,
+    pub pages: Vec<i64>,
     pub threads: Vec<TemplateThreadIndexThread>,
+    pub query_string: String
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThreadIndexThread {
@@ -93,6 +97,7 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
     let body = hb.render("thread", &TemplateThread{
         boards,
         op: thread.posts[0].clone(),
+        board: board.clone(),
         posts: thread.posts[1..].to_vec()
     }).unwrap();
     Ok(HttpResponse::Ok().body(body))
@@ -139,21 +144,26 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
         })?;
-    if threads.len() == 0 {
-        return Err(actix_web::error::ErrorNotFound(""))
-    }
+    
     let index_threads: Vec<IndexThread> = threads.clone().into_iter().map(|t| t.into()).collect();
     let prev = match nonzero_index == 1 {
-        true => nonzero_index,
-        false=> nonzero_index-1
+        true  => nonzero_index,
+        false => nonzero_index-1
+    };
+    let op: Option<Post> = match threads.len() > 0 {
+        true  => Some(threads[0].posts[0].clone()),
+        false => None
     };
     let body = hb.render("index_page", &TemplateThreadIndex {
         boards,
         next: nonzero_index+1,
         current: nonzero_index,
+        pages: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         prev,
-        op: threads[0].posts[0].clone(),
-        threads: index_threads.into_iter().map(|t| TemplateThreadIndexThread{op: t.posts[0].clone(), posts: t.posts[1..].to_vec()}).collect()
+        board: board.clone(),
+        op: op,
+        threads: index_threads.into_iter().map(|t| TemplateThreadIndexThread{op: t.posts[0].clone(), posts: t.posts[1..].to_vec()}).collect(),
+        query_string: "".to_string()
     }).unwrap();
     Ok(HttpResponse::Ok().body(body))
 }
@@ -182,9 +192,6 @@ async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
         })?;
-    if posts.len() == 0 {
-        return Err(actix_web::error::ErrorNotFound(""))
-    }
 
     let threads = posts.into_iter()
     .map(|p| Thread{posts: vec![p]})
@@ -195,13 +202,26 @@ async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>
         true => nonzero_index,
         false=> nonzero_index-1
     };
+
+    let op: Option<Post> = match threads.len() > 0 {
+        true => Some(threads[0].posts[0].clone()),
+        false => None
+    };
+
     let body = hb.render("index_page", &TemplateThreadIndex {
         boards,
         next: nonzero_index+1,
         current: nonzero_index,
         prev,
-        op: threads[0].posts[0].clone(),
-        threads: index_threads.into_iter().map(|t| TemplateThreadIndexThread{op: t.posts[0].clone(), posts: t.posts[1..].to_vec()}).collect()
+        pages: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        op: op,
+        board: board.clone(),
+        threads: index_threads.into_iter()
+            .map(|t|
+                TemplateThreadIndexThread{
+                    op: t.posts[0].clone(), posts: t.posts[1..].to_vec()
+            }).collect(),
+        query_string: format!("?s={}", search_query.clone())
     }).unwrap();
     Ok(HttpResponse::Ok().body(body))
 }

@@ -1,7 +1,7 @@
 <input type="text" id="ft-search-box" placeholder="Search Text... (Enter)"><select name="ft-search-box-choice" id="ft-search-box-choice">
     {{#each boards}}
         {{#if (eq this.enable_search true)}}
-            <option {{#if (eq this.name ../op.board)}}selected{{/if}} value="{{name}}">/{{name}}/</option>
+            <option {{#if (eq this.name ../board)}}selected{{/if}} value="{{name}}">/{{name}}/</option>
         {{/if}}
     {{/each}}
 </select>

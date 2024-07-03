@@ -1,9 +1,9 @@
-{{#*inline "page_title"}}/{{op.board}}/ - {{#if op.sub}}{{shorten 25 op.sub}}{{else}}{{shorten 25 op.com}}{{/if}}{{/inline}}
-{{#*inline "page_content"}}{{shorten 25 op.sub}} - /{{op.board}}/{{/inline}}
-{{#*inline "page_board"}}{{op.board}}{{/inline}}
+{{#*inline "page_title"}}/{{board}}/{{#if op}} - {{#if op.sub}}{{shorten 25 op.sub}}{{else}}{{shorten 25 op.com}}{{/if}}{{/if}}{{/inline}}
+{{#*inline "page_content"}}{{#if op}}{{shorten 25 op.sub}} - {{/if}}/{{board}}/{{/inline}}
+{{#*inline "page_board"}}{{board}}{{/inline}}
 {{#*inline "extra_head"}}{{> index_css}}{{/inline}}
 {{#*inline "page_body"}}
-<body class="is_index board_{{op.board}} yotsuba_b_new ws">
+<body class="is_index board_{{board}} yotsuba_b_new ws">
     {{> board_header}}
 
     <div id="ctrl-top" class="desktop"><hr>
@@ -18,7 +18,7 @@
                 {{> op_post}}
                 {{#if this.op.omitted_posts}}
                 <span class="summary desktop">{{this.op.omitted_posts}} reply and {{this.op.omitted_images}} image omitted. <a 
-                    href="thread/{{this.op.no}}" class="replylink">Click here</a> to view.</span>
+                    href="/{{../board}}/thread/{{this.op.no}}" class="replylink">Click here</a> to view.</span>
                 {{/if}}
                 {{#each posts}}
                 {{> post}}
