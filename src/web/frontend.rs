@@ -15,7 +15,7 @@ use handlebars_misc_helpers::register;
 
 use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_file_url};
 use crate::db::DBClient;
-use crate::models::{IndexThread, Post, IndexPost, Board};
+use crate::models::{IndexThread, Post, IndexPost, Board, Thread};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThread {
@@ -98,11 +98,21 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
     Ok(HttpResponse::Ok().body(body))
 }
 
+#[derive(Deserialize)]
+struct SearchQuery {
+    s: Option<String>,
+}
+
 #[get("/{board:[A-z0-9]+}/{idx:\\d+}")]
-pub(crate) async fn index_page_handler(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
+pub(crate) async fn index_page_handler(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>, query: web::Query<SearchQuery>) 
 -> actix_web::Result<HttpResponse> {
     let (board, index) = info.into_inner();
-    index_page(db, hb, board, index).await
+    // Extract the s query parameter
+    if let Some(search_query) = query.s.clone() {
+        index_search_page(db, hb, board, index, &search_query).await
+    } else {
+        index_page(db, hb, board, index).await
+    }
 }
 
 #[get("/{board:[A-z0-9]+}")]
@@ -132,6 +142,54 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
     if threads.len() == 0 {
         return Err(actix_web::error::ErrorNotFound(""))
     }
+    let index_threads: Vec<IndexThread> = threads.clone().into_iter().map(|t| t.into()).collect();
+    let prev = match nonzero_index == 1 {
+        true => nonzero_index,
+        false=> nonzero_index-1
+    };
+    let body = hb.render("index_page", &TemplateThreadIndex {
+        boards,
+        next: nonzero_index+1,
+        current: nonzero_index,
+        prev,
+        op: threads[0].posts[0].clone(),
+        threads: index_threads.into_iter().map(|t| TemplateThreadIndexThread{op: t.posts[0].clone(), posts: t.posts[1..].to_vec()}).collect()
+    }).unwrap();
+    Ok(HttpResponse::Ok().body(body))
+}
+
+async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, board: String, index: i64, search_query: &String) 
+-> actix_web::Result<HttpResponse> {
+    let mut nonzero_index = 1;
+    if index > 0 {
+        nonzero_index = index;
+    }
+
+    let boards = db.get_all_boards().await
+        .map_err(|e| {
+            error!("Error getting boards from DB: {}", e);
+            actix_web::error::ErrorInternalServerError("")
+        })?;
+    
+    let current_board = boards.iter().find(|b| b.name == board).ok_or(actix_web::error::ErrorNotFound(""))?;
+
+    if !current_board.enable_search {
+        return Err(actix_web::error::ErrorNotFound("Search disabled for this board"))
+    }
+
+    let posts = db.posts_full_text_search(&board, search_query, nonzero_index-1, 15, true).await
+        .map_err(|e| {
+            error!("Error getting post from DB: {}", e);
+            actix_web::error::ErrorInternalServerError("")
+        })?;
+    if posts.len() == 0 {
+        return Err(actix_web::error::ErrorNotFound(""))
+    }
+
+    let threads = posts.into_iter()
+    .map(|p| Thread{posts: vec![p]})
+    .collect::<Vec<Thread>>();
+
     let index_threads: Vec<IndexThread> = threads.clone().into_iter().map(|t| t.into()).collect();
     let prev = match nonzero_index == 1 {
         true => nonzero_index,

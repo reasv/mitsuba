@@ -933,7 +933,10 @@ impl DBClient {
         Ok(res)
     }
 
-    pub async fn posts_full_text_search(&self, board: &String, text_query: &String) -> anyhow::Result<Vec<Post>> {
+    pub async fn posts_full_text_search(&self, board: &String, text_query: &String, page: i64, page_size: i64, remove_hidden: bool) -> anyhow::Result<Vec<Post>> {
+        
+        let offset = page * page_size;
+
         let posts = sqlx::query_as!(Post,
             "
             SELECT *
@@ -946,13 +949,19 @@ impl DBClient {
                 OR $5 = '' OR to_tsvector('english', filename) @@ plainto_tsquery('english', $5)
             )
             ORDER BY time DESC
+            LIMIT $6 OFFSET $7
             ",
             board,
             text_query,
             text_query,
             text_query,
-            text_query
+            text_query,
+            page_size,
+            offset
         ).fetch_all(&self.pool).await?;
+        if remove_hidden {
+            return Ok(posts.into_iter().filter_map(|p| process_hidden_post(&p)).collect());
+        }
         Ok(posts)
     }
 }
