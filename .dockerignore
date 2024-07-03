@@ -1,2 +1,8 @@
 .git
 .github
+.github/**
+.gitattributes
+docker-compose.yml
+example.env
+log4rs.yml
+mitsuba.nginx
