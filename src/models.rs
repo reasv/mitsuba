@@ -206,7 +206,8 @@ pub struct Image {
 pub struct Board {
     pub name: String,
     pub full_images: bool,
-    pub archive: bool
+    pub archive: bool,
+    pub enable_search: bool,
 }
 // From /boards.json endpoint
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]

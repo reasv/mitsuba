@@ -80,6 +80,8 @@ struct Add {
     name: String,
     #[clap(long, long_help = "(Optional) If false, will only download thumbnails for this board. If true, thumbnails and full images/files. Default is false.")]
     full_images: Option<bool>,
+    #[clap(long, long_help = "(Optional) If true, will create a full text search index in postgres for this board. Default is false. Can be changed later.")]
+    full_text_search: Option<bool>
 }
 #[derive(Parser, Clone)]
 struct Remove {
@@ -217,7 +219,8 @@ async fn real_main() {
             let board = Board {
                 name: add_opt.name,
                 full_images: add_opt.full_images.unwrap_or(false),
-                archive: true
+                archive: true,
+                enable_search: add_opt.full_text_search.unwrap_or(false)
             };
             client.set_board(board.clone()).await.unwrap();
             println!("Added /{}/ Enabled: {}, Full Images: {}",

@@ -217,18 +217,20 @@ impl DBClient {
     pub async fn insert_board(&self, board: &Board) -> anyhow::Result<Board> {
         let job = sqlx::query_as!(Board,
             "
-            INSERT INTO boards (name, full_images, archive)
+            INSERT INTO boards (name, full_images, archive, enable_search)
             VALUES
-            ($1, $2, $3)
+            ($1, $2, $3, $4)
             ON CONFLICT(name) DO
             UPDATE SET
             full_images = $2,
-            archive = $3
+            archive = $3,
+            enable_search = $4
             RETURNING *;
             ",
             board.name,
             board.full_images,
-            board.archive
+            board.archive,
+            board.enable_search
         ).fetch_one(&self.pool)
         .await?;
         Ok(job)
@@ -929,6 +931,29 @@ impl DBClient {
         .await?
         .rows_affected();
         Ok(res)
+    }
+
+    pub async fn posts_full_text_search(&self, board: &String, text_query: &String) -> anyhow::Result<Vec<Post>> {
+        let posts = sqlx::query_as!(Post,
+            "
+            SELECT *
+            FROM posts
+            WHERE board = $1
+            AND (
+                $2 = '' OR to_tsvector('english', com) @@ plainto_tsquery('english', $2)
+                OR $3 = '' OR to_tsvector('english', name) @@ plainto_tsquery('english', $3)
+                OR $4 = '' OR to_tsvector('english', sub) @@ plainto_tsquery('english', $4)
+                OR $5 = '' OR to_tsvector('english', filename) @@ plainto_tsquery('english', $5)
+            )
+            ORDER BY time DESC
+            ",
+            board,
+            text_query,
+            text_query,
+            text_query,
+            text_query
+        ).fetch_all(&self.pool).await?;
+        Ok(posts)
     }
 }
 
