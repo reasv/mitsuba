@@ -170,8 +170,13 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
         pages: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         prev,
         board: board.clone(),
-        op: op,
-        threads: index_threads.into_iter().map(|t| TemplateThreadIndexThread{op: t.posts[0].clone(), posts: t.posts[1..].to_vec()}).collect(),
+        op,
+        threads: index_threads.into_iter()
+            .map(|t|
+                TemplateThreadIndexThread{
+                    op: t.posts[0].clone(), posts: t.posts[1..].to_vec()
+                })
+            .collect(),
         query_string: "".to_string()
     }).unwrap();
     Ok(HttpResponse::Ok().body(body))
@@ -234,8 +239,8 @@ async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>
         next: nonzero_index+1,
         current: nonzero_index,
         prev,
-        pages: pages,
-        op: op,
+        pages,
+        op,
         board: board.clone(),
         threads: index_threads.into_iter()
             .map(|t|
