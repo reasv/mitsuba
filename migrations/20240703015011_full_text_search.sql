@@ -3,21 +3,6 @@ ADD COLUMN enable_search BOOLEAN NOT NULL DEFAULT false;
 
 CREATE INDEX boards_enable_search_idx ON boards (enable_search);
 
-CREATE INDEX com_ft_idx ON posts USING gin(to_tsvector('english', com))
-WHERE board IN (SELECT name FROM boards WHERE enable_search = true);
-
-CREATE INDEX name_ft_idx ON posts USING gin(to_tsvector('english', name))
-WHERE board IN (SELECT name FROM boards WHERE enable_search = true);
-
-CREATE INDEX sub_ft_idx ON posts USING gin(to_tsvector('english', sub))
-WHERE board IN (SELECT name FROM boards WHERE enable_search = true);
-
-CREATE INDEX filename_ft_idx ON posts USING gin(to_tsvector('english', filename))
-WHERE board IN (SELECT name FROM boards WHERE enable_search = true);
-
-CREATE INDEX trip_ft_idx ON posts USING gin(to_tsvector('english', trip))
-WHERE board IN (SELECT name FROM boards WHERE enable_search = true);
-
 CREATE OR REPLACE FUNCTION update_search_index() RETURNS trigger AS $$
 BEGIN
     IF NEW.enable_search THEN
