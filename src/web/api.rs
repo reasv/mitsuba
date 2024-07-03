@@ -4,11 +4,12 @@ use log::{info, warn, error, debug};
 use actix_web::{get, web, HttpResponse};
 use actix_files::NamedFile;
 use new_mime_guess::from_path;
+use serde::Deserialize;
 
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
-use crate::models::{IndexPage, BoardsStatus};
+use crate::models::{IndexPage, BoardsStatus, IndexSearchResults};
 
 #[get("/boards-status.json")]
 pub(crate) async fn get_boards_status(db: web::Data<DBClient>) -> actix_web::Result<HttpResponse> {
@@ -44,12 +45,27 @@ pub(crate) async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i
         .ok_or(actix_web::error::ErrorNotFound(""))?;
     Ok(HttpResponse::Ok().json(post))
 }
+
+#[derive(Deserialize)]
+struct SearchQuery {
+    s: Option<String>,
+}
+
 #[get("/{board:[A-z0-9]+}/{idx:\\d+}.json")]
-pub(crate) async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>, query: web::Query<SearchQuery>) -> actix_web::Result<HttpResponse> {
     let (board, mut index) = info.into_inner();
     if index > 0 {
         index -= 1;
     }
+    if let Some(search_query) = &query.s {
+        let (posts, total_results) = db.posts_full_text_search(&board, &search_query, index, 15, true).await
+            .map_err(|e| {
+                error!("Error getting post from DB: {}", e);
+                actix_web::error::ErrorInternalServerError("")
+            })?;
+        return Ok(HttpResponse::Ok().json(IndexSearchResults {posts, total_results}));
+    }
+
     let threads = db.get_thread_index(&board, index, 15, true).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);

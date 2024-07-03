@@ -270,6 +270,13 @@ pub struct ThreadNo {
 pub struct IndexPage {
     pub threads: Vec<IndexThread>
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
+pub struct IndexSearchResults {
+    pub posts: Vec<Post>,
+    pub total_results: i64
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
 pub struct IndexThread {
     pub posts: Vec<IndexPost>
