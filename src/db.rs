@@ -8,9 +8,11 @@ use log::{debug, warn};
 #[allow(unused_imports)]
 use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
+use crate::models::User;
+
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
-     ThreadInfo, ThreadJob, ThreadNo, File};
+     ThreadInfo, ThreadJob, ThreadNo, File, UserRole};
 
 use crate::util::get_post_image_info;
 #[allow(unused_imports)]
@@ -991,6 +993,76 @@ impl DBClient {
         };
     
         Ok((posts, total_count))
+    }
+
+    pub async fn insert_user(&self, user: &User) -> anyhow::Result<()>{
+        let role_id: i32 = user.role.into();
+        let _ = sqlx::query!(
+            "
+            INSERT INTO users (name, password_hash, role)
+            VALUES ($1, $2, $3)
+            ON CONFLICT(name) DO NOTHING
+            ",
+            user.name,
+            user.password_hash,
+            role_id
+        ).execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn get_user(&self, name: &String) -> anyhow::Result<Option<User>> {
+        let user = sqlx::query_as!(User,
+            "
+            SELECT name, password_hash, role FROM users WHERE name = $1
+            ",
+            name
+        ).fetch_optional(&self.pool)
+        .await?;
+        Ok(user)
+    }
+
+    pub async fn delete_user(&self, name: &String) -> anyhow::Result<u64> {
+        let res: u64 = sqlx::query!(
+            "DELETE FROM users WHERE name = $1",
+            name,
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
+
+    pub async fn get_users(&self) -> anyhow::Result<Vec<User>> {
+        let users = sqlx::query_as!(User,
+            "
+            SELECT name, password_hash, role FROM users
+            "
+        ).fetch_all(&self.pool)
+        .await?;
+        Ok(users)
+    }
+
+    pub async fn change_password(&self, name: &String, password_hash: &String) -> anyhow::Result<u64> {
+        let res: u64 = sqlx::query!(
+            "UPDATE users SET password_hash = $1 WHERE name = $2",
+            password_hash,
+            name
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
+
+    pub async fn change_role(&self, name: &String, role: UserRole) -> anyhow::Result<u64> {
+        let role_id: i32 = role.into();
+        let res: u64 = sqlx::query!(
+            "UPDATE users SET role = $1 WHERE name = $2",
+            role_id,
+            name
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
     }
 }
 

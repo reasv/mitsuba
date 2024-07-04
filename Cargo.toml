@@ -18,6 +18,7 @@ log = "0.4.22"
 env_logger = "0.11.3"
 reqwest = { version = "0.12.5", features = ["json", "rustls-tls", "http2"], default-features = false }
 tokio = { version = "1.38.0", features = ["full"] }
+actix-session = { version = "0.9.0", features = ["cookie-session"] }
 #tokio-util = { version = "0.6.4", features = ["full"] }
 dotenv = "0.15.0"
 serde = { version = "1.0.203", features = ["derive"] }
@@ -50,6 +51,7 @@ metrics = "0.18.1" # Not up to date
 metrics-exporter-prometheus = "0.9.0" # Not up to date
 futures = "0.3.30"
 log4rs = "1.3.0"
+argon2 = "0.5.3"
 
 [profile.release]
 lto = true

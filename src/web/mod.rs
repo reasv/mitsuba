@@ -21,7 +21,6 @@ use crate::object_storage::ObjectStorage;
 
 mod api;
 mod frontend;
-mod auth;
 
 pub async fn web_main(dbc: DBClient) -> std::io::Result<()> {
     // When using `Key::generate()` it is important to initialize outside of the

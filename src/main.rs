@@ -49,7 +49,48 @@ enum SubCommand {
     #[clap(about = "Delete the image or file associated with a specific post and blacklist it from being downloaded again. Does not delete the post itself.")]
     PurgeImage(DeleteImage),
     #[clap(about = "If the image associated with the given post is blacklisted, remove it from the blacklist. Does not restore the image.")]
-    UnpurgeImage(Unhide)
+    UnpurgeImage(Unhide),
+    #[clap(about = "Add a new user to the database")]
+    UserAdd(AddUser),
+    #[clap(about = "Remove a user from the database")]
+    UserRemove(RemoveUser),
+    #[clap(about = "Change a user's password")]
+    UserSetPassword(ChangePassword),
+    #[clap(about = "Change a user's role")]
+    UserSetRole(ChangeRole),
+    #[clap(about = "List all users in the database")]
+    UsersList,
+}
+#[derive(Parser, Default, Debug, Clone)]
+struct AddUser {
+    #[clap(help = "Username")]
+    username: String,
+    #[clap(help = "Role (admin, mod, janitor)")]
+    role: String,
+    #[clap(help = "Password")]
+    password: String,
+}
+
+#[derive(Parser, Default, Debug, Clone)]
+struct RemoveUser {
+    #[clap(help = "Username")]
+    username: String,
+}
+
+#[derive(Parser, Default, Debug, Clone)]
+struct ChangePassword {
+    #[clap(help = "Username")]
+    username: String,
+    #[clap(help = "New password")]
+    password: String,
+}
+
+#[derive(Parser, Default, Debug, Clone)]
+struct ChangeRole {
+    #[clap(help = "Username")]
+    username: String,
+    #[clap(help = "New role (admin, mod, janitor)")]
+    role: String,
 }
 
 #[derive(Parser, Default, Debug, Clone)]
@@ -183,6 +224,9 @@ async fn real_main() {
         Some(r) => r,
         None => get_env("RETRY_FAILED_MAX_TIME_SECONDS", 600)
     };
+
+    let new_admin_password = env::var("ADMIN_PASSWORD").ok();
+
     let client = Archiver::new(
         HttpClient::new(
             rpm,
@@ -196,6 +240,9 @@ async fn real_main() {
 
     match opts.subcmd {
         SubCommand::StartReadOnly(_) => {
+            if let Some(password) = new_admin_password {
+                client.ensure_admin_exists(&password).await.unwrap();
+            }
             web_main(client.db_client).await.unwrap();
         },
         SubCommand::Start(arcopts) => {
@@ -207,6 +254,9 @@ async fn real_main() {
             if arcopts.archiver_only.unwrap_or_default() {
                 handle.await.ok();
             } else {
+                if let Some(password) = new_admin_password {
+                    client.ensure_admin_exists(&password).await.unwrap();
+                }
                 web_main(client.db_client).await.unwrap();
             }
         },
@@ -282,6 +332,47 @@ async fn real_main() {
             for sha256 in image_hashes {
                 println!("Unpurged image {} for post /{}/{}", sha256, board, post);
             }
+        },
+        SubCommand::UserAdd(user_add) => {
+            let role = match user_add.role.as_str() {
+                "admin" => models::UserRole::Admin,
+                "mod" => models::UserRole::Mod,
+                "janitor" => models::UserRole::Janitor,
+                _ => {
+                    println!("Invalid role. Valid roles are: admin, mod, janitor");
+                    return;
+                }
+            };
+            client.add_user(&user_add.username, &user_add.password, role).await.unwrap();
+            println!("Added user {}", user_add.username);
+        },
+        SubCommand::UserRemove(user_remove) => {
+            client.delete_user(&user_remove.username).await.unwrap();
+            println!("Removed user {}", user_remove.username);
+        },
+        SubCommand::UserSetPassword(user_set_password) => {
+            client.change_password(&user_set_password.username, &user_set_password.password).await.unwrap();
+            println!("Changed password for user {}", user_set_password.username);
+        },
+        SubCommand::UserSetRole(user_set_role) => {
+            let role = match user_set_role.role.as_str() {
+                "admin" => models::UserRole::Admin,
+                "mod" => models::UserRole::Mod,
+                "janitor" => models::UserRole::Janitor,
+                _ => {
+                    println!("Invalid role. Valid roles are: admin, mod, janitor");
+                    return;
+                }
+            };
+            client.change_role(&user_set_role.username, role).await.unwrap();
+            println!("Changed role for user {}", user_set_role.username);
+        },
+        SubCommand::UsersList => {
+            let users = client.db_client.get_users().await.unwrap();
+            for user in users.iter() {
+                println!("User: {} Role: {}", user.name, user.role);
+            }
+            println!("{} users found in database", users.len());
         }
     }
 }

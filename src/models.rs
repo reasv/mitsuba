@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::string::String;
+use std::str::FromStr;
+use sqlx::Type;
+use sqlx::decode::Decode;
+use sqlx::encode::{Encode, IsNull};
+use sqlx::error::BoxDynError;
+use sqlx::postgres::{PgTypeInfo, PgValueRef, Postgres, PgArgumentBuffer};
+
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Eq, PartialEq, Hash)]
 pub struct Post {
     #[serde(skip)]
@@ -350,4 +357,99 @@ pub struct PurgeReport {
     pub full_files_failed: u64,
     pub thumbnails_failed: u64,
     pub removed_posts: u64,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub struct User {
+    pub name: String,
+    pub password_hash: String,
+    pub role: UserRole
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq, Copy)]
+pub enum UserRole {
+    Admin,
+    Mod,
+    Janitor,
+    #[default]
+    User
+}
+
+impl FromStr for UserRole {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "admin" => Ok(UserRole::Admin),
+            "mod" => Ok(UserRole::Mod),
+            "janitor" => Ok(UserRole::Janitor),
+            "user" => Ok(UserRole::User),
+            _ => Ok(UserRole::User)
+        }
+    }
+}
+
+impl From<String> for UserRole {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "admin" => UserRole::Admin,
+            "mod" => UserRole::Mod,
+            "janitor" => UserRole::Janitor,
+            "user" => UserRole::User,
+            _ => UserRole::User
+        }
+    }
+}
+
+impl From<UserRole> for i32 {
+    fn from(role: UserRole) -> Self {
+        match role {
+            UserRole::Admin => 0,
+            UserRole::Mod => 1,
+            UserRole::Janitor => 2,
+            UserRole::User => 32
+        }
+    }
+}
+
+impl From<i32> for UserRole {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => UserRole::Admin,
+            1 => UserRole::Mod,
+            2 => UserRole::Janitor,
+            32 => UserRole::User,
+            _ => UserRole::User
+        }
+    }
+}
+
+impl Type<sqlx::Postgres> for UserRole {
+    fn type_info() -> PgTypeInfo {
+        <i32 as Type<sqlx::Postgres>>::type_info()
+    }
+}
+
+impl<'r> Decode<'r, sqlx::Postgres> for UserRole {
+    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
+        let int_value: i32 = Decode::<Postgres>::decode(value)?;
+        int_value.try_into().map_err(|_| "failed to parse enum".into())
+    }
+}
+
+impl Encode<'_, sqlx::Postgres> for UserRole {
+    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> IsNull {
+        let int_value = *self as i32;
+        Encode::<Postgres>::encode_by_ref(&int_value, buf)
+    }
+}
+
+impl std::fmt::Display for UserRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRole::Admin => write!(f, "admin"),
+            UserRole::Mod => write!(f, "mod"),
+            UserRole::Janitor => write!(f, "janitor"),
+            UserRole::User => write!(f, "user")
+        }
+    }
 }

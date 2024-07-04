@@ -4,6 +4,11 @@ use anyhow::Ok;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
+use argon2::{
+	password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+	Argon2,
+};
+
 use dashmap::DashSet;
 
 mod board_archiver;
@@ -11,7 +16,7 @@ mod image_archiver;
 mod thread_archiver;
 mod archiver_metrics;
 
-use crate::http::HttpClient;
+use crate::{http::HttpClient, models::{User, UserRole}};
 use crate::models::{Board, BoardsList, PurgeReport};
 use crate::db::DBClient;
 
@@ -196,7 +201,74 @@ impl Archiver {
         }
         Ok(purged_files)
     }
-    
+
+    pub async fn add_user(&self, username: &String, password: &String, role: UserRole) -> anyhow::Result<()> {
+        if self.db_client.get_user(username).await?.is_some() {
+            return Err(anyhow::anyhow!("User already exists"));
+        }
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        let password_hash = argon2.hash_password(&password.as_bytes(), &salt)
+            .map_err(|_| anyhow::Error::msg("Couldn't hash"))?.to_string();
+
+        let user = User {
+            name: username.clone(),
+            password_hash: password_hash.clone(),
+            role: role.clone()
+        };
+        self.db_client.insert_user(&user).await?;
+        Ok(())
+    }
+
+    pub async fn delete_user(&self, username: &String) -> anyhow::Result<()> {
+        self.db_client.delete_user(username).await?;
+        Ok(())
+    }
+
+    pub async fn login(&self, username: &String, password: &String) -> anyhow::Result<Option<User>> {
+        let user = self.db_client.get_user(username).await?;
+        if let Some(user) = user {
+            let parsed_hash = PasswordHash::new(&user.password_hash)
+                .map_err(|_| anyhow::Error::msg("Couldn't parse hash"))?;
+            if Argon2::default()
+                .verify_password(
+                    password.as_bytes(),
+                    &parsed_hash
+                ).is_ok() {
+                Ok(Some(user))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn change_password(&self, username: &String, password: &String) -> anyhow::Result<()> {
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        let password_hash = argon2.hash_password(&password.as_bytes(), &salt)
+            .map_err(|_| anyhow::Error::msg("Couldn't hash"))?.to_string();
+        self.db_client.change_password(username, &password_hash).await?;
+        Ok(())
+    }
+
+    pub async fn change_role(&self, username: &String, role: UserRole) -> anyhow::Result<()> {
+        self.db_client.change_role(username, role).await?;
+        Ok(())
+    }
+
+    pub async fn ensure_admin_exists(&self, password: &String) -> anyhow::Result<()> {
+        if self.db_client.get_user(&"admin".to_string()).await?.is_none() {
+            self.add_user(&"admin".to_string(), password, UserRole::Admin).await?;
+        } else {
+            // Change password if admin exists
+            self.change_password(&"admin".to_string(), password).await?;
+            // Ensure the role is admin
+            self.change_role(&"admin".to_string(), UserRole::Admin).await?;
+        }
+        Ok(())
+    }
 }
 
 impl std::panic::UnwindSafe for Archiver {}
