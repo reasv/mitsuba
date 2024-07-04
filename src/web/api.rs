@@ -1,15 +1,65 @@
+use actix_session::Session;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
-use actix_web::{get, web, HttpResponse};
+use actix_web::{get, put, web, HttpResponse};
 use actix_files::NamedFile;
 use new_mime_guess::from_path;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
+use crate::archiver::Archiver;
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
 use crate::models::{IndexPage, BoardsStatus, IndexSearchResults};
+
+#[derive(Deserialize)]
+struct LoginQuery {
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+struct LoginResult {
+    success: bool,
+    message: String,
+}
+
+#[put("/_mitsuba/login.json")]
+pub(crate) async fn login_api(archiver: web::Data<Archiver>, query: web::Json<LoginQuery>, session: Session) -> actix_web::Result<HttpResponse> {
+    // Extract the username and password from the query
+    let query = query.into_inner();
+    let username = query.username;
+    let password = query.password;
+
+    if let Some(user) = archiver.login(&username, &password).await
+    .map_err(|e| {
+        error!("Error getting user from DB: {}", e);
+        actix_web::error::ErrorInternalServerError("Error getting user from DB")
+    })? {
+        session.insert("username", user.name.clone())?;
+        return Ok(HttpResponse::Ok().json(LoginResult{
+            success: true,
+            message: "Logged in".to_string()
+        }));
+    }
+    Ok(HttpResponse::Unauthorized().json(LoginResult{
+        success: false,
+        message: "Wrong username or password".to_string()
+    }))
+}
+
+#[put("/_mitsuba/logout.json")]
+pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpResponse> {
+        session.remove("username");
+        session.purge();
+        Ok(HttpResponse::Ok().json(LoginResult{
+            success: true,
+            message: "Logged out".to_string()
+        })
+    )
+}
+
 
 #[get("/boards-status.json")]
 pub(crate) async fn get_boards_status(db: web::Data<DBClient>) -> actix_web::Result<HttpResponse> {
