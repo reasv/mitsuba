@@ -243,7 +243,7 @@ async fn real_main() {
             if let Some(password) = new_admin_password {
                 client.ensure_admin_exists(&password).await.unwrap();
             }
-            web_main(client.db_client).await.unwrap();
+            web_main(client).await.unwrap();
         },
         SubCommand::Start(arcopts) => {
             // Metrics are only for the archiver, for now.
@@ -257,7 +257,7 @@ async fn real_main() {
                 if let Some(password) = new_admin_password {
                     client.ensure_admin_exists(&password).await.unwrap();
                 }
-                web_main(client.db_client).await.unwrap();
+                web_main(client).await.unwrap();
             }
         },
         SubCommand::Remove(remove_opt) => {

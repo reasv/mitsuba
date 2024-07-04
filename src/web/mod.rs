@@ -17,7 +17,7 @@ use actix_web::cookie::Key;
 use s3::creds::time::Duration;
 use tokio::fs::create_dir_all;
 
-use crate::db::DBClient;
+use crate::archiver::Archiver;
 use crate::object_storage::ObjectStorage;
 
 mod api;
@@ -37,7 +37,9 @@ fn load_or_generate_key(data_folder_str: &String) -> actix_web::cookie::Key {
     secret_key
 }
 
-pub async fn web_main(dbc: DBClient) -> std::io::Result<()> {
+pub async fn web_main(archiver: Archiver) -> std::io::Result<()> {
+    let dbc = archiver.db_client.clone();
+
     let handlebars = frontend::build_handlebars();
 
     let handlebars_ref = web::Data::new(handlebars);
@@ -67,6 +69,7 @@ pub async fn web_main(dbc: DBClient) -> std::io::Result<()> {
             .build()
         )
         .app_data(web::Data::new(dbc.clone()))
+        .app_data(web::Data::new(archiver.clone()))
         .app_data(handlebars_ref.clone())
         .wrap(NormalizePath::new(middleware::TrailingSlash::Trim))
         .wrap(middleware::Compress::default())
