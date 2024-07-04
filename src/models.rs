@@ -371,8 +371,9 @@ pub enum UserRole {
     Admin,
     Mod,
     Janitor,
+    User,
     #[default]
-    User
+    Anonymous = 99
 }
 
 impl FromStr for UserRole {
@@ -383,7 +384,7 @@ impl FromStr for UserRole {
             "mod" => Ok(UserRole::Mod),
             "janitor" => Ok(UserRole::Janitor),
             "user" => Ok(UserRole::User),
-            _ => Ok(UserRole::User)
+            _ => Ok(UserRole::Anonymous)
         }
     }
 }
@@ -395,7 +396,7 @@ impl From<String> for UserRole {
             "mod" => UserRole::Mod,
             "janitor" => UserRole::Janitor,
             "user" => UserRole::User,
-            _ => UserRole::User
+            _ => UserRole::Anonymous
         }
     }
 }
@@ -406,7 +407,8 @@ impl From<UserRole> for i32 {
             UserRole::Admin => 0,
             UserRole::Mod => 1,
             UserRole::Janitor => 2,
-            UserRole::User => 32
+            UserRole::User => 3,
+            UserRole::Anonymous => 99
         }
     }
 }
@@ -417,8 +419,8 @@ impl From<i32> for UserRole {
             0 => UserRole::Admin,
             1 => UserRole::Mod,
             2 => UserRole::Janitor,
-            32 => UserRole::User,
-            _ => UserRole::User
+            3 => UserRole::User,
+            _ => UserRole::Anonymous
         }
     }
 }
@@ -449,7 +451,8 @@ impl std::fmt::Display for UserRole {
             UserRole::Admin => write!(f, "admin"),
             UserRole::Mod => write!(f, "mod"),
             UserRole::Janitor => write!(f, "janitor"),
-            UserRole::User => write!(f, "user")
+            UserRole::User => write!(f, "user"),
+            UserRole::Anonymous => write!(f, "anonymous")
         }
     }
 }
