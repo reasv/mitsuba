@@ -196,7 +196,7 @@ async fn real_main() {
 
     match opts.subcmd {
         SubCommand::StartReadOnly(_) => {
-            web_main().await.unwrap();
+            web_main(client.db_client).await.unwrap();
         },
         SubCommand::Start(arcopts) => {
             // Metrics are only for the archiver, for now.
@@ -207,7 +207,7 @@ async fn real_main() {
             if arcopts.archiver_only.unwrap_or_default() {
                 handle.await.ok();
             } else {
-                web_main().await.unwrap();
+                web_main(client.db_client).await.unwrap();
             }
         },
         SubCommand::Remove(remove_opt) => {
