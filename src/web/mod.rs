@@ -1,4 +1,5 @@
 use actix_web::middleware;
+use base64::prelude::*;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
@@ -22,17 +23,26 @@ use crate::object_storage::ObjectStorage;
 mod api;
 mod frontend;
 
-pub async fn web_main(dbc: DBClient) -> std::io::Result<()> {
-    // When using `Key::generate()` it is important to initialize outside of the
-    // `HttpServer::new` closure. When deployed the secret key should be read from a
-    // configuration file or environment variables.
-    let secret_key = Key::generate();
+fn load_or_generate_key(data_folder_str: &String) -> actix_web::cookie::Key {
+    let secret_seed_path = format!("{}/cookie_secret_seed", data_folder_str);
+    let secret_seed = match std::fs::read_to_string(&secret_seed_path) {
+        Ok(seed) => seed,
+        Err(_) => {
+            let seed = BASE64_STANDARD.encode(rand::random::<[u8; 32]>());
+            std::fs::write(&secret_seed_path, &seed).unwrap();
+            seed
+        }
+    };
+    let secret_key = Key::derive_from(&secret_seed.as_bytes());
+    secret_key
+}
 
+pub async fn web_main(dbc: DBClient) -> std::io::Result<()> {
     let handlebars = frontend::build_handlebars();
 
     let handlebars_ref = web::Data::new(handlebars);
     let data_folder_str = std::env::var("DATA_ROOT").unwrap_or("data".to_string());
-
+    let secret_key = load_or_generate_key(&data_folder_str);
     let image_folder = format!("{}/images", data_folder_str);
     let port = std::env::var("WEB_PORT").unwrap_or("8080".to_string());
     let ip = std::env::var("WEB_IP").unwrap_or("0.0.0.0".to_string());
