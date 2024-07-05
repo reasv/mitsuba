@@ -11,11 +11,11 @@ use crate::archiver::Archiver;
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
-use crate::models::{BoardsStatus, IndexPage, IndexSearchResults, UserRole};
-use crate::web::auth::AuthUser;
+use crate::models::{BoardsStatus, IndexPage, IndexSearchResults};
+use crate::web::auth::{Authenticated, AuthUser};
 
 #[derive(Deserialize)]
-struct LoginQuery {
+struct LoginBody {
     username: String,
     password: String,
 }
@@ -27,7 +27,7 @@ struct LoginResult {
 }
 
 #[put("/_mitsuba/login.json")]
-pub(crate) async fn login_api(archiver: web::Data<Archiver>, query: web::Json<LoginQuery>, session: Session) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn login_api(archiver: web::Data<Archiver>, query: web::Json<LoginBody>, session: Session) -> actix_web::Result<HttpResponse> {
     // Extract the username and password from the query
     let query = query.into_inner();
     let username = query.username;
@@ -62,20 +62,13 @@ pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpRespon
 }
 
 #[put("/_mitsuba/authcheck.json")]
-pub(crate) async fn authcheck_api(session_user: AuthUser) -> actix_web::Result<HttpResponse> {
-        if session_user.role != UserRole::Admin {
-            return Ok(HttpResponse::Unauthorized().json(LoginResult{
-                success: false,
-                message: "Unauthorized".to_string()
-            }));
-        }
+pub(crate) async fn authcheck_api(session_user: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
         Ok(HttpResponse::Ok().json(LoginResult{
             success: true,
-            message: format!("Logged in as {}", session_user.name)
+            message: format!("Logged in as {} (Role: {})", session_user.name, session_user.role)
         })
     )
 }
-
 
 #[get("/boards-status.json")]
 pub(crate) async fn get_boards_status(db: web::Data<DBClient>) -> actix_web::Result<HttpResponse> {
