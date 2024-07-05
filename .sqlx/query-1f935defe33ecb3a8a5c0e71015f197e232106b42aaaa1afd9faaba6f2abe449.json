@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT *\n            FROM posts\n            WHERE thumbnail_sha256 != '' AND board = ANY($1)\n            ORDER BY last_modified DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "query": "\n            SELECT *\n            FROM posts\n            WHERE thumbnail_sha256 != '' AND board = ANY($1)\n            AND mitsuba_file_hidden = false\n            ORDER BY last_modified DESC\n            LIMIT $2 OFFSET $3\n            ",
   "describe": {
     "columns": [
       {
@@ -290,5 +290,5 @@
       false
     ]
   },
-  "hash": "0180dcf0bcd20d1b4500e4b3d25304975ab187ca009db8944216507e15eaa300"
+  "hash": "1f935defe33ecb3a8a5c0e71015f197e232106b42aaaa1afd9faaba6f2abe449"
 }
