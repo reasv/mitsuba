@@ -62,10 +62,10 @@ pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpRespon
 }
 
 #[put("/_mitsuba/authcheck.json")]
-pub(crate) async fn authcheck_api(session_user: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn authcheck_api(user: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
         Ok(HttpResponse::Ok().json(LoginResult{
             success: true,
-            message: format!("Logged in as {} (Role: {})", session_user.name, session_user.role)
+            message: format!("Logged in as {} (Role: {})", user.name, user.role)
         })
     )
 }
