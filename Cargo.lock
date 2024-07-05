@@ -2071,6 +2071,7 @@ dependencies = [
  "metrics-exporter-prometheus",
  "new_mime_guess",
  "nonzero_ext",
+ "percent-encoding",
  "rand",
  "regex",
  "reqwest 0.12.5",

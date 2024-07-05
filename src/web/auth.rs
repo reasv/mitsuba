@@ -1,12 +1,13 @@
 use std::pin::Pin;
 use actix_session::SessionExt;
 use actix_web::{Error, FromRequest, web, ResponseError, HttpResponse};
+use actix_web::http::header::LOCATION;
 use futures::Future;
 use log::error;
 use serde::Serialize;
 use std::marker::PhantomData;
-
 use crate::{archiver::Archiver, models::{UserRole, User}};
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
 /**
     Extractor for the currently authenticated user, with role checking and error response format control through generics.
@@ -42,25 +43,16 @@ impl<R: RoleCheck, E: RoleCheckError> AuthUser<R, E> {
 }
 
 pub trait RoleCheckError {
-    fn not_authenticated() -> actix_web::Error;
+    fn not_authenticated(req: actix_web::HttpRequest) -> actix_web::Error;
     fn not_authorized(role: &UserRole) -> actix_web::Error;
 }
 
+/*
+    Returns a JSON error response if the user is not authenticated or not authorized for the action.
+*/
 pub struct JSONRCError;
-pub struct TextRCError;
-
-impl RoleCheckError for TextRCError {
-    fn not_authenticated() -> actix_web::Error {
-        actix_web::error::ErrorUnauthorized("User must be authenticated")
-    }
-
-    fn not_authorized(role: &UserRole) -> actix_web::Error {
-        actix_web::error::ErrorForbidden(format!("User role not authorized for this action: {:?}", role))
-    }
-}
-
 impl RoleCheckError for JSONRCError {
-    fn not_authenticated() -> actix_web::Error {
+    fn not_authenticated(_: actix_web::HttpRequest) -> actix_web::Error {
         JSONError {
             error: "Not Authenticated".to_string(),
             code: actix_web::http::StatusCode::UNAUTHORIZED,
@@ -74,6 +66,59 @@ impl RoleCheckError for JSONRCError {
             code: actix_web::http::StatusCode::FORBIDDEN,
             message: format!("User role not authorized for this action: {:?}", role)
         }.into()
+    }
+}
+
+/*
+    Returns a plaintext error response if the user is not authenticated or not authorized for the action.
+*/
+pub struct TextRCError;
+impl RoleCheckError for TextRCError {
+    fn not_authenticated(_: actix_web::HttpRequest) -> actix_web::Error {
+        actix_web::error::ErrorUnauthorized("User must be authenticated")
+    }
+
+    fn not_authorized(role: &UserRole) -> actix_web::Error {
+        actix_web::error::ErrorForbidden(format!("User role not authorized for this action: {:?}", role))
+    }
+}
+/*
+    Redirects to the login page if the user is not authenticated, or returns a plaintext error response if the user is not authorized for the action.
+*/
+pub struct RedirectRCError;
+impl RoleCheckError for RedirectRCError {
+    fn not_authenticated(req: actix_web::HttpRequest) -> actix_web::Error {
+        let original_path = req.path().to_string();
+        let encoded_path = utf8_percent_encode(&original_path, NON_ALPHANUMERIC).to_string();
+        RedirectError {
+            url: format!("/_mitsuba/login?from_path={}", encoded_path)
+        }.into()
+    }
+
+    fn not_authorized(role: &UserRole) -> actix_web::Error {
+        actix_web::error::ErrorForbidden(format!("User role not authorized for this action: {:?}", role))
+    }
+}
+
+/*
+    Redirect error
+*/
+#[derive(Debug, Serialize)]
+struct RedirectError {
+    url: String,
+}
+
+impl std::fmt::Display for RedirectError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Redirecting to: {}", self.url)
+    }
+}
+
+impl ResponseError for RedirectError {
+    fn error_response(&self) -> HttpResponse {
+        HttpResponse::SeeOther()
+            .append_header((LOCATION, self.url.clone()))
+            .finish()
     }
 }
 
@@ -186,11 +231,12 @@ impl<R: RoleCheck, E: RoleCheckError> FromRequest for AuthUser<R, E> {
         let username_opt = session.get::<String>("username")
             .map_err(|e| error!("Could not retrieve session username: {}", e))
             .ok().flatten();
+        let request = req.clone(); // Clone the request for use in the error response
         Box::pin(async move {
             let anonymous_result = if R::is_allowed(&UserRole::Anonymous) {
                 Ok(AuthUser::<R, E>::anonymous())
             } else {
-                Err(E::not_authenticated())
+                Err(E::not_authenticated(request))
             };
             match (archiver_data, username_opt) {
                 (Some(data), Some(username)) => {
