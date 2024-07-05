@@ -306,7 +306,8 @@ async fn real_main() {
             let post = hide_opt.post;
             let hide_comment = hide_opt.hide_comment.unwrap_or(false);
             let hide_image = hide_opt.hide_image.unwrap_or(false);
-            client.hide_post(&board, post, hide_comment, hide_image).await.unwrap();
+            let hide_post = !hide_comment && !hide_image;
+            client.hide_post(&board, post, Some(hide_post), hide_opt.hide_comment, hide_opt.hide_image).await.unwrap();
             let hide_post = !hide_comment && !hide_image;
             println!("Hid post /{}/{} (Entire post hidden: {}, Only comment field hidden: {}, Only image hidden: {})", board, post, hide_post, hide_comment, hide_image);
         },
@@ -316,19 +317,19 @@ async fn real_main() {
             client.unhide_post(&board, post).await.unwrap();
             println!("Unhid post /{}/{}", board, post);
         },
-        SubCommand::PurgeImage(purge_image_opt) => {
-            let board = purge_image_opt.board_name;
-            let post = purge_image_opt.post;
-            let reason = purge_image_opt.reason.unwrap_or("None".to_string());
-            let image_hashes = client.purge_image(&board, post, &reason).await.unwrap();
+        SubCommand::PurgeImage(ban_image_opt) => {
+            let board = ban_image_opt.board_name;
+            let post = ban_image_opt.post;
+            let reason = ban_image_opt.reason.unwrap_or("None".to_string());
+            let image_hashes = client.ban_image(&board, post, &reason).await.unwrap();
             for sha256 in image_hashes {
                 println!("Purged image {} for post /{}/{}", sha256, board, post);
             }
         },
-        SubCommand::UnpurgeImage(unpurge_image_opt) => {
-            let board = unpurge_image_opt.board_name;
-            let post = unpurge_image_opt.post;
-            let image_hashes = client.unpurge_image(&board, post).await.unwrap();
+        SubCommand::UnpurgeImage(unban_image_opt) => {
+            let board = unban_image_opt.board_name;
+            let post = unban_image_opt.post;
+            let image_hashes = client.unban_image(&board, post).await.unwrap();
             for sha256 in image_hashes {
                 println!("Unpurged image {} for post /{}/{}", sha256, board, post);
             }

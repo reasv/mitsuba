@@ -151,9 +151,16 @@ impl Archiver {
         Ok(report)
     }
 
-    pub async fn hide_post(&self, board_name: &String, no: i64, hide_comment: bool, hide_image: bool) -> anyhow::Result<()> {
-        // Only hide the whole post if neither the comment nor the image are hidden
-        let post_hidden = !hide_comment && !hide_image;
+    pub async fn hide_post(&self, board_name: &String, no: i64, hide_post: Option<bool>, hide_comment: Option<bool>, hide_image: Option<bool>) -> anyhow::Result<()> {
+        let post_opt = self.db_client.get_post(board_name, no, false).await?;
+        if post_opt.is_none() {
+            return Err(anyhow::anyhow!("Post /{}/{} not found", board_name, no));
+        }
+        let post = post_opt.unwrap_or_default();
+        // Only override the values if they are specified
+        let post_hidden = hide_post.unwrap_or(post.mitsuba_post_hidden);
+        let hide_comment = hide_comment.unwrap_or(post.mitsuba_com_hidden);
+        let hide_image = hide_image.unwrap_or(post.mitsuba_file_hidden);
         self.db_client.set_post_hidden_status(&board_name, no, post_hidden, hide_comment, hide_image).await?;
         Ok(())
     }
@@ -163,7 +170,7 @@ impl Archiver {
         Ok(())
     }
 
-    pub async fn purge_image(&self, board_name: &String, no: i64, reason: &String) -> anyhow::Result<Vec<String>> {
+    pub async fn ban_image(&self, board_name: &String, no: i64, reason: &String) -> anyhow::Result<Vec<String>> {
         let mut purged_files = Vec::new();
         let post = self.db_client.get_post(board_name, no, false).await?;
         if let Some(post) = post {
@@ -184,7 +191,7 @@ impl Archiver {
         Ok(purged_files)
     }
 
-    pub async fn unpurge_image(&self, board_name: &String, no: i64) -> anyhow::Result<Vec<String>> {
+    pub async fn unban_image(&self, board_name: &String, no: i64) -> anyhow::Result<Vec<String>> {
         let mut purged_files = Vec::new();
         let post = self.db_client.get_post(board_name, no, false).await?;
         if let Some(post) = post {

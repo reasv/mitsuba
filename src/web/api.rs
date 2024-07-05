@@ -11,8 +11,10 @@ use crate::archiver::Archiver;
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
-use crate::models::{BoardsStatus, IndexPage, IndexSearchResults};
+use crate::models::{BoardsStatus, IndexPage, IndexSearchResults, UserRole};
 use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated};
+
+use super::auth::RequireJanitor;
 
 #[derive(Deserialize)]
 struct LoginBody {
@@ -119,6 +121,80 @@ pub(crate) async fn get_post(
     let (board, no) = info.into_inner();
     let respect_hidden_files = should_respect_hidden_files(user);
     let post = db.get_post(&board, no, respect_hidden_files).await
+        .map_err(|e| {
+            error!("Error getting post from DB: {}", e);
+            actix_web::error::ErrorInternalServerError("")
+        })?
+        .ok_or(actix_web::error::ErrorNotFound(""))?;
+    Ok(HttpResponse::Ok().json(post))
+}
+
+#[derive(Serialize, Deserialize)]
+struct PostEdits{
+    mitsuba_post_hidden: Option<bool>,
+    mitsuba_file_hidden: Option<bool>,
+    mitsuba_com_hidden: Option<bool>,
+    // Purges the image from the filesystem if this is set
+    ban_image_reason: Option<String>,
+    unban_image: Option<bool>,
+}
+#[put("/{board:[A-z0-9]+}/post/{no:\\d+}.json")]
+pub(crate) async fn put_post(
+    db: web::Data<DBClient>,
+    post_edits: web::Json<PostEdits>,
+    archiver: web::Data<Archiver>,
+    info: web::Path<(String, i64)>,
+    user: AuthUser<RequireJanitor>,
+) -> actix_web::Result<HttpResponse> {
+    let (board, no) = info.into_inner();
+    
+    let post_edits = post_edits.into_inner();
+
+    archiver.hide_post(
+        &board,
+        no,
+        post_edits.mitsuba_file_hidden,
+        post_edits.mitsuba_com_hidden,
+        post_edits.mitsuba_file_hidden
+    ).await.map_err(|e| {
+        error!("Error hiding post: {}", e);
+        actix_web::error::ErrorInternalServerError("Error hiding post")
+    })?;
+
+    if let Some(reason) = post_edits.ban_image_reason {
+        // Only mods and above can purge images
+        if user.role > UserRole::Janitor {
+            archiver
+            .ban_image(
+                &board,
+                no,
+                &reason
+            ).await.map_err(|e| {
+                error!("Error purging image: {}", e);
+                actix_web::error::ErrorInternalServerError("Error banning image")
+            })?;
+        }
+    }
+
+    if let Some(true) = post_edits.unban_image {
+        // Only mods and above can unban images
+        if user.role > UserRole::Janitor {
+            archiver
+            .unban_image(
+                &board,
+                no
+            ).await.map_err(|e| {
+                error!("Error unpurging image: {}", e);
+                actix_web::error::ErrorInternalServerError("Error unbanning image")
+            })?;
+        }
+    }
+
+    let post = db.get_post(
+        &board,
+        no,
+        false
+    ).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
