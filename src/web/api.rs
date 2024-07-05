@@ -12,7 +12,7 @@ use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
 use crate::models::{BoardsStatus, IndexPage, IndexSearchResults};
-use crate::web::auth::{Authenticated, AuthUser};
+use crate::web::auth::{AuthUser, Authenticated, RequireModerator};
 
 #[derive(Deserialize)]
 struct LoginBody {

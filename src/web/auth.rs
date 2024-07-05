@@ -87,39 +87,6 @@ impl ResponseError for JSONError {
     }
 }
 
-pub struct AnyRole;
-
-impl RoleCheck for AnyRole {
-    fn is_allowed(_role: &UserRole) -> bool {
-        true
-    }
-}
-
-pub struct Authenticated;
-pub struct AnonymousOnly;
-pub struct AdminOnly;
-
-impl RoleCheck for AdminOnly {
-    fn is_allowed(role: &UserRole) -> bool {
-        matches!(role, UserRole::Admin)
-    }
-}
-
-impl RoleCheck for Authenticated {
-    fn is_allowed(role: &UserRole) -> bool {
-        match role {
-            UserRole::Anonymous => false,
-            _ => true,
-        }
-    }
-}
-
-impl RoleCheck for AnonymousOnly {
-    fn is_allowed(role: &UserRole) -> bool {
-        matches!(role, UserRole::Anonymous)
-    }
-}
-
 pub trait RoleCheck {
     fn is_allowed(role: &UserRole) -> bool;
 }
@@ -133,6 +100,63 @@ impl<R: RoleCheck, E: RoleCheckError> From<User> for AuthUser<R, E> {
             _marker: PhantomData,
             _error_marker: PhantomData
         }
+    }
+}
+/**
+    Allow any user, *authenticated or not*
+ */
+pub struct AnyRole;
+impl RoleCheck for AnyRole {
+    fn is_allowed(_role: &UserRole) -> bool {
+        true
+    }
+}
+/**
+    Only allow authenticated users
+ */
+pub struct Authenticated;
+impl RoleCheck for Authenticated {
+    fn is_allowed(role: &UserRole) -> bool {
+        match role {
+            UserRole::Anonymous => false,
+            _ => true,
+        }
+    }
+}
+/**
+    **Only** allow anonymous users (not authenticated)
+ */
+pub struct AnonymousOnly;
+impl RoleCheck for AnonymousOnly {
+    fn is_allowed(role: &UserRole) -> bool {
+        matches!(role, UserRole::Anonymous)
+    }
+}
+/**
+    Only allow users with admin privileges
+ */
+pub struct AdminOnly;
+impl RoleCheck for AdminOnly {
+    fn is_allowed(role: &UserRole) -> bool {
+        matches!(role, UserRole::Admin)
+    }
+}
+/**
+    Only allow users with privilege of **moderator** or above
+ */
+pub struct RequireModerator;
+impl RoleCheck for RequireModerator {
+    fn is_allowed(role: &UserRole) -> bool {
+        *role >= UserRole::Mod 
+    }
+}
+/**
+    Only allow users with privilege of **janitor** or above
+ */
+pub struct RequireJanitor;
+impl RoleCheck for RequireJanitor {
+    fn is_allowed(role: &UserRole) -> bool {
+        *role >= UserRole::Janitor
     }
 }
 

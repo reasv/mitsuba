@@ -366,14 +366,28 @@ pub struct User {
     pub role: UserRole
 }
 
+/**
+ * Represents the level of privilege of a user in the system.
+ */
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq, Copy)]
 pub enum UserRole {
-    Admin,
-    Mod,
-    Janitor,
-    User,
+    Admin = 0,
+    Mod = 1,
+    Janitor = 2,
     #[default]
     Anonymous = 99
+}
+
+/**
+ * Implement UserRole greater than and less than for sorting. 
+ * Roles with a smaller integer value are considered "greater" than roles with a larger integer value.
+ * This is because the UserRole enum is ordered from most to least privileged.
+ */
+impl std::cmp::PartialOrd for UserRole {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        // Reverse the comparison to make the smaller integer value "greater"
+        Some((*other as i32).cmp(&(*self as i32)))
+    }
 }
 
 impl FromStr for UserRole {
@@ -383,7 +397,6 @@ impl FromStr for UserRole {
             "admin" => Ok(UserRole::Admin),
             "mod" => Ok(UserRole::Mod),
             "janitor" => Ok(UserRole::Janitor),
-            "user" => Ok(UserRole::User),
             _ => Ok(UserRole::Anonymous)
         }
     }
@@ -395,7 +408,6 @@ impl From<String> for UserRole {
             "admin" => UserRole::Admin,
             "mod" => UserRole::Mod,
             "janitor" => UserRole::Janitor,
-            "user" => UserRole::User,
             _ => UserRole::Anonymous
         }
     }
@@ -407,7 +419,6 @@ impl From<UserRole> for i32 {
             UserRole::Admin => 0,
             UserRole::Mod => 1,
             UserRole::Janitor => 2,
-            UserRole::User => 3,
             UserRole::Anonymous => 99
         }
     }
@@ -419,7 +430,6 @@ impl From<i32> for UserRole {
             0 => UserRole::Admin,
             1 => UserRole::Mod,
             2 => UserRole::Janitor,
-            3 => UserRole::User,
             _ => UserRole::Anonymous
         }
     }
@@ -451,7 +461,6 @@ impl std::fmt::Display for UserRole {
             UserRole::Admin => write!(f, "admin"),
             UserRole::Mod => write!(f, "mod"),
             UserRole::Janitor => write!(f, "janitor"),
-            UserRole::User => write!(f, "user"),
             UserRole::Anonymous => write!(f, "anonymous")
         }
     }
