@@ -11,6 +11,15 @@ pub struct AuthUser {
     pub role: UserRole
 }
 
+impl AuthUser {
+    pub fn anonymous() -> AuthUser {
+        AuthUser {
+            name: "Anonymous".to_string(),
+            role: UserRole::Anonymous
+        }
+    }
+}
+
 // implement from User for session user
 impl From<User> for AuthUser {
     fn from(user: User) -> Self {
@@ -43,9 +52,9 @@ impl FromRequest for AuthUser {
                         .flatten() {
                             return Ok(user_struct.into())
                         }
-                    Ok(AuthUser {name: "Anonymous".to_string(), role: UserRole::Anonymous})
+                    Ok(AuthUser::anonymous())
                 },
-                _ => Ok(AuthUser {name: "Anonymous".to_string(), role: UserRole::Anonymous})
+                _ => Ok(AuthUser::anonymous())
             }
         })
     }
