@@ -6,7 +6,8 @@
 </div>
 <script>
 // Execute PUT request on /_mitsuba/logout.json when logout link is clicked
-document.getElementById('logoutLink').addEventListener('click', function() {
+document.getElementById('logoutLink')
+    .addEventListener('click', function() {
     fetch('/_mitsuba/logout.json', {
         method: 'PUT'
     })
