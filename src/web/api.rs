@@ -12,7 +12,7 @@ use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
 use crate::models::{BoardsStatus, IndexPage, IndexSearchResults};
-use crate::web::auth::{AuthUser, Authenticated, RedirectRCError, RequireModerator};
+use crate::web::auth::{AuthUser, Authenticated};
 
 #[derive(Deserialize)]
 struct LoginBody {
@@ -70,8 +70,8 @@ pub(crate) async fn authcheck_api(user: AuthUser<Authenticated>) -> actix_web::R
     )
 }
 
-#[get("/boards-status.json")]
-pub(crate) async fn get_boards_status(db: web::Data<DBClient>) -> actix_web::Result<HttpResponse> {
+#[get("/_mitsuba/admin/boards-status.json")]
+pub(crate) async fn get_boards_status(db: web::Data<DBClient>, _: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
     let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);

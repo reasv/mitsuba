@@ -236,7 +236,21 @@ We've also added an endpoint to serve individual posts.
 
 In addition to these endpoints, we have implemented a `/[board]/post/[ID].json` endpoint that serves an individual post. Using this, you can fetch a post through its ID without needing to know the OP's.
 
-There's also one extra endpoint that's entirely specific to Mitsuba: `/boards-status.json`, this returns the same data as the CLI's `list` command, but in JSON format.
+There's also one extra endpoint that's entirely specific to Mitsuba: `/_mitsuba/admin/boards-status.json`, this returns the same data as the CLI's `list` command, but in JSON format.
+Note: this endpoint now requires authentication.
+
+### Authentication
+When using endpoints that require authentication, login by issuing a `PUT` request to `/_mitsuba/login.json`
+
+with body 
+```JSON
+{
+    "username": "Your Username",
+    "password": "Your Password"
+}
+```
+And use the returned cookie in subsequent requests.
+You can configure users through cli commands.
 
 ### Differences with 4chan API
 The main difference with 4chan's API is that every post also contains a `board` field with the name of the board it is in.
