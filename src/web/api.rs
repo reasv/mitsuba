@@ -12,7 +12,7 @@ use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
 use crate::models::{BoardsStatus, IndexPage, IndexSearchResults};
-use crate::web::auth::{AuthUser, Authenticated};
+use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated};
 
 #[derive(Deserialize)]
 struct LoginBody {
@@ -22,6 +22,13 @@ struct LoginBody {
 
 #[derive(Serialize)]
 struct LoginResult {
+    success: bool,
+    user: String,
+    role: String,
+    message: String,
+}
+#[derive(Serialize)]
+struct APIResult {
     success: bool,
     message: String,
 }
@@ -41,10 +48,12 @@ pub(crate) async fn login_api(archiver: web::Data<Archiver>, query: web::Json<Lo
         session.insert("username", user.name.clone())?;
         return Ok(HttpResponse::Ok().json(LoginResult{
             success: true,
+            user: user.name,
+            role: user.role.to_string(),
             message: "Logged in".to_string()
         }));
     }
-    Ok(HttpResponse::Unauthorized().json(LoginResult{
+    Ok(HttpResponse::Unauthorized().json(APIResult{
         success: false,
         message: "Wrong username or password".to_string()
     }))
@@ -54,7 +63,7 @@ pub(crate) async fn login_api(archiver: web::Data<Archiver>, query: web::Json<Lo
 pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpResponse> {
         session.remove("username");
         session.purge();
-        Ok(HttpResponse::Ok().json(LoginResult{
+        Ok(HttpResponse::Ok().json(APIResult{
             success: true,
             message: "Logged out".to_string()
         })
@@ -65,6 +74,8 @@ pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpRespon
 pub(crate) async fn authcheck_api(user: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
         Ok(HttpResponse::Ok().json(LoginResult{
             success: true,
+            user: user.name.clone(),
+            role: user.role.clone().to_string(),
             message: format!("Logged in as {} (Role: {})", user.name, user.role)
         })
     )
@@ -81,9 +92,15 @@ pub(crate) async fn get_boards_status(db: web::Data<DBClient>, _: AuthUser<Authe
 }
 
 #[get("/{board:[A-z0-9]+}/thread/{no:\\d+}.json")]
-pub(crate) async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn get_thread(
+    db: web::Data<DBClient>,
+    info: web::Path<(String, i64)>,
+    user: AuthUser,
+) -> actix_web::Result<HttpResponse> {
     let (board, no) = info.into_inner();
-    let thread = db.get_thread(&board, no, true).await
+
+    let respect_hidden_files = should_respect_hidden_files(user);
+    let thread = db.get_thread(&board, no, respect_hidden_files).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -94,9 +111,14 @@ pub(crate) async fn get_thread(db: web::Data<DBClient>, info: web::Path<(String,
 }
 
 #[get("/{board:[A-z0-9]+}/post/{no:\\d+}.json")]
-pub(crate) async fn get_post(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn get_post(
+    db: web::Data<DBClient>,
+    info: web::Path<(String, i64)>,
+    user: AuthUser,
+) -> actix_web::Result<HttpResponse> {
     let (board, no) = info.into_inner();
-    let post = db.get_post(&board, no, true).await
+    let respect_hidden_files = should_respect_hidden_files(user);
+    let post = db.get_post(&board, no, respect_hidden_files).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -111,13 +133,26 @@ struct SearchQuery {
 }
 
 #[get("/{board:[A-z0-9]+}/{idx:\\d+}.json")]
-pub(crate) async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, i64)>, query: web::Query<SearchQuery>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn get_index(
+    db: web::Data<DBClient>,
+    info: web::Path<(String, i64)>,
+    query: web::Query<SearchQuery>,
+    user: AuthUser,
+) -> actix_web::Result<HttpResponse> {
     let (board, mut index) = info.into_inner();
     if index > 0 {
         index -= 1;
     }
+    let respect_hidden_files = should_respect_hidden_files(user);
     if let Some(search_query) = &query.s {
-        let (posts, total_results) = db.posts_full_text_search(&board, &search_query, index, 15, true).await
+        let (posts, total_results) = db
+            .posts_full_text_search(
+                &board,
+                &search_query,
+                index,
+                15,
+                respect_hidden_files
+            ).await
             .map_err(|e| {
                 error!("Error getting post from DB: {}", e);
                 actix_web::error::ErrorInternalServerError("")
@@ -125,7 +160,12 @@ pub(crate) async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, 
         return Ok(HttpResponse::Ok().json(IndexSearchResults {posts, total_results}));
     }
 
-    let threads = db.get_thread_index(&board, index, 15, true).await
+    let threads = db.get_thread_index(
+        &board,
+        index,
+        15,
+        respect_hidden_files
+    ).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -134,19 +174,29 @@ pub(crate) async fn get_index(db: web::Data<DBClient>, info: web::Path<(String, 
 }
 
 #[get("/{board:[A-z0-9]+}/{tim:\\d+}.{ext}")]
-pub(crate) async fn get_full_image(db: web::Data<DBClient>, info: web::Path<(String, i64, String)>) -> actix_web::Result<NamedFile> {
+pub(crate) async fn get_full_image(
+    db: web::Data<DBClient>,
+    info: web::Path<(String, i64, String)>,
+    user: AuthUser,
+) -> actix_web::Result<NamedFile> {
     let (board, tim, ext) = info.into_inner();
-    get_image_from_tim(db, board, tim, ext, false).await
+    let respect_hidden_files = should_respect_hidden_files(user);
+    get_image_from_tim(db, board, tim, ext, false, respect_hidden_files).await
 }
 
 #[get("/{board:[A-z0-9]+}/{tim:\\d+}s.jpg")]
-pub(crate) async fn get_thumbnail_image(db: web::Data<DBClient>, info: web::Path<(String, i64)>) -> actix_web::Result<NamedFile> {
+pub(crate) async fn get_thumbnail_image(
+    db: web::Data<DBClient>,
+    info: web::Path<(String, i64)>,
+    user: AuthUser,
+) -> actix_web::Result<NamedFile> {
     let (board, tim) = info.into_inner();
-    get_image_from_tim(db, board, tim, "".to_string(), true).await
+    let respect_hidden_files = should_respect_hidden_files(user);
+    get_image_from_tim(db, board, tim, "".to_string(), true, respect_hidden_files).await
 }
 
-pub(crate) async fn get_image_from_tim(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool)-> actix_web::Result<NamedFile> {
-    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb, true).await
+pub(crate) async fn get_image_from_tim(db: web::Data<DBClient>, board: String, tim: i64, ext: String, is_thumb: bool, remove_hidden: bool)-> actix_web::Result<NamedFile> {
+    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb, remove_hidden).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -165,18 +215,38 @@ pub(crate) async fn get_image_from_tim(db: web::Data<DBClient>, board: String, t
 }
 
 #[get("/{board:[A-z0-9]+}/{tim:\\d+}.{ext}")]
-pub(crate) async fn get_full_image_object_storage(db: web::Data<DBClient>, obc: web::Data<ObjectStorage>, info: web::Path<(String, i64, String)>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn get_full_image_object_storage(
+    db: web::Data<DBClient>,
+    obc: web::Data<ObjectStorage>,
+    info: web::Path<(String, i64, String)>,
+    user: AuthUser,
+) -> actix_web::Result<HttpResponse> {
     let (board, tim, ext) = info.into_inner();
-    get_image_from_tim_object_storage(db, obc, board, tim, ext, false).await
+    let respect_hidden_files = should_respect_hidden_files(user);
+    get_image_from_tim_object_storage(db, obc, board, tim, ext, false, respect_hidden_files).await
 }
 #[get("/{board:[A-z0-9]+}/{tim:\\d+}s.jpg")]
-pub(crate) async fn get_thumbnail_image_object_storage(db: web::Data<DBClient>, obc: web::Data<ObjectStorage>, info: web::Path<(String, i64)>) -> actix_web::Result<HttpResponse> {
+pub(crate) async fn get_thumbnail_image_object_storage(
+    db: web::Data<DBClient>,
+    obc: web::Data<ObjectStorage>,
+    info: web::Path<(String, i64)>,
+    user: AuthUser,
+) -> actix_web::Result<HttpResponse> {
     let (board, tim) = info.into_inner();
-    get_image_from_tim_object_storage(db, obc, board, tim, "jpg".to_string(), true).await
+    let respect_hidden_files = should_respect_hidden_files(user);
+    get_image_from_tim_object_storage(db, obc, board, tim, "jpg".to_string(), true, respect_hidden_files).await
 }
 
-pub(crate) async fn get_image_from_tim_object_storage(db: web::Data<DBClient>, obc: web::Data<ObjectStorage>, board: String, tim: i64, ext: String, is_thumb: bool) -> actix_web::Result<HttpResponse> {
-    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb, true).await
+pub(crate) async fn get_image_from_tim_object_storage(
+    db: web::Data<DBClient>,
+    obc: web::Data<ObjectStorage>,
+    board: String,
+    tim: i64,
+    ext: String,
+    is_thumb: bool,
+    remove_hidden: bool
+) -> actix_web::Result<HttpResponse> {
+    let sha256 = db.image_tim_to_sha256(&board, tim, is_thumb, remove_hidden).await
         .map_err(|e| {
             error!("Error getting image from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")

@@ -181,6 +181,7 @@ impl DBClient {
             SELECT *
             FROM posts
             WHERE thumbnail_sha256 != '' AND board = ANY($1)
+            AND mitsuba_file_hidden = false
             ORDER BY last_modified DESC
             LIMIT $2 OFFSET $3
             ",

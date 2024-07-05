@@ -264,3 +264,7 @@ impl<R: RoleCheck, E: RoleCheckError> FromRequest for AuthUser<R, E> {
         })
     }
 }
+
+pub fn should_respect_hidden_files(user: AuthUser) -> bool {
+    user.role < UserRole::Janitor
+}

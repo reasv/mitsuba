@@ -17,6 +17,7 @@ use handlebars_misc_helpers::register;
 use crate::util::{shorten_string, string_to_idcolor,base64_to_32, get_file_url};
 use crate::db::DBClient;
 use crate::models::{IndexThread, Post, IndexPost, Board, Thread};
+use crate::web::auth::{AuthUser, should_respect_hidden_files};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThread {
@@ -83,10 +84,16 @@ pub(crate) async fn home_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<
     Ok(HttpResponse::Ok().body(body))
 }
 
-
 #[get("/{board:[A-z0-9]+}/thread/{no:\\d+}{foo:/?[^/]*}")]
-pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>) 
+pub(crate) async fn thread_page(
+    db: web::Data<DBClient>,
+    hb: web::Data<Handlebars<'_>>,
+    info: web::Path<(String, i64)>,
+    user: AuthUser
+) 
 -> actix_web::Result<HttpResponse> {
+    let remove_hidden_files = should_respect_hidden_files(user);
+
     let (board, no) = info.into_inner();
     let boards = db.get_all_boards().await
         .map_err(|e| {
@@ -94,7 +101,7 @@ pub(crate) async fn thread_page(db: web::Data<DBClient>, hb: web::Data<Handlebar
             actix_web::error::ErrorInternalServerError("")
         })?;
     
-    let thread = db.get_thread(&board, no, true).await
+    let thread = db.get_thread(&board, no, remove_hidden_files).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
@@ -116,25 +123,38 @@ struct SearchQuery {
 }
 
 #[get("/{board:[A-z0-9]+}/{idx:\\d+}")]
-pub(crate) async fn index_page_handler(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<(String, i64)>, query: web::Query<SearchQuery>) 
+pub(crate) async fn index_page_handler(
+    db: web::Data<DBClient>,
+    hb: web::Data<Handlebars<'_>>,
+    info: web::Path<(String, i64)>,
+    query: web::Query<SearchQuery>,
+    user: AuthUser
+) 
 -> actix_web::Result<HttpResponse> {
+    let remove_hidden_files = should_respect_hidden_files(user);
     let (board, index) = info.into_inner();
     // Extract the s query parameter
     if let Some(search_query) = query.s.clone() {
-        index_search_page(db, hb, board, index, &search_query).await
+        index_search_page(db, hb, board, index, &search_query, remove_hidden_files).await
     } else {
-        index_page(db, hb, board, index).await
+        index_page(db, hb, board, index, remove_hidden_files).await
     }
 }
 
 #[get("/{board:[A-z0-9]+}")]
-pub(crate) async fn board_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, info: web::Path<String>)
+pub(crate) async fn board_page(
+    db: web::Data<DBClient>,
+    hb: web::Data<Handlebars<'_>>,
+    info: web::Path<String>,
+    user: AuthUser
+)
 -> actix_web::Result<HttpResponse> {
+    let remove_hidden_files = should_respect_hidden_files(user);
     let board = info.into_inner();
-    index_page(db, hb, board, 1).await
+    index_page(db, hb, board, 1, remove_hidden_files).await
 }
 
-async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, board: String, index: i64) 
+async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, board: String, index: i64, remove_hidden_files: bool) 
 -> actix_web::Result<HttpResponse> {
     let mut nonzero_index = 1;
     if index > 0 {
@@ -156,7 +176,7 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
             &board,
             nonzero_index-1,
             15,
-            true
+            remove_hidden_files
         ).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
@@ -188,7 +208,14 @@ async fn index_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, boar
     Ok(HttpResponse::Ok().body(body))
 }
 
-async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>, board: String, index: i64, search_query: &String) 
+async fn index_search_page(
+    db: web::Data<DBClient>,
+    hb: web::Data<Handlebars<'_>>,
+    board: String,
+    index: i64,
+    search_query: &String,
+    remove_hidden_files: bool
+) 
 -> actix_web::Result<HttpResponse> {
     let mut nonzero_index = 1;
     if index > 0 {
@@ -219,7 +246,7 @@ async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>
             search_query,
             nonzero_index-1,
             page_size,
-            true
+            remove_hidden_files
         ).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
