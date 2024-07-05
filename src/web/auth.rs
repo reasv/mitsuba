@@ -8,6 +8,21 @@ use std::marker::PhantomData;
 
 use crate::{archiver::Archiver, models::{UserRole, User}};
 
+/**
+    Extractor for the currently authenticated user, with role checking and error response format control through generics.
+    If the user is not authenticated, the role will be `UserRole::Anonymous`.
+
+    The `AuthUser` struct has two type parameters, `R` and `E`, which are the role check and error response types, respectively.
+    The role check is done through the `RoleCheck` trait.
+    
+    You can implement your own role check and error response types by implementing the `RoleCheck` and `RoleCheckError` traits.
+    Two error response types are provided, `JSONRCError` and `TextRCError`, which return JSON and text error responses, respectively.
+    
+    Several predefined role check types are provided, such as `AnyRole`, `Authenticated`, `AnonymousOnly`, `AdminOnly`, `RequireModerator`, and `RequireJanitor`.
+
+    By default, the `AuthUser` struct is set to allow any user, authenticated or not, to access the resource.
+    In order to ensure that the user is authenticated, use the `Authenticated` role check type as the type parameter for `R`.
+ */
 pub struct AuthUser<R: RoleCheck = AnyRole, E: RoleCheckError = JSONRCError>{
     pub name: String,
     pub role: UserRole,
