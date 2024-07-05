@@ -1,0 +1,77 @@
+{{#*inline "page_title"}}Login - Mitsuba Archive{{/inline}}
+{{#*inline "page_content"}}Login page - Mitsuba Archive{{/inline}}
+{{#*inline "page_board"}}a{{/inline}}
+{{#*inline "extra_head"}}{{> index_css}}{{/inline}}
+{{#*inline "page_body"}}
+<body class="is_index board_{{board}} yotsuba_b_new ws">
+    {{> login_form_css}}
+    <span id="id_css"></span>
+    {{> boards_list}}
+    <div id="boardNavMobile" class="mobile">
+        <div class="boardSelect"> <strong>Board</strong> <select id="boardSelectMobile"></select> </div>
+        <div class="pageJump"> <a href="#bottom">&#9660;</a> <a href="javascript:void(0);" id="settingsWindowLinkMobile">Settings</a> <a href="/" target="_top">Home</a> </div>
+    </div>
+    <div class="boardBanner">
+        <div id="bannerCnt" class="title desktop" data-src="1.png"></div>
+        <div class="boardTitle">Login - Mitsuba Archive</div>
+    </div>
+
+    <div id="ctrl-top" class="desktop"><hr>
+    </div>
+    <hr>
+    <form id="delform">
+        <div class="board">
+            <div class="login-container">
+            <form id="login-form">
+                <h2>Login</h2>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button id="login-button">Login</button>
+                <div id="message" class="message"></div>
+                </form>
+            </div>
+            <script>
+                document.getElementById("login-button").addEventListener('click', function(event) {
+                    event.preventDefault();
+
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+
+                    fetch('/_mitsuba/login.json', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const messageDiv = document.getElementById('message');
+                        if (data.success) {
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const fromUrl = urlParams.get('from_path');
+                            window.location.href = fromUrl ? fromUrl : '/';
+                        } else {
+                            messageDiv.textContent = data.message;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('message').textContent = 'An error occurred. Please try again.';
+                    });
+                });
+            </script>
+        </div>
+    </form>
+    <div id="absbot" class="absBotText"><div class="mobile"><span id="disable-mobile">[<a href="javascript:disableMobile();">Disable Mobile View / Use Desktop Site</a>]<br><br></span><span id="enable-mobile">[<a href="javascript:enableMobile();">Enable Mobile View / Use Mobile Site</a>]<br><br></span></div><span class="absBotDisclaimer">All trademarks and copyrights on this page are owned by their respective parties. Images uploaded are the responsibility of the Poster. Comments are owned by the Poster.</span>
+    </div>
+    <div id="bottom"></div>
+</body>
+{{/inline}}
+{{> root}}

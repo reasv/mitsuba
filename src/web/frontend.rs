@@ -37,6 +37,12 @@ struct TemplateThreadIndex {
     pub threads: Vec<TemplateThreadIndexThread>,
     pub query_string: String
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct TemplateLogin {
+    pub boards: Vec<Board>,
+    pub board: String,
+}
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateThreadIndexThread {
     pub op: IndexPost,
@@ -248,6 +254,22 @@ async fn index_search_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>
                     op: t.posts[0].clone(), posts: t.posts[1..].to_vec()
             }).collect(),
         query_string: format!("?s={}", search_query.clone())
+    }).unwrap();
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[get("/_mitsuba/login")]
+pub(crate) async fn login_page(db: web::Data<DBClient>, hb: web::Data<Handlebars<'_>>) 
+-> actix_web::Result<HttpResponse> {
+    let boards = db.get_all_boards().await
+        .map_err(|e| {
+            error!("Error getting boards from DB: {}", e);
+            actix_web::error::ErrorInternalServerError("")
+        })?;
+
+    let body = hb.render("login_page", &TemplateLogin{
+        boards,
+        board: "a".to_string()
     }).unwrap();
     Ok(HttpResponse::Ok().body(body))
 }

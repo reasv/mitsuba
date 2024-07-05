@@ -80,6 +80,7 @@ pub async fn web_main(archiver: Archiver) -> std::io::Result<()> {
         .service(api::login_api)
         .service(api::logout_api)
         .service(api::authcheck_api)
+        .service(frontend::login_page)
         .service(frontend::thread_page)
         .service(frontend::index_page_handler)
         .service(frontend::board_page)

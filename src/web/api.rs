@@ -12,7 +12,7 @@ use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
 use crate::models::{BoardsStatus, IndexPage, IndexSearchResults};
-use crate::web::auth::{AuthUser, Authenticated, RequireModerator};
+use crate::web::auth::{AuthUser, Authenticated, RedirectRCError, RequireModerator};
 
 #[derive(Deserialize)]
 struct LoginBody {
@@ -61,7 +61,7 @@ pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpRespon
     )
 }
 
-#[put("/_mitsuba/authcheck.json")]
+#[get("/_mitsuba/authcheck.json")]
 pub(crate) async fn authcheck_api(user: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
         Ok(HttpResponse::Ok().json(LoginResult{
             success: true,

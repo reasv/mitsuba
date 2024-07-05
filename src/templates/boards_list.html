@@ -1,4 +1,23 @@
 <div id="boardNavDesktop" class="desktop">
-    <span class="boardList">[{{#each boards}}<a href="/{{name}}/1" title="{{name}}">{{name}}</a> / {{/each}}]</span>
+    <span class="boardList">[{{#each boards}}<a href="/{{name}}/1/" title="{{name}}">{{name}}</a> / {{/each}}]</span>
+    <span id="navtoplogin">[<a href="/_mitsuba/login" id="loginLink">Login</a>]</span>
+    <span id="navtoplogin">[<a href="javascript:void(0);" id="logoutLink">Logout</a>]</span>
     <span id="navtopright">[<a href="javascript:void(0);" id="settingsWindowLink">Settings</a>]</span>
 </div>
+<script>
+// Execute PUT request on /_mitsuba/logout.json when logout link is clicked
+document.getElementById('logoutLink').addEventListener('click', function() {
+    fetch('/_mitsuba/logout.json', {
+        method: 'PUT'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+</script>
