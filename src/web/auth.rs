@@ -4,7 +4,7 @@ use actix_web::{Error, FromRequest, web, ResponseError, HttpResponse};
 use actix_web::http::header::LOCATION;
 use futures::Future;
 use log::error;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use crate::{archiver::Archiver, models::{UserRole, User}};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
@@ -24,10 +24,13 @@ use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
     By default, the `AuthUser` struct is set to allow any user, authenticated or not, to access the resource.
     In order to ensure that the user is authenticated, use the `Authenticated` role check type as the type parameter for `R`.
  */
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthUser<R: RoleCheck = AnyRole, E: RoleCheckError = JSONRCError>{
     pub name: String,
     pub role: UserRole,
+    #[serde(skip)]
     _marker: PhantomData<R>,
+    #[serde(skip)]
     _error_marker: PhantomData<E>
 }
 

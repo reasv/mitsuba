@@ -2,7 +2,7 @@ use actix_session::Session;
 #[allow(unused_imports)]
 use log::{info, warn, error, debug};
 
-use actix_web::{get, put, web, HttpResponse};
+use actix_web::{get, put, post, delete, web, HttpResponse};
 use actix_files::NamedFile;
 use new_mime_guess::from_path;
 use serde::{Deserialize, Serialize};
@@ -11,8 +11,8 @@ use crate::archiver::Archiver;
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
-use crate::models::{BoardsStatus, IndexPage, IndexSearchResults, UserRole};
-use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated};
+use crate::models::{Board, BoardsStatus, IndexPage, IndexSearchResults, UserRole};
+use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated, AdminOnly};
 
 use super::auth::RequireJanitor;
 
@@ -83,6 +83,154 @@ pub(crate) async fn authcheck_api(user: AuthUser<Authenticated>) -> actix_web::R
     )
 }
 
+#[get("/_mitsuba/admin/users.json")]
+pub(crate) async fn get_users(db: web::Data<DBClient>, _: AuthUser<AdminOnly>) -> actix_web::Result<HttpResponse> {
+    let users = db.get_users().await
+        .map_err(|e| {
+            error!("Error getting users from DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error getting users from DB")
+        })?;
+    // Remove the password hash from the response
+    let users_: Vec<AuthUser> = users.into_iter().map(|u| u.into()).collect();
+    Ok(HttpResponse::Ok().json(users_))
+}
+
+#[derive(Serialize, Deserialize)]
+struct NewUser {
+    username: String,
+    password_hash: String,
+    role: UserRole,
+}
+#[post("/_mitsuba/admin/users.json")]
+pub(crate) async fn post_user(
+    archiver: web::Data<Archiver>,
+    new_user: web::Json<NewUser>,
+    _: AuthUser<AdminOnly>
+)
+-> actix_web::Result<HttpResponse> {
+    let new_user = new_user.into_inner();
+    let user = archiver.add_user(
+        &new_user.username,
+        &new_user.password_hash,
+        new_user.role
+    ).await
+        .map_err(|e| {
+            error!("Error creating user in DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error creating user in DB")
+    })?;
+    Ok(HttpResponse::Ok().json(user))
+}
+
+#[derive(Serialize)]
+struct JsonResult<T> {
+    success: bool,
+    data: Option<T>,
+    message: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct UserEdits {
+    role: Option<UserRole>,
+    password_hash: Option<String>,
+}
+#[put("/_mitsuba/admin/users/{username}.json")]
+pub(crate) async fn put_user(
+    archiver: web::Data<Archiver>,
+    user_edits: web::Json<UserEdits>,
+    username: web::Path<String>,
+    _: AuthUser<AdminOnly>
+) -> actix_web::Result<HttpResponse> {
+    let user_edits = user_edits.into_inner();
+    let username = username.into_inner();
+    
+    if let Some(role) = user_edits.role {
+        archiver.change_role(&username, role).await
+        .map_err(|e| {
+            error!("Error setting user role in DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error setting user role in DB")
+        })?;
+    }
+
+    if let Some(password_hash) = user_edits.password_hash {
+        archiver.change_password(&username, &password_hash).await
+        .map_err(|e| {
+            error!("Error setting user password in DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error setting user password in DB")
+        })?;
+    }
+
+    Ok(HttpResponse::Ok().json(JsonResult::<()>{
+        success: true,
+        data: None,
+        message: "User edited".to_string()
+    }))
+}
+
+#[delete("/_mitsuba/admin/users/{username}.json")]
+pub(crate) async fn delete_user(
+    archiver: web::Data<Archiver>,
+    username: web::Path<String>,
+    _: AuthUser<AdminOnly>
+) -> actix_web::Result<HttpResponse> {
+    let username = username.into_inner();
+    archiver.delete_user(&username).await
+    .map_err(|e| {
+        error!("Error deleting user from DB: {}", e);
+        actix_web::error::ErrorInternalServerError("Error deleting user from DB")
+    })?;
+    Ok(HttpResponse::Ok().json(JsonResult::<()>{
+        success: true,
+        data: None,
+        message: "User deleted".to_string()
+    }))
+}
+
+#[derive(Serialize, Deserialize)]
+struct UserSelfEdits {
+    current_passsword: String,
+    password_hash: Option<String>,
+}
+#[put("/_mitsuba/admin/user.json")]
+pub(crate) async fn put_current_user(
+    archiver: web::Data<Archiver>,
+    user_edits: web::Json<UserSelfEdits>,
+    user: AuthUser<Authenticated>
+) -> actix_web::Result<HttpResponse> {
+    let user_edits = user_edits.into_inner();
+
+    // Attempt to login with the current password
+    if archiver.login(
+        &user.name,
+        &user_edits.current_passsword
+    ).await
+    .map_err(|e| {
+            error!("Error getting user from DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error getting user from DB")
+        }
+    )?.is_none() {
+        return Ok(HttpResponse::Ok().json(JsonResult::<()>{
+            success: false,
+            data: None,
+            message: "Wrong password".to_string()
+        }));
+    }
+
+    if let Some(password_hash) = user_edits.password_hash {
+        archiver.change_password(&user.name, &password_hash).await
+        .map_err(|e| {
+            error!("Error setting user password in DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error setting user password in DB")
+        })?;
+    }
+
+    Ok(HttpResponse::Ok().json(JsonResult::<()>{
+        success: true,
+        data: None,
+        message: "User edited".to_string()
+    }))
+}
+
+
 #[get("/_mitsuba/admin/boards-status.json")]
 pub(crate) async fn get_boards_status(db: web::Data<DBClient>, _: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
     let boards = db.get_all_boards().await
@@ -91,6 +239,71 @@ pub(crate) async fn get_boards_status(db: web::Data<DBClient>, _: AuthUser<Authe
             actix_web::error::ErrorInternalServerError("")
         })?;
     Ok(HttpResponse::Ok().json(BoardsStatus{boards}))
+}
+
+#[derive(Serialize, Deserialize)]
+struct BoardSettings {
+    pub full_images: Option<bool>,
+    pub archive: Option<bool>,
+    pub enable_search: Option<bool>,
+}
+#[put("/{board:[A-z0-9]+}/board.json")]
+pub(crate) async fn put_board(
+    archiver: web::Data<Archiver>,
+    info: web::Path<String>,
+    settings: web::Json<BoardSettings>,
+    _: AuthUser<AdminOnly>
+) -> actix_web::Result<HttpResponse> {
+    let board_name = info.into_inner();
+    let settings = settings.into_inner();
+
+    let mut board: Board = archiver.db_client.get_board(&board_name).await
+    .map_err(|e| {
+        error!("Error getting board from DB: {}", e);
+        actix_web::error::ErrorInternalServerError("Error getting board from DB")
+    })?
+    .unwrap_or_default();
+
+    board.full_images = settings.full_images.unwrap_or(board.full_images);
+    board.archive = settings.archive.unwrap_or(board.archive);
+    board.enable_search = settings.enable_search.unwrap_or(board.enable_search);
+
+    archiver.set_board(board.clone()).await
+        .map_err(|e| {
+            error!("Error setting board settings in DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error setting board settings in DB")
+        })?;
+    Ok(HttpResponse::Ok().json(JsonResult::<Board>{
+        success: true,
+        data: Some(board),
+        message: "Board settings edited".to_string()
+    }))
+}
+
+#[derive(Serialize, Deserialize)]
+struct BoardDeleteOptions {
+    pub only_delete_files: Option<bool>,
+}
+#[delete("/{board:[A-z0-9]+}/board.json")]
+pub(crate) async fn delete_board(
+    archiver: web::Data<Archiver>,
+    info: web::Path<String>,
+    options: web::Json<BoardDeleteOptions>,
+    _: AuthUser<AdminOnly>
+) -> actix_web::Result<HttpResponse> {
+    let board_name = info.into_inner();
+    let options = options.into_inner();
+
+    archiver.purge_board(&board_name, options.only_delete_files.unwrap_or(false)).await
+        .map_err(|e| {
+            error!("Error deleting board from DB: {}", e);
+            actix_web::error::ErrorInternalServerError("Error deleting board from DB")
+        })?;
+    Ok(HttpResponse::Ok().json(JsonResult::<()>{
+        success: true,
+        data: None,
+        message: "Board deleted".to_string()
+    }))
 }
 
 #[get("/{board:[A-z0-9]+}/thread/{no:\\d+}.json")]
@@ -102,7 +315,12 @@ pub(crate) async fn get_thread(
     let (board, no) = info.into_inner();
 
     let respect_hidden_files = should_respect_hidden_files(user);
-    let thread = db.get_thread(&board, no, respect_hidden_files).await
+    let thread = db
+        .get_thread(
+            &board,
+            no,
+            respect_hidden_files
+        ).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
             actix_web::error::ErrorInternalServerError("")
