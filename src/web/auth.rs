@@ -3,34 +3,75 @@ use actix_session::SessionExt;
 use actix_web::{Error, FromRequest, web};
 use futures::Future;
 use log::error;
+use std::marker::PhantomData;
 
 use crate::{archiver::Archiver, models::{UserRole, User}};
 
-pub struct AuthUser {
+pub struct AuthUser<R: RoleCheck = AnyRole>{
     pub name: String,
-    pub role: UserRole
+    pub role: UserRole,
+    _marker: PhantomData<R>
 }
 
-impl AuthUser {
-    pub fn anonymous() -> AuthUser {
+impl<R: RoleCheck> AuthUser<R> {
+    pub fn anonymous() -> AuthUser<R> {
         AuthUser {
             name: "Anonymous".to_string(),
-            role: UserRole::Anonymous
+            role: UserRole::Anonymous,
+            _marker: PhantomData
         }
     }
+}
+
+pub struct AnyRole;
+
+impl RoleCheck for AnyRole {
+    fn is_allowed(_role: &UserRole) -> bool {
+        true
+    }
+}
+
+pub struct Authenticated;
+pub struct AnonymousOnly;
+pub struct AdminOnly;
+
+impl RoleCheck for AdminOnly {
+    fn is_allowed(role: &UserRole) -> bool {
+        matches!(role, UserRole::Admin)
+    }
+}
+
+impl RoleCheck for Authenticated {
+    fn is_allowed(role: &UserRole) -> bool {
+        match role {
+            UserRole::Anonymous => false,
+            _ => true,
+        }
+    }
+}
+
+impl RoleCheck for AnonymousOnly {
+    fn is_allowed(role: &UserRole) -> bool {
+        matches!(role, UserRole::Anonymous)
+    }
+}
+
+pub trait RoleCheck {
+    fn is_allowed(role: &UserRole) -> bool;
 }
 
 // implement from User for session user
-impl From<User> for AuthUser {
+impl<R: RoleCheck> From<User> for AuthUser<R> {
     fn from(user: User) -> Self {
         AuthUser {
             name: user.name,
-            role: user.role
+            role: user.role,
+            _marker: PhantomData
         }
     }
 }
 
-impl FromRequest for AuthUser {
+impl<R: RoleCheck> FromRequest for AuthUser<R> {
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
 
@@ -42,6 +83,11 @@ impl FromRequest for AuthUser {
             .map_err(|e| error!("Could not retrieve session username: {}", e))
             .ok().flatten();
         Box::pin(async move {
+            let anonymous_result = if R::is_allowed(&UserRole::Anonymous) {
+                Ok(AuthUser::<R>::anonymous())
+            } else {
+                Err(actix_web::error::ErrorForbidden("User Must be authenticated"))
+            };
             match (archiver_data, username_opt) {
                 (Some(data), Some(username)) => {
                     let archiver = data.get_ref();
@@ -50,11 +96,16 @@ impl FromRequest for AuthUser {
                         .map_err(|e| error!("Could not retrieve session user data from db (user: {}): {}", username, e))
                         .ok()
                         .flatten() {
-                            return Ok(user_struct.into())
+                            let auth_user: AuthUser<R> = user_struct.into();
+                            if R::is_allowed(&auth_user.role) {
+                                return Ok(auth_user)
+                            } else {
+                                return Err(actix_web::error::ErrorForbidden("User role not allowed"));
+                            }
                         }
-                    Ok(AuthUser::anonymous())
+                    anonymous_result
                 },
-                _ => Ok(AuthUser::anonymous())
+                _ => anonymous_result
             }
         })
     }
