@@ -54,6 +54,7 @@ pub struct JSONRCError;
 impl RoleCheckError for JSONRCError {
     fn not_authenticated(_: actix_web::HttpRequest) -> actix_web::Error {
         JSONError {
+            success: false,
             error: "Not Authenticated".to_string(),
             code: actix_web::http::StatusCode::UNAUTHORIZED,
             message: "User must be authenticated".to_string()
@@ -62,6 +63,7 @@ impl RoleCheckError for JSONRCError {
 
     fn not_authorized(role: &UserRole) -> actix_web::Error {
         JSONError {
+            success: false,
             error: "Not Authorized".to_string(),
             code: actix_web::http::StatusCode::FORBIDDEN,
             message: format!("User role not authorized for this action: {:?}", role)
@@ -125,6 +127,7 @@ impl ResponseError for RedirectError {
 
 #[derive(Debug, Serialize)]
 struct JSONError {
+    success: bool,
     error: String,
     message: String,
     #[serde(skip)]
