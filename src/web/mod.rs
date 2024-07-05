@@ -22,6 +22,7 @@ use crate::object_storage::ObjectStorage;
 
 mod api;
 mod frontend;
+mod auth;
 
 fn load_or_generate_key(data_folder_str: &String) -> actix_web::cookie::Key {
     let secret_seed_path = format!("{}/cookie_secret_seed", data_folder_str);
@@ -76,6 +77,9 @@ pub async fn web_main(archiver: Archiver) -> std::io::Result<()> {
         .service(api::get_index)
         .service(api::get_thread)
         .service(api::get_post)
+        .service(api::login_api)
+        .service(api::logout_api)
+        .service(api::authcheck_api)
         .service(frontend::thread_page)
         .service(frontend::index_page_handler)
         .service(frontend::board_page)

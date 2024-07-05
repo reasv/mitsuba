@@ -11,7 +11,8 @@ use crate::archiver::Archiver;
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
-use crate::models::{IndexPage, BoardsStatus, IndexSearchResults};
+use crate::models::{BoardsStatus, IndexPage, IndexSearchResults, UserRole};
+use crate::web::auth::AuthUser;
 
 #[derive(Deserialize)]
 struct LoginQuery {
@@ -56,6 +57,21 @@ pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpRespon
         Ok(HttpResponse::Ok().json(LoginResult{
             success: true,
             message: "Logged out".to_string()
+        })
+    )
+}
+
+#[put("/_mitsuba/authcheck.json")]
+pub(crate) async fn authcheck_api(session_user: AuthUser) -> actix_web::Result<HttpResponse> {
+        if session_user.role != UserRole::Admin {
+            return Ok(HttpResponse::Unauthorized().json(LoginResult{
+                success: false,
+                message: "Unauthorized".to_string()
+            }));
+        }
+        Ok(HttpResponse::Ok().json(LoginResult{
+            success: true,
+            message: format!("Logged in as {}", session_user.name)
         })
     )
 }
