@@ -47,7 +47,7 @@ pub trait RoleCheckError {
     fn not_authorized(role: &UserRole) -> actix_web::Error;
 }
 
-/*
+/**
     Returns a JSON error response if the user is not authenticated or not authorized for the action.
 */
 pub struct JSONRCError;
@@ -69,7 +69,7 @@ impl RoleCheckError for JSONRCError {
     }
 }
 
-/*
+/**
     Returns a plaintext error response if the user is not authenticated or not authorized for the action.
 */
 pub struct TextRCError;
@@ -82,10 +82,11 @@ impl RoleCheckError for TextRCError {
         actix_web::error::ErrorForbidden(format!("User role not authorized for this action: {:?}", role))
     }
 }
-/*
+/**
     Redirects to the login page if the user is not authenticated, or returns a plaintext error response if the user is not authorized for the action.
 */
 pub struct RedirectRCError;
+
 impl RoleCheckError for RedirectRCError {
     fn not_authenticated(req: actix_web::HttpRequest) -> actix_web::Error {
         let original_path = req.path().to_string();
