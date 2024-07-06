@@ -1,0 +1,234 @@
+<div id="modTools" class="extPanel reply" data-trackpos="QR-position" style="left: 57.8048%; top: 41.8726%; display:none;">
+    <div id="fmdHeader" class="drag postblock">Archive Moderation Tools
+        <img alt="X" src="/static/image/buttons/burichan/cross@2x.png" id="fmdClose" class="extButton" title="Close Window">
+    </div>
+    <form name="fmdPost" action="" method="post" enctype="multipart/form-data">
+        <div id="fmdForm">
+            <div><input name="targets" type="text" tabindex="0" placeholder="Targets (Use post checkbox to select)"></div>
+            <div>
+                <textarea name="com" cols="48" rows="4" wrap="soft" tabindex="0" placeholder="Comment"></textarea>
+            </div>
+            <div>
+                <label for="reason_options">Reason</label>
+                    <select id="reason_options" name="options">
+                    <option value="copyright">DMCA</option>
+                    <option value="illegal">Illegal Content</option>
+                    <option value="privacy">Personal Information</option>
+                    <option value="inappropriate">Inappropriate</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <span><input name="hide_com" type="checkbox" tabindex="0" size="19" value="hide_com" title="Hide Comment Field">Hide Comment Field (Recommended)</span>
+            </div>
+            <div>
+                <span><input name="hide_image" type="checkbox" tabindex="0" size="19" value="hide_image" title="Hide Image">Hide Image (Recommended)</span>
+            </div>
+            <div>
+                <span><input name="hide_post" type="checkbox" tabindex="0" size="19" value="hide_post" title="Hide Post">Hide Post (Caution)</span>
+            </div>
+            <div>
+                <span><input name="ban_image" type="checkbox" tabindex="0" size="19" value="ban_image" title="Ban Image"><b>Delete</b> & Blacklist Image (Caution: Destructive)</span>
+            </div>
+            <div>
+                {{!-- <input id="fmdFile" name="upfile" type="file" tabindex="0" size="19" title="Shift + Click to remove the file"> --}}
+                <input type="submit" value="Execute" tabindex="0">
+            </div>
+        </div>
+    </form>
+    <div id="fmdError" style="display: block">Error</div>
+</div>
+
+<script type="text/javascript">
+    var FF = {};
+    FF.config = {
+        board: "{{board}}",
+    };
+    FF.isOpen = false;
+    FF.start = function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            let openform = document.createElement('span');
+            openform.innerHTML = `[<a href="#">Open Mod Tools</a>]`;
+            document
+                .getElementsByClassName('navLinks')[0]
+                .appendChild(openform);
+            openlink = openform.getElementsByTagName('a')[0];
+            openlink.addEventListener('click', function (e) {
+                e.preventDefault();
+                FF.show();
+            });
+        });
+    };
+
+    FF.show = function () {
+        if (FF.isOpen) {
+            return;
+        }
+        FF.isOpen = true;
+        document.getElementById('modTools').style.display = 'block';
+        Draggable.set($.id('fmdHeader'));
+        document.getElementById('fmdClose').addEventListener('click', FF.hide);
+        FF.updateTargets();
+        document.getElementById('delform').addEventListener('click', FF.checkboxListener);
+    };
+
+    FF.findDeleteCheckboxes = function (name) {
+        return document.querySelectorAll('.postInfo > input[type="checkbox"]');
+    };
+
+    FF.getSelectedPosts = function () {
+        return Array.from(FF.findDeleteCheckboxes())
+            .filter(function (checkbox) {
+                return checkbox.checked;
+            })
+            .map(function (checkbox) {
+                return checkbox.name;
+            });
+    };
+
+    FF.updateTargets = function () {
+        let targets = FF.getSelectedPosts();
+        document.querySelector('input[name="targets"]').value = targets.join(',');
+    };
+
+    FF.hide = function () {
+        if (!FF.isOpen) {
+            return;
+        }
+        FF.isOpen = false;
+        document.getElementById('modTools').style.display = 'none';
+        document.getElementById('fmdClose').removeEventListener('click', FF.hide);
+        document.getElementById('delform').removeEventListener('click', FF.checkboxListener);
+        Draggable.unset($.id('fmdHeader'));
+    };
+
+    FF.checkboxListener = function (event) {
+        if (event.target.matches('.postInfo > input[type="checkbox"]')) {
+            FF.updateTargets();
+        }
+    };
+
+    FF.start();
+</script>
+
+<style type="text/css">
+    #modTools {
+        display: block;
+        position: fixed;
+        padding: 2px;
+        font-size: 10pt;
+    }
+    #fmdepHeader,
+    #fmdHeader {
+        font-size: 10pt;
+        text-align: center;
+        margin-bottom: 1px;
+        padding: 0;
+        height: 18px;
+        line-height: 18px;
+    }
+    #fmdHeader .left { float: left; margin-left: 3px; }
+    #fmdepClose,
+    #fmdClose {
+        float: right;
+    }
+    #fmdCaptchaContainer { height: 78px; }
+    #fmdForm > div {
+    clear: both;
+    }
+    #modTools input[type="text"],
+    #modTools textarea,
+    #modTools #recaptcha_response_field {
+        border: 1px solid #aaa;
+        font-family: arial,helvetica,sans-serif;
+        font-size: 10pt;
+        outline: medium none;
+        width: 296px;
+        padding: 2px;
+        margin: 0 0 1px 0;
+    }
+    .tomorrow #modTools input[type="text"],
+    .tomorrow #modTools textarea,
+    .tomorrow #modTools #recaptcha_response_field {
+        border: 1px solid #515151;
+        background-color: #282a2e;
+        color: #c5c8c6;
+    }
+    .tomorrow #modTools input[type="text"]:focus,
+    .tomorrow #modTools textarea:focus {
+        border: 1px solid #757575;
+    }
+    #modTools textarea {
+        min-width: 296px;
+        float: left;
+    }
+    .tomorrow #modTools input::placeholder {
+        color: 919191 !important;
+    }
+    #modTools input[type="submit"] {
+        width: 75px;
+        margin: 0;
+        float: right;
+    }
+    #modTools #fmdCapField {
+        display: block;
+        margin-top: 1px;
+    }
+    #fmdCaptchaContainer > div > div { width: 300px !important; }
+    #modTools input.presubmit {
+        margin-right: 1px;
+        width: 212px;
+        float: left;
+    }
+    #fmdFile {
+        width: 130px;
+        margin-right: 5px;
+        float: left;
+    }
+    .yotsuba_new #fmdFile {
+        color:black;
+    }
+    #fmdSpoiler {
+        display: inline;
+    }
+    #fmdError {
+        width: 292px;
+        display: none;
+        font-family: monospace;
+        background-color: #E62020;
+        font-size: 12px;
+        color: white;
+        padding: 3px 5px;
+        text-shadow: 0 1px rgba(0, 0, 0, 0.20);
+        clear: both;
+    }
+    #fmdError a:hover,
+    #fmdError a {
+        color: white !important;
+        text-decoration: underline;
+    }
+    #modTools input[type="text"],
+    #modTools textarea,
+    .extPanel input[type="text"],
+    .extPanel textarea {
+        font-size: 16px;
+    }
+    #fmdDummyFile {
+        float: left;
+        margin-right: 5px;
+        width: 220px;
+        cursor: default;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    #fmdDummyFileLabel {
+    margin-left: 3px;
+    }
+    #fmd-painter-ctrl { text-align: center; }
+    #fmd-painter-ctrl label { margin-right: 4px; }
+</style>
