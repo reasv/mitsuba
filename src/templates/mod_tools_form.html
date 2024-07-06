@@ -36,7 +36,7 @@
             </div>
         </div>
     </form>
-    <div id="fmdError" style="display: block">Error</div>
+    <div id="fmdError">Error</div>
 </div>
 
 <script type="text/javascript">
@@ -45,19 +45,37 @@
         board: "{{board}}",
     };
     FF.isOpen = false;
-    FF.start = function () {
-        document.addEventListener('DOMContentLoaded', function () {
-            let openform = document.createElement('span');
-            openform.innerHTML = `[<a href="#">Open Mod Tools</a>]`;
-            document
-                .getElementsByClassName('navLinks')[0]
-                .appendChild(openform);
-            openlink = openform.getElementsByTagName('a')[0];
-            openlink.addEventListener('click', function (e) {
-                e.preventDefault();
-                FF.show();
-            });
+
+    FF.start = async function () {
+        document.addEventListener('DOMContentLoaded', async function () {
+            if (await FF.authcheck()) {
+                FF.init();
+            }
         });
+    };
+
+    FF.init = function () {
+        let openform = document.createElement('span');
+        openform.innerHTML = `[<a href="#">Open Mod Tools</a>]`;
+        document
+            .getElementsByClassName('navLinks')[0]
+            .appendChild(openform);
+        openlink = openform.getElementsByTagName('a')[0];
+        openlink.addEventListener('click', function (e) {
+            e.preventDefault();
+            FF.show();
+        });
+    };
+
+    FF.authcheck = async function () {
+        // Check if the user is authenticated by doing a GET request to the API at /_mitsuba/authcheck.json
+        // If the user is authenticated, return true, otherwise return false
+        let res = await fetch('/_mitsuba/authcheck.json')
+        if (!res.ok) {
+            return false
+        }
+        let data = await res.json()
+        return data.success
     };
 
     FF.show = function () {
