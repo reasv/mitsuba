@@ -10,7 +10,7 @@
             </div>
             <div>
                 <label for="reason_options">Reason</label>
-                    <select id="reason_options" name="options">
+                    <select id="reason_options" name="reason_options">
                     <option value="copyright">DMCA</option>
                     <option value="illegal">Illegal Content</option>
                     <option value="privacy">Personal Information</option>
@@ -55,6 +55,7 @@
     };
 
     FF.init = function () {
+        FF.showHiddenElements();
         let openform = document.createElement('span');
         openform.innerHTML = `[<a href="#">Open Mod Tools</a>]`;
         document
@@ -65,6 +66,20 @@
             e.preventDefault();
             FF.show();
         });
+    };
+
+    FF.showHiddenElements = function () {
+        let hiddenElements = document.querySelectorAll('.hidden-user');
+        const counter = 0;
+        hiddenElements.forEach(function (element) {
+            element.classList.remove('hidden-user')
+            counter++;
+        });
+        if (counter > 0) {
+            console.log(`Unhidden ${counter} elements`);
+            // Add event listener to unhide buttons
+            document.getElementById('delform').addEventListener('click', FF.unhideListener);
+        }
     };
 
     FF.authcheck = async function () {
@@ -117,12 +132,124 @@
         document.getElementById('modTools').style.display = 'none';
         document.getElementById('fmdClose').removeEventListener('click', FF.hide);
         document.getElementById('delform').removeEventListener('click', FF.checkboxListener);
+        document.getElementById('fmdError').style.display = 'none';
+        document.getElementById('fmdError').textContent = '';
         Draggable.unset($.id('fmdHeader'));
     };
 
     FF.checkboxListener = function (event) {
         if (event.target.matches('.postInfo > input[type="checkbox"]')) {
             FF.updateTargets();
+        }
+    };
+
+    FF.unhideListener = function (event) {
+        if (!event.target.matches('.unhide-btn')) {
+            return;
+        }
+        event.preventDefault();
+        let target = event.target;
+        let action = target.getAttribute('data-action');
+        let no = target.getAttribute('data-no');
+        FF.unhidePost(action, no);
+    };
+
+    FF.unhidePost = async function (action, no) {
+        let res = await fetch(`/${FF.config.board}/post/${no}.json`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                mitsuba_post_hidden: action == "unhide_post" ? false : undefined,
+                mitsuba_file_hidden: action == "unhide_file" ? false : undefined,
+                mitsuba_com_hidden: action == "unhide_com" ? false : undefined,
+                mitsuba_file_blacklisted: action == "unban_file" ? false : undefined,
+            }),
+        });
+        if (!res.ok) {
+            let data = await res.json();
+            FF.showError(data.error);
+            return;
+        }
+        let post = await res.json();
+        if (post.no) {
+            FF.updatePostUnhideButtons(post);
+        }
+    };
+
+    FF.updatePostUnhideButtons = function (post) {
+        // Match element with class unhide-btn and corresponding data-no attribute
+        const unhidebuttons = document.querySelectorAll(`a.unhide-btn[data-no="${post.no}"]`);
+        unhidebuttons.forEach(function (button) {
+            switch (button.getAttribute('data-action')) {
+                case "unhide_post":
+                    if (!post.mitsuba_post_hidden) {
+                        button.remove();
+                    }
+                    break;
+                case "unhide_file":
+                    if (!post.mitsuba_file_hidden) {
+                        button.remove();
+                    }
+                    break;
+                case "unhide_com":
+                    if (!post.mitsuba_com_hidden) {
+                        button.remove();
+                    }
+                    break;
+                case "unban_file":
+                    if (!post.mitsuba_file_blacklisted) {
+                        button.remove();
+                    }
+                    break;
+            }
+        });
+    };
+
+    FF.showError = function (error) {
+        let errorElement = document.getElementById('fmdError');
+        errorElement.textContent = error;
+        errorElement.style.display = 'block';
+    };
+
+    FF.execute = async function () {
+        let form = document.forms['fmdPost'];
+        let data = new FormData(form);
+
+        const body = {
+            mitsuba_post_hidden: data.get('hide_post') ? true : undefined,
+            mitsuba_file_hidden: data.get('hide_image') ? true : undefined,
+            mitsuba_com_hidden: data.get('hide_com') ? true : undefined,
+            mitsuba_file_blacklisted: data.get('ban_image') ? true : undefined,
+            reason: data.get('reason_options'),
+            comment: data.get('com'),
+        };
+        let targets = data.get('targets');
+        if (!targets) {
+            FF.showError('No targets selected');
+            return;
+        }
+        const targetsArray = targets.split(',');
+        const targetsNumber = targetsArray.map(Number);
+        for (let i = 0; i < targetsNumber.length; i++) {
+            if (isNaN(targetsNumber[i])) {
+                FF.showError('Invalid target');
+                return;
+            }
+            let res = await fetch(`/${FF.config.board}/post/${targetsNumber[i]}.json`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            })
+            if (!res.ok) {
+                let data = await res.json();
+                FF.showError(data.message);
+            }
+            let post = await res.json();
+            FF.updatePostUnhideButtons(post);
         }
     };
 

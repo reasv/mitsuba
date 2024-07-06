@@ -353,8 +353,9 @@ struct PostEdits{
     mitsuba_file_hidden: Option<bool>,
     mitsuba_com_hidden: Option<bool>,
     // Purges the image from the filesystem if this is set
-    ban_image_reason: Option<String>,
-    unban_image: Option<bool>,
+    mitsuba_file_blacklisted: Option<bool>,
+    reason: Option<String>,
+    comment: Option<String>,
 }
 #[put("/{board:[A-z0-9]+}/post/{no:\\d+}.json")]
 pub(crate) async fn put_post(
@@ -379,14 +380,14 @@ pub(crate) async fn put_post(
         actix_web::error::ErrorInternalServerError("Error hiding post")
     })?;
 
-    if let Some(reason) = post_edits.ban_image_reason {
+    if let Some(true) = post_edits.mitsuba_file_blacklisted {
         // Only mods and above can purge images
         if user.role > UserRole::Janitor {
             archiver
             .ban_image(
                 &board,
                 no,
-                &reason
+                &post_edits.reason.clone().unwrap_or("Other".to_string())
             ).await.map_err(|e| {
                 error!("Error purging image: {}", e);
                 actix_web::error::ErrorInternalServerError("Error banning image")
@@ -394,7 +395,7 @@ pub(crate) async fn put_post(
         }
     }
 
-    if let Some(true) = post_edits.unban_image {
+    if let Some(false) = post_edits.mitsuba_file_blacklisted {
         // Only mods and above can unban images
         if user.role > UserRole::Janitor {
             archiver
