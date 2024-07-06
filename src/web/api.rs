@@ -11,7 +11,7 @@ use crate::archiver::Archiver;
 use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
-use crate::models::{Board, BoardsStatus, IndexPage, IndexSearchResults, UserRole};
+use crate::models::{Board, BoardsStatus, IndexPage, IndexSearchResults, Post, UserRole};
 use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated, AdminOnly};
 
 use super::auth::RequireJanitor;
@@ -356,70 +356,80 @@ struct PostEdits{
     mitsuba_file_blacklisted: Option<bool>,
     reason: Option<String>,
     comment: Option<String>,
+    targets: Vec<i64>,
+    board: String,
 }
-#[put("/{board:[A-z0-9]+}/post/{no:\\d+}.json")]
-pub(crate) async fn put_post(
+#[post("/_mitsuba/admin/modactions.json")]
+pub(crate) async fn post_mod_action(
     db: web::Data<DBClient>,
     post_edits: web::Json<PostEdits>,
     archiver: web::Data<Archiver>,
-    info: web::Path<(String, i64)>,
     user: AuthUser<RequireJanitor>,
 ) -> actix_web::Result<HttpResponse> {
-    let (board, no) = info.into_inner();
-    
+    let board = post_edits.board.clone();
+    let targets = post_edits.targets.clone();
+
+    let mut posts: Vec<Post> = Vec::new();
     let post_edits = post_edits.into_inner();
 
-    archiver.hide_post(
-        &board,
-        no,
-        post_edits.mitsuba_file_hidden,
-        post_edits.mitsuba_com_hidden,
-        post_edits.mitsuba_file_hidden
-    ).await.map_err(|e| {
-        error!("Error hiding post: {}", e);
-        actix_web::error::ErrorInternalServerError("Error hiding post")
-    })?;
+    for no in targets {
+        archiver.hide_post(
+            &board,
+            no,
+            post_edits.mitsuba_file_hidden,
+            post_edits.mitsuba_com_hidden,
+            post_edits.mitsuba_file_hidden
+        ).await.map_err(|e| {
+            error!("Error hiding post: {}", e);
+            actix_web::error::ErrorInternalServerError("Error hiding post")
+        })?;
 
-    if let Some(true) = post_edits.mitsuba_file_blacklisted {
-        // Only mods and above can purge images
-        if user.role > UserRole::Janitor {
-            archiver
-            .ban_image(
-                &board,
-                no,
-                &post_edits.reason.clone().unwrap_or("Other".to_string())
-            ).await.map_err(|e| {
-                error!("Error purging image: {}", e);
-                actix_web::error::ErrorInternalServerError("Error banning image")
-            })?;
+        if let Some(true) = post_edits.mitsuba_file_blacklisted {
+            // Only mods and above can ban images
+            if user.role > UserRole::Janitor {
+                archiver
+                .ban_image(
+                    &board,
+                    no,
+                    &post_edits.reason.clone().unwrap_or("Other".to_string())
+                ).await.map_err(|e| {
+                    error!("Error purging image: {}", e);
+                    actix_web::error::ErrorInternalServerError("Error banning image")
+                })?;
+            }
         }
-    }
 
-    if let Some(false) = post_edits.mitsuba_file_blacklisted {
-        // Only mods and above can unban images
-        if user.role > UserRole::Janitor {
-            archiver
-            .unban_image(
-                &board,
-                no
-            ).await.map_err(|e| {
-                error!("Error unpurging image: {}", e);
-                actix_web::error::ErrorInternalServerError("Error unbanning image")
-            })?;
+        if let Some(false) = post_edits.mitsuba_file_blacklisted {
+            // Only mods and above can unban images
+            if user.role > UserRole::Janitor {
+                archiver
+                .unban_image(
+                    &board,
+                    no
+                ).await.map_err(|e| {
+                    error!("Error unpurging image: {}", e);
+                    actix_web::error::ErrorInternalServerError("Error unbanning image")
+                })?;
+            }
         }
-    }
 
-    let post = db.get_post(
-        &board,
-        no,
-        false
-    ).await
-        .map_err(|e| {
-            error!("Error getting post from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("")
-        })?
-        .ok_or(actix_web::error::ErrorNotFound(""))?;
-    Ok(HttpResponse::Ok().json(post))
+        let new_post_data = db.get_post(
+            &board,
+            no,
+            false
+        ).await
+            .map_err(|e| {
+                error!("Error getting post from DB: {}", e);
+                actix_web::error::ErrorInternalServerError("")
+            })?
+            .ok_or(actix_web::error::ErrorNotFound(""))?;
+        posts.push(new_post_data);
+    }
+    Ok(HttpResponse::Ok().json(JsonResult {
+        success: true,
+        data: Some(posts),
+        message: "Actions applied".to_string()
+    }))
 }
 
 #[derive(Deserialize)]

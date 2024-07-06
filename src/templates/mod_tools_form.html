@@ -155,7 +155,7 @@
     };
 
     FF.unhidePost = async function (action, no) {
-        let res = await fetch(`/${FF.config.board}/post/${no}.json`, {
+        let res = await fetch("/_mitsuba/admin/modactions.json", {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -165,6 +165,8 @@
                 mitsuba_file_hidden: action == "unhide_file" ? false : undefined,
                 mitsuba_com_hidden: action == "unhide_com" ? false : undefined,
                 mitsuba_file_blacklisted: action == "unban_file" ? false : undefined,
+                targets: [no],
+                board: FF.config.board,
             }),
         });
         if (!res.ok) {
@@ -172,8 +174,8 @@
             FF.showError(data.error);
             return;
         }
-        let post = await res.json();
-        if (post.no) {
+        let result = await res.json();
+        if (result.data[0].no) {
             FF.updatePostUnhideButtons(post);
         }
     };
@@ -217,14 +219,7 @@
         let form = document.forms['fmdPost'];
         let data = new FormData(form);
 
-        const body = {
-            mitsuba_post_hidden: data.get('hide_post') ? true : undefined,
-            mitsuba_file_hidden: data.get('hide_image') ? true : undefined,
-            mitsuba_com_hidden: data.get('hide_com') ? true : undefined,
-            mitsuba_file_blacklisted: data.get('ban_image') ? true : undefined,
-            reason: data.get('reason_options'),
-            comment: data.get('com'),
-        };
+        
         let targets = data.get('targets');
         if (!targets) {
             FF.showError('No targets selected');
@@ -232,23 +227,38 @@
         }
         const targetsArray = targets.split(',');
         const targetsNumber = targetsArray.map(Number);
+
+        const body = {
+            mitsuba_post_hidden: data.get('hide_post') ? true : undefined,
+            mitsuba_file_hidden: data.get('hide_image') ? true : undefined,
+            mitsuba_com_hidden: data.get('hide_com') ? true : undefined,
+            mitsuba_file_blacklisted: data.get('ban_image') ? true : undefined,
+            reason: data.get('reason_options'),
+            comment: data.get('com'),
+            targets: targetsNumber,
+            board: FF.config.board,
+        };
         for (let i = 0; i < targetsNumber.length; i++) {
             if (isNaN(targetsNumber[i])) {
-                FF.showError('Invalid target');
+                FF.showError(`Invalid target: ${targetsArray[i]}`);
                 return;
             }
-            let res = await fetch(`/${FF.config.board}/post/${targetsNumber[i]}.json`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(body),
-            })
-            if (!res.ok) {
-                let data = await res.json();
-                FF.showError(data.message);
-            }
-            let post = await res.json();
+        }
+        let res = await fetch("/_mitsuba/admin/modactions.json", {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+            let data = await res.json();
+            FF.showError(data.message);
+            return;
+        }
+        let result = await res.json();
+
+        for (post of result.data) {
             FF.updatePostUnhideButtons(post);
         }
     };
