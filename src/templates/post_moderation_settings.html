@@ -1,0 +1,12 @@
+{{#if this.mitsuba_post_hidden}}
+    <a href="#" class="hidden-user unhide-btn" data-no="{{this.no}}" data-action="unhide_post">Unhide Post</a>
+{{/if}}
+{{#if this.mitsuba_file_hidden}}
+    <a href="#" class="hidden-user unhide-btn" data-no="{{this.no}}" data-action="unhide_file">Unhide Image</a>
+{{/if}}
+{{#if this.mitsuba_com_hidden}}
+    <a href="#" class="hidden-user unhide-btn" data-no="{{this.no}}" data-action="unhide_com">Unhide Comment</a>
+{{/if}}
+{{#if this.mitsuba_file_blacklisted}}
+    <a href="#" class="hidden-user unhide-btn" data-no="{{this.no}}" data-action="unban_file">Remove file from blacklist</a>
+{{/if}}
