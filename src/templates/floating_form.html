@@ -1,0 +1,60 @@
+<div id="quickReply" class="extPanel reply" data-trackpos="QR-position" style="left: 57.8048%; top: 41.8726%; display:none;">
+    <div id="qrHeader" class="drag postblock">Reply to Thread No.<span id="qrTid">101290174</span><img alt="X"
+            src="/static/image/buttons/burichan/cross@2x.png" id="qrClose" class="extButton" title="Close Window">
+    </div>
+    <form name="qrPost" action="/g/post" method="post" enctype="multipart/form-data"><input
+            type="hidden" value="4194304" name="MAX_FILE_SIZE"><input type="hidden" value="regist" name="mode"><input
+            id="qrResto" type="hidden" value="101290174" name="resto">
+        <div id="qrForm">
+            <div><input name="name" type="text" tabindex="0" placeholder="Name"></div>
+            <div><input name="email" type="text" tabindex="0" id="qrEmail" placeholder="Options"></div>
+            <div><textarea name="com" cols="48" rows="4" wrap="soft" tabindex="0" placeholder="Comment"></textarea>
+            </div>
+            <div><input id="qrFile" name="upfile" type="file" tabindex="0" size="19"
+                    title="Shift + Click to remove the file"><input type="submit" value="Post" tabindex="0"></div>
+        </div>
+    </form>
+    <div id="qrError"></div>
+</div>
+
+<script type="text/javascript">
+    var FF = {};
+    FF.config = {};
+    FF.isOpen = false;
+    FF.start = function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            let openform = document.createElement('span');
+            openform.innerHTML = `[<a href="#">Open Tools</a>]`;
+            document
+                .getElementsByClassName('navLinks')[0]
+                .appendChild(openform);
+            openlink = openform.getElementsByTagName('a')[0];
+            openlink.addEventListener('click', function (e) {
+                e.preventDefault();
+                FF.show();
+            });
+        });
+    };
+
+    FF.show = function () {
+        if (FF.isOpen) {
+            return;
+        }
+        FF.isOpen = true;
+        document.getElementById('quickReply').style.display = 'block';
+        Draggable.set($.id('qrHeader'));
+        document.getElementById('qrClose').addEventListener('click', FF.hide);
+    };
+
+    FF.hide = function () {
+        if (!FF.isOpen) {
+            return;
+        }
+        FF.isOpen = false;
+        document.getElementById('quickReply').style.display = 'none';
+        document.getElementById('qrClose').removeEventListener('click', FF.hide);
+        Draggable.unset($.id('qrHeader'));
+    };
+
+    FF.start();
+</script>
