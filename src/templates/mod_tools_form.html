@@ -103,6 +103,12 @@
         document.getElementById('fmdClose').addEventListener('click', FF.hide);
         FF.updateTargets();
         document.getElementById('delform').addEventListener('click', FF.checkboxListener);
+        document.getElementById('fmdPost').addEventListener('submit', FF.submitClicked);
+    };
+
+    FF.submitClicked = function (event) {
+        event.preventDefault();
+        FF.execute();
     };
 
     FF.findDeleteCheckboxes = function (name) {
@@ -132,6 +138,7 @@
         document.getElementById('modTools').style.display = 'none';
         document.getElementById('fmdClose').removeEventListener('click', FF.hide);
         document.getElementById('delform').removeEventListener('click', FF.checkboxListener);
+        document.getElementById('fmdPost').removeEventListener('submit', FF.submitClicked);
         document.getElementById('fmdError').style.display = 'none';
         document.getElementById('fmdError').textContent = '';
         Draggable.unset($.id('fmdHeader'));
