@@ -92,7 +92,7 @@ pub async fn web_main(archiver: Archiver) -> std::io::Result<()> {
         .service(api::put_current_user)
         .service(api::put_board)
         .service(api::delete_board)
-        .service(api::put_post)
+        .service(api::post_mod_action)
         .service(frontend::home_page)
         .service(web::resource("/static/{_:.*}").route(web::get().to(frontend::dist)));
 
