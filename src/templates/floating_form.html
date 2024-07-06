@@ -1,20 +1,20 @@
-<div id="quickReply" class="extPanel reply" data-trackpos="QR-position" style="left: 57.8048%; top: 41.8726%; display:none;">
-    <div id="qrHeader" class="drag postblock">Reply to Thread No.<span id="qrTid">101290174</span><img alt="X"
-            src="/static/image/buttons/burichan/cross@2x.png" id="qrClose" class="extButton" title="Close Window">
+<div id="floatingForm" class="extPanel reply" data-trackpos="QR-position" style="left: 57.8048%; top: 41.8726%; display:none;">
+    <div id="ffHeader" class="drag postblock">Reply to Thread No.<span id="ffTid">101290174</span><img alt="X"
+            src="/static/image/buttons/burichan/cross@2x.png" id="ffClose" class="extButton" title="Close Window">
     </div>
-    <form name="qrPost" action="/g/post" method="post" enctype="multipart/form-data"><input
+    <form name="ffPost" action="/g/post" method="post" enctype="multipart/form-data"><input
             type="hidden" value="4194304" name="MAX_FILE_SIZE"><input type="hidden" value="regist" name="mode"><input
-            id="qrResto" type="hidden" value="101290174" name="resto">
-        <div id="qrForm">
+            id="ffResto" type="hidden" value="101290174" name="resto">
+        <div id="ffForm">
             <div><input name="name" type="text" tabindex="0" placeholder="Name"></div>
-            <div><input name="email" type="text" tabindex="0" id="qrEmail" placeholder="Options"></div>
+            <div><input name="email" type="text" tabindex="0" id="ffEmail" placeholder="Options"></div>
             <div><textarea name="com" cols="48" rows="4" wrap="soft" tabindex="0" placeholder="Comment"></textarea>
             </div>
-            <div><input id="qrFile" name="upfile" type="file" tabindex="0" size="19"
+            <div><input id="ffFile" name="upfile" type="file" tabindex="0" size="19"
                     title="Shift + Click to remove the file"><input type="submit" value="Post" tabindex="0"></div>
         </div>
     </form>
-    <div id="qrError"></div>
+    <div id="ffError"></div>
 </div>
 
 <script type="text/javascript">
@@ -41,9 +41,9 @@
             return;
         }
         FF.isOpen = true;
-        document.getElementById('quickReply').style.display = 'block';
-        Draggable.set($.id('qrHeader'));
-        document.getElementById('qrClose').addEventListener('click', FF.hide);
+        document.getElementById('floatingForm').style.display = 'block';
+        Draggable.set($.id('ffHeader'));
+        document.getElementById('ffClose').addEventListener('click', FF.hide);
     };
 
     FF.hide = function () {
@@ -51,23 +51,23 @@
             return;
         }
         FF.isOpen = false;
-        document.getElementById('quickReply').style.display = 'none';
-        document.getElementById('qrClose').removeEventListener('click', FF.hide);
-        Draggable.unset($.id('qrHeader'));
+        document.getElementById('floatingForm').style.display = 'none';
+        document.getElementById('ffClose').removeEventListener('click', FF.hide);
+        Draggable.unset($.id('ffHeader'));
     };
 
     FF.start();
 </script>
 
 <style type="text/css">
-    #quickReply {
+    #floatingForm {
         display: block;
         position: fixed;
         padding: 2px;
         font-size: 10pt;
     }
-    #qrepHeader,
-    #qrHeader {
+    #ffepHeader,
+    #ffHeader {
         font-size: 10pt;
         text-align: center;
         margin-bottom: 1px;
@@ -75,18 +75,18 @@
         height: 18px;
         line-height: 18px;
     }
-    #qrHeader .left { float: left; margin-left: 3px; }
-    #qrepClose,
-    #qrClose {
+    #ffHeader .left { float: left; margin-left: 3px; }
+    #ffepClose,
+    #ffClose {
         float: right;
     }
-    #qrCaptchaContainer { height: 78px; }
-    #qrForm > div {
+    #ffCaptchaContainer { height: 78px; }
+    #ffForm > div {
     clear: both;
     }
-    #quickReply input[type="text"],
-    #quickReply textarea,
-    #quickReply #recaptcha_response_field {
+    #floatingForm input[type="text"],
+    #floatingForm textarea,
+    #floatingForm #recaptcha_response_field {
         border: 1px solid #aaa;
         font-family: arial,helvetica,sans-serif;
         font-size: 10pt;
@@ -95,50 +95,50 @@
         padding: 2px;
         margin: 0 0 1px 0;
     }
-    .tomorrow #quickReply input[type="text"],
-    .tomorrow #quickReply textarea,
-    .tomorrow #quickReply #recaptcha_response_field {
+    .tomorrow #floatingForm input[type="text"],
+    .tomorrow #floatingForm textarea,
+    .tomorrow #floatingForm #recaptcha_response_field {
         border: 1px solid #515151;
         background-color: #282a2e;
         color: #c5c8c6;
     }
-    .tomorrow #quickReply input[type="text"]:focus,
-    .tomorrow #quickReply textarea:focus {
+    .tomorrow #floatingForm input[type="text"]:focus,
+    .tomorrow #floatingForm textarea:focus {
         border: 1px solid #757575;
     }
-    #quickReply textarea {
+    #floatingForm textarea {
         min-width: 296px;
         float: left;
     }
-    .tomorrow #quickReply input::placeholder {
+    .tomorrow #floatingForm input::placeholder {
         color: 919191 !important;
     }
-    #quickReply input[type="submit"] {
+    #floatingForm input[type="submit"] {
         width: 75px;
         margin: 0;
         float: right;
     }
-    #quickReply #qrCapField {
+    #floatingForm #ffCapField {
         display: block;
         margin-top: 1px;
     }
-    #qrCaptchaContainer > div > div { width: 300px !important; }
-    #quickReply input.presubmit {
+    #ffCaptchaContainer > div > div { width: 300px !important; }
+    #floatingForm input.presubmit {
         margin-right: 1px;
         width: 212px;
         float: left;
     }
-    #qrFile {
+    #ffFile {
         width: 130px;
         margin-right: 5px;
     }
-    .yotsuba_new #qrFile {
+    .yotsuba_new #ffFile {
         color:black;
     }
-    #qrSpoiler {
+    #ffSpoiler {
         display: inline;
     }
-    #qrError {
+    #ffError {
         width: 292px;
         display: none;
         font-family: monospace;
@@ -149,23 +149,18 @@
         text-shadow: 0 1px rgba(0, 0, 0, 0.20);
         clear: both;
     }
-    #qrError a:hover,
-    #qrError a {
+    #ffError a:hover,
+    #ffError a {
         color: white !important;
         text-decoration: underline;
     }
-    #quickReply input[type="text"],
-    #quickReply textarea,
+    #floatingForm input[type="text"],
+    #floatingForm textarea,
     .extPanel input[type="text"],
     .extPanel textarea {
         font-size: 16px;
     }
-    #quickReply {
-        position: absolute;
-        left: 50%;
-        margin-left: -154px;
-    }
-    #qrDummyFile {
+    #ffDummyFile {
         float: left;
         margin-right: 5px;
         width: 220px;
@@ -178,16 +173,9 @@
         text-overflow: ellipsis;
         overflow: hidden;
     }
-    #qrDummyFileLabel {
+    #ffDummyFileLabel {
     margin-left: 3px;
     }
-    #qr-painter-ctrl { text-align: center; }
-    #qr-painter-ctrl label { margin-right: 4px; }
-    .open-qr-wrap {
-        text-align: center;
-        width: 200px;
-        position: absolute;
-        margin-left: 50%;
-        left: -100px;
-    }
+    #ff-painter-ctrl { text-align: center; }
+    #ff-painter-ctrl label { margin-right: 4px; }
 </style>
