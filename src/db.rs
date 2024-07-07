@@ -200,13 +200,13 @@ impl DBClient {
             thumbnails.hidden as mitsuba_file_hidden,
             thumbnails.sha256 as thumbnail_sha256
             FROM posts
-            LEFT JOIN posts_files
+            JOIN posts_files
             ON posts_files.post_id = posts.post_id
             LEFT JOIN files
             ON files.file_id = posts_files.file_id
-            LEFT JOIN files as thumbnails
+            JOIN files as thumbnails
             ON thumbnails.file_id = posts_files.thumbnail_id
-            WHERE thumbnails.sha256 != '' AND board = ANY($1)
+            WHERE board = ANY($1)
             AND thumbnails.hidden = false
             ORDER BY last_modified DESC
             LIMIT $2 OFFSET $3
@@ -622,19 +622,6 @@ impl DBClient {
         Ok(Some(thread))
     }
     pub async fn add_post_file(&self, board: &String, no: i64, idx: i32, sha256: &String, ext: &String, is_thumbnail: bool) -> anyhow::Result<u64> {
-        // Obtain the post_id for the post
-        let post_id = sqlx::query!(
-            "
-            SELECT post_id FROM posts WHERE board = $1 AND no = $2
-            ",
-            board,
-            no
-        ).fetch_optional(&self.pool).await?
-        .map(|f| f.post_id);
-        
-        if post_id.is_none() {
-            return Ok(0);
-        }
         // Insert the files into the files table if they don't exist
         let file_id = if sha256.is_empty() {
             None
@@ -652,6 +639,19 @@ impl DBClient {
             ).fetch_optional(&self.pool).await?
             .map(|f| f.file_id)
         };
+        // Obtain the post_id for the post
+        let post_id = sqlx::query!(
+            "
+            SELECT post_id FROM posts WHERE board = $1 AND no = $2
+            ",
+            board,
+            no
+        ).fetch_optional(&self.pool).await?
+        .map(|f| f.post_id);
+        
+        if post_id.is_none() {
+            return Ok(0);
+        }
         let res: u64;
         if let Some(file_id) = file_id {
             // Insert the file references into the posts_files table
