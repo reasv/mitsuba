@@ -12,29 +12,38 @@ use crate::db::DBClient;
 use crate::object_storage::ObjectStorage;
 use crate::util::{get_file_folder, get_file_url};
 use crate::models::{Board, BoardsStatus, IndexPage, IndexSearchResults, Post, UserRole};
-use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated, AdminOnly};
+use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated, AdminOnly, JSONError};
 
 use super::auth::RequireJanitor;
+#[derive(Serialize)]
+struct ActionSuccess<T> {
+    success: bool,
+    data: Option<T>,
+    message: String,
+}
+
+impl ActionSuccess<()> {
+    fn new<T: ToString>(message: T) -> ActionSuccess<()> {
+        ActionSuccess {
+            success: true,
+            data: None,
+            message: message.to_string(),
+        }
+    }
+    fn new_with_data<T, S: ToString>(message: S, data: T) -> ActionSuccess<T> {
+        ActionSuccess {
+            success: true,
+            data: Some(data),
+            message: message.to_string(),
+        }
+    }
+}
 
 #[derive(Deserialize)]
 struct LoginBody {
     username: String,
     password: String,
 }
-
-#[derive(Serialize)]
-struct LoginResult {
-    success: bool,
-    user: String,
-    role: String,
-    message: String,
-}
-#[derive(Serialize)]
-struct APIResult {
-    success: bool,
-    message: String,
-}
-
 #[put("/_mitsuba/login.json")]
 pub(crate) async fn login_api(archiver: web::Data<Archiver>, query: web::Json<LoginBody>, session: Session) -> actix_web::Result<HttpResponse> {
     // Extract the username and password from the query
@@ -45,42 +54,31 @@ pub(crate) async fn login_api(archiver: web::Data<Archiver>, query: web::Json<Lo
     if let Some(user) = archiver.login(&username, &password).await
     .map_err(|e| {
         error!("Error getting user from DB: {}", e);
-        actix_web::error::ErrorInternalServerError("Error getting user from DB")
+        JSONError::InternalServerError("Error getting user from DB")
     })? {
         session.insert("username", user.name.clone())?;
-        return Ok(HttpResponse::Ok().json(LoginResult{
-            success: true,
-            user: user.name,
-            role: user.role.to_string(),
-            message: "Logged in".to_string()
-        }));
+        return Ok(HttpResponse::Ok().json(
+            ActionSuccess::new_with_data(
+                format!("Logged in as {} (Role: {})", user.name, user.role),
+                user
+            )))
     }
-    Ok(HttpResponse::Unauthorized().json(APIResult{
-        success: false,
-        message: "Wrong username or password".to_string()
-    }))
+    Err(JSONError::Unauthorized("Invalid username or password").into())
 }
 
 #[put("/_mitsuba/logout.json")]
 pub(crate) async fn logout_api(session: Session) -> actix_web::Result<HttpResponse> {
         session.remove("username");
         session.purge();
-        Ok(HttpResponse::Ok().json(APIResult{
-            success: true,
-            message: "Logged out".to_string()
-        })
+        Ok(HttpResponse::Ok().json(ActionSuccess::new("Logged out"))
     )
 }
 
 #[get("/_mitsuba/authcheck.json")]
 pub(crate) async fn authcheck_api(user: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
-        Ok(HttpResponse::Ok().json(LoginResult{
-            success: true,
-            user: user.name.clone(),
-            role: user.role.clone().to_string(),
-            message: format!("Logged in as {} (Role: {})", user.name, user.role)
-        })
-    )
+    Ok(HttpResponse::Ok().json(
+        ActionSuccess::new_with_data(format!("Logged in as {} (Role: {})", user.name, user.role), user)
+    ))
 }
 
 #[get("/_mitsuba/admin/users.json")]
@@ -88,7 +86,7 @@ pub(crate) async fn get_users(db: web::Data<DBClient>, _: AuthUser<AdminOnly>) -
     let users = db.get_users().await
         .map_err(|e| {
             error!("Error getting users from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error getting users from DB")
+            JSONError::InternalServerError("Error getting users from DB")
         })?;
     // Remove the password hash from the response
     let users_: Vec<AuthUser> = users.into_iter().map(|u| u.into()).collect();
@@ -116,18 +114,12 @@ pub(crate) async fn post_user(
     ).await
         .map_err(|e| {
             error!("Error creating user in DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error creating user in DB")
+            JSONError::InternalServerError("Error creating user in DB")
     })?;
-    Ok(HttpResponse::Ok().json(user))
+    Ok(HttpResponse::Ok().json(
+        ActionSuccess::new_with_data("User created", user)
+    ))
 }
-
-#[derive(Serialize)]
-struct JsonResult<T> {
-    success: bool,
-    data: Option<T>,
-    message: String,
-}
-
 #[derive(Serialize, Deserialize)]
 struct UserEdits {
     role: Option<UserRole>,
@@ -147,7 +139,7 @@ pub(crate) async fn put_user(
         archiver.change_role(&username, role).await
         .map_err(|e| {
             error!("Error setting user role in DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error setting user role in DB")
+            JSONError::InternalServerError("Error setting user role in DB")
         })?;
     }
 
@@ -155,15 +147,11 @@ pub(crate) async fn put_user(
         archiver.change_password(&username, &password_hash).await
         .map_err(|e| {
             error!("Error setting user password in DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error setting user password in DB")
+            JSONError::InternalServerError("Error setting user password in DB")
         })?;
     }
 
-    Ok(HttpResponse::Ok().json(JsonResult::<()>{
-        success: true,
-        data: None,
-        message: "User edited".to_string()
-    }))
+    Ok(HttpResponse::Ok().json(ActionSuccess::new("User edited")))
 }
 
 #[delete("/_mitsuba/admin/users/{username}.json")]
@@ -176,13 +164,9 @@ pub(crate) async fn delete_user(
     archiver.delete_user(&username).await
     .map_err(|e| {
         error!("Error deleting user from DB: {}", e);
-        actix_web::error::ErrorInternalServerError("Error deleting user from DB")
+        JSONError::InternalServerError("Error deleting user from DB")
     })?;
-    Ok(HttpResponse::Ok().json(JsonResult::<()>{
-        success: true,
-        data: None,
-        message: "User deleted".to_string()
-    }))
+    Ok(HttpResponse::Ok().json(ActionSuccess::new("User deleted")))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -205,29 +189,21 @@ pub(crate) async fn put_current_user(
     ).await
     .map_err(|e| {
             error!("Error getting user from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error getting user from DB")
+            JSONError::InternalServerError("Error getting user from DB")
         }
     )?.is_none() {
-        return Ok(HttpResponse::Ok().json(JsonResult::<()>{
-            success: false,
-            data: None,
-            message: "Wrong password".to_string()
-        }));
+        return Ok(HttpResponse::Ok().json(ActionSuccess::new("Invalid password")));
     }
 
     if let Some(password_hash) = user_edits.password_hash {
         archiver.change_password(&user.name, &password_hash).await
         .map_err(|e| {
             error!("Error setting user password in DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error setting user password in DB")
+            JSONError::InternalServerError("Error setting user password in DB")
         })?;
     }
 
-    Ok(HttpResponse::Ok().json(JsonResult::<()>{
-        success: true,
-        data: None,
-        message: "User edited".to_string()
-    }))
+    Ok(HttpResponse::Ok().json(ActionSuccess::new("User edited")))
 }
 
 
@@ -236,7 +212,7 @@ pub(crate) async fn get_boards_status(db: web::Data<DBClient>, _: AuthUser<Authe
     let boards = db.get_all_boards().await
         .map_err(|e| {
             error!("Error getting boards from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("")
+            JSONError::InternalServerError("")
         })?;
     Ok(HttpResponse::Ok().json(BoardsStatus{boards}))
 }
@@ -260,7 +236,7 @@ pub(crate) async fn put_board(
     let mut board: Board = archiver.db_client.get_board(&board_name).await
     .map_err(|e| {
         error!("Error getting board from DB: {}", e);
-        actix_web::error::ErrorInternalServerError("Error getting board from DB")
+        JSONError::InternalServerError("Error getting board from DB")
     })?
     .unwrap_or_default();
 
@@ -271,13 +247,15 @@ pub(crate) async fn put_board(
     archiver.set_board(board.clone()).await
         .map_err(|e| {
             error!("Error setting board settings in DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error setting board settings in DB")
+            JSONError::InternalServerError("Error setting board settings in DB")
         })?;
-    Ok(HttpResponse::Ok().json(JsonResult::<Board>{
-        success: true,
-        data: Some(board),
-        message: "Board settings edited".to_string()
-    }))
+
+    Ok(HttpResponse::Ok().json(
+        ActionSuccess::new_with_data(
+            "Board settings edited",
+            board
+        )
+    ))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -297,13 +275,9 @@ pub(crate) async fn delete_board(
     archiver.purge_board(&board_name, options.only_delete_files.unwrap_or(false)).await
         .map_err(|e| {
             error!("Error deleting board from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("Error deleting board from DB")
+            JSONError::InternalServerError("Error deleting board from DB")
         })?;
-    Ok(HttpResponse::Ok().json(JsonResult::<()>{
-        success: true,
-        data: None,
-        message: "Board deleted".to_string()
-    }))
+    Ok(HttpResponse::Ok().json(ActionSuccess::new("Board deleted")))
 }
 
 #[get("/{board:[A-z0-9]+}/thread/{no:\\d+}.json")]
@@ -323,9 +297,9 @@ pub(crate) async fn get_thread(
         ).await
         .map_err(|e| {
             error!("Error getting thread from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("")
+            JSONError::InternalServerError("")
         })?
-        .ok_or(actix_web::error::ErrorNotFound(""))?;
+        .ok_or(JSONError::NotFound("Thread not found in database"))?;
     
     Ok(HttpResponse::Ok().json(thread))
 }
@@ -341,14 +315,14 @@ pub(crate) async fn get_post(
     let post = db.get_post(&board, no, respect_hidden_files).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("")
+            JSONError::InternalServerError("")
         })?
-        .ok_or(actix_web::error::ErrorNotFound(""))?;
+        .ok_or(JSONError::NotFound("Post not found in database"))?;
     Ok(HttpResponse::Ok().json(post))
 }
 
 #[derive(Serialize, Deserialize)]
-struct PostEdits{
+struct ModAction{
     mitsuba_post_hidden: Option<bool>,
     mitsuba_file_hidden: Option<bool>,
     mitsuba_com_hidden: Option<bool>,
@@ -362,7 +336,7 @@ struct PostEdits{
 #[post("/_mitsuba/admin/modactions.json")]
 pub(crate) async fn post_mod_action(
     db: web::Data<DBClient>,
-    post_edits: web::Json<PostEdits>,
+    post_edits: web::Json<ModAction>,
     archiver: web::Data<Archiver>,
     user: AuthUser<RequireJanitor>,
 ) -> actix_web::Result<HttpResponse> {
@@ -381,7 +355,7 @@ pub(crate) async fn post_mod_action(
             post_edits.mitsuba_file_hidden
         ).await.map_err(|e| {
             error!("Error hiding post: {}", e);
-            actix_web::error::ErrorInternalServerError("Error hiding post")
+            JSONError::InternalServerError("Error hiding post")
         })?;
 
         if let Some(true) = post_edits.mitsuba_file_blacklisted {
@@ -394,7 +368,7 @@ pub(crate) async fn post_mod_action(
                     &post_edits.reason.clone().unwrap_or("Other".to_string())
                 ).await.map_err(|e| {
                     error!("Error purging image: {}", e);
-                    actix_web::error::ErrorInternalServerError("Error banning image")
+                    JSONError::InternalServerError("Error banning image")
                 })?;
             }
         }
@@ -408,28 +382,29 @@ pub(crate) async fn post_mod_action(
                     no
                 ).await.map_err(|e| {
                     error!("Error unpurging image: {}", e);
-                    actix_web::error::ErrorInternalServerError("Error unbanning image")
+                    JSONError::InternalServerError("Error unbanning image")
                 })?;
             }
         }
 
-        let new_post_data = db.get_post(
+        if let Some(new_post_data) = db.get_post(
             &board,
             no,
             false
         ).await
-            .map_err(|e| {
-                error!("Error getting post from DB: {}", e);
-                actix_web::error::ErrorInternalServerError("")
-            })?
-            .ok_or(actix_web::error::ErrorNotFound(""))?;
-        posts.push(new_post_data);
+        .map_err(|e| {
+            error!("Error getting post from DB: {}", e);
+            JSONError::InternalServerError("")
+        })? {
+            posts.push(new_post_data);
+        }
     }
-    Ok(HttpResponse::Ok().json(JsonResult {
-        success: true,
-        data: Some(posts),
-        message: "Actions applied".to_string()
-    }))
+    Ok(HttpResponse::Ok().json(
+        ActionSuccess::new_with_data(
+            "Actions applied",
+            posts
+        )
+    ))
 }
 
 #[derive(Deserialize)]
@@ -460,7 +435,7 @@ pub(crate) async fn get_index(
             ).await
             .map_err(|e| {
                 error!("Error getting post from DB: {}", e);
-                actix_web::error::ErrorInternalServerError("")
+                JSONError::InternalServerError("")
             })?;
         return Ok(HttpResponse::Ok().json(IndexSearchResults {posts, total_results}));
     }
@@ -473,7 +448,7 @@ pub(crate) async fn get_index(
     ).await
         .map_err(|e| {
             error!("Error getting post from DB: {}", e);
-            actix_web::error::ErrorInternalServerError("")
+            JSONError::InternalServerError("")
         })?;
     Ok(HttpResponse::Ok().json(IndexPage {threads: threads.into_iter().map(|t| t.into()).collect()}))
 }
@@ -575,13 +550,13 @@ pub(crate) async fn get_file_object_storage(obc: web::Data<ObjectStorage>, path:
     let code = response_data.status_code();
     let data = response_data.bytes().to_owned();
     if code == 404 {
-        Err(actix_web::error::ErrorNotFound("404 Not Found (Object storage)"))
+        Err(actix_web::error::ErrorNotFound(""))
     } else if code == 200 {
         let region = obc.bucket.url();
         debug!("{}{}", region, path);
         Ok(HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(data))
     } else {
         error!("Error getting file ({}) from bucket: {}", path, code);
-        Err(actix_web::error::ErrorInternalServerError(""))
+        Err(actix_web::error::ErrorInternalServerError("").into())
     }
 }

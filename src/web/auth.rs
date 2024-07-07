@@ -129,7 +129,7 @@ impl ResponseError for RedirectError {
 }
 
 #[derive(Debug, Serialize)]
-struct JSONError {
+pub struct JSONError {
     success: bool,
     error: String,
     message: String,
@@ -151,6 +151,29 @@ impl ResponseError for JSONError {
 
     fn status_code(&self) -> actix_web::http::StatusCode {
         self.code
+    }
+}
+
+impl JSONError {
+    pub fn new(error: String, message: String, code: actix_web::http::StatusCode) -> JSONError {
+        JSONError {
+            success: false,
+            error,
+            message,
+            code
+        }
+    }
+    pub fn InternalServerError<T: ToString>(message: T) -> JSONError {
+        JSONError::new("Internal Server Error".to_string(), message.to_string(), actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
+    }
+    pub fn BadRequest<T: ToString>(message: T) -> JSONError {
+        JSONError::new("Bad Request".to_string(), message.to_string(), actix_web::http::StatusCode::BAD_REQUEST)
+    }
+    pub fn Unauthorized<T: ToString>(message: T) -> JSONError {
+        JSONError::new("Unauthorized".to_string(), message.to_string(), actix_web::http::StatusCode::UNAUTHORIZED)
+    }
+    pub fn NotFound<T: ToString>(message: T) -> JSONError {
+        JSONError::new("Not Found".to_string(), message.to_string(), actix_web::http::StatusCode::NOT_FOUND)
     }
 }
 
