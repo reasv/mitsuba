@@ -38,7 +38,6 @@ struct TemplateThreadIndex {
     pub threads: Vec<TemplateThreadIndexThread>,
     pub query_string: String
 }
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct TemplateLogin {
     pub boards: Vec<Board>,

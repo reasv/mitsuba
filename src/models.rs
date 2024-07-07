@@ -465,3 +465,11 @@ impl std::fmt::Display for UserRole {
         }
     }
 }
+
+pub struct StoredFile {
+    pub file_id: i64,
+    pub sha256: String,
+    pub file_ext: String,
+    pub is_thumbnail: bool,
+    pub hidden: bool,
+}

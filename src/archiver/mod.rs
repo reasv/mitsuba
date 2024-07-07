@@ -109,44 +109,40 @@ impl Archiver {
             // Try to avoid more images being downloaded while we're purging the board
             self.db_client.purge_board_backlogs(board_name).await?;
         }
-        
-        let full_files = self.db_client.get_files_exclusive_to_board(board_name).await?;
-        info!("Purging {} full files", full_files.len());
-        for file in &full_files {
-            // Double check in case the file was added by another board while we were iterating
-            if self.db_client.is_file_on_other_boards(&file.file_sha256, &file.ext, &board_name).await? {
-                info!("Skipping full file {}{} which was found on another board", file.file_sha256, file.ext);
-                continue;
-            }
-            if self.http_client.delete_downloaded_file(&file.file_sha256, &file.ext, false).await.is_ok() {
-                report.full_files_deleted += 1;
-                self.db_client.set_file_purged(&file.file_sha256, &file.ext).await?;
-                info!("Deleted full file {}{}", file.file_sha256, file.ext)
-            } else {
-                report.full_files_failed += 1;
-            }
-        }
 
-        if !only_full_images {
-            let thumbnail_hashes = self.db_client.get_thumbnails_exclusive_to_board(board_name).await?;
-            info!("Purging {} thumbnails", thumbnail_hashes.len());
-            for hash in &thumbnail_hashes {
-                // Double check in case the thumbnail was added by another board while we were iterating
-                if self.db_client.is_thumbnail_on_other_boards(hash, &".jpg".to_string(), &board_name).await? {
-                    info!("Skipping thumbnail {} which was found on another board", hash);
-                    continue;
-                }
-                if self.http_client.delete_downloaded_file(hash, &".jpg".to_string(), true).await.is_ok() {
-                    report.thumbnails_deleted += 1;
-                    self.db_client.set_thumbnail_purged(hash, &".jpg".to_string()).await?;
-                    info!("Deleted thumbnail {}", hash);
-                } else {
-                    report.thumbnails_failed += 1;
-                }
-            }
+        if only_full_images {
+            // Remove references to full images from posts belonging to this board
+            // This creates orphaned files that will be deleted later
+            let rows = self.db_client.remove_full_file_references_for_board(board_name).await?;
+            info!("Removed {} references to files from posts", rows);
+        } else {
             let removed_posts = self.db_client.purge_board_data(board_name).await?;
             info!("Purged {} posts", removed_posts);
             report.removed_posts = removed_posts;
+        }
+
+        let orphaned_files = self.db_client.get_orphaned_files().await?;
+        info!("Purging {} orphaned files", orphaned_files.len());
+        for file in &orphaned_files {
+            if self.db_client.is_file_orphaned(file.file_id).await? != true {
+                info!("Skipping file {}{} which is not orphaned", file.sha256, file.file_ext);
+                continue;
+            }
+            if self.http_client.delete_downloaded_file(&file.sha256, &file.file_ext, file.is_thumbnail).await.is_ok() {
+                self.db_client.delete_file(&file.sha256).await?;
+                if file.is_thumbnail {
+                    report.thumbnails_deleted += 1;
+                } else {
+                    report.full_files_deleted += 1;
+                }
+                info!("Deleted orphaned file (thumbnail: {}) {}{}", file.is_thumbnail, file.sha256, file.file_ext);
+            } else {
+                if file.is_thumbnail {
+                    report.thumbnails_failed += 1;
+                } else {
+                    report.full_files_failed += 1;
+                }
+            }
         }
         Ok(report)
     }

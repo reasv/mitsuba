@@ -63,7 +63,7 @@ impl Archiver {
                 thumbnail_sha256 = self.http_client.download_file_checksum(&job.thumbnail_url, &".jpg".to_string(), true).await?;
                 counter!("thumbnails_fetched", 1);
                 info!("Processed thumbnail for /{}/{}", job.board, job.no);
-                self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
+                self.db_client.add_post_file(&job.board, job.no, 0, &thumbnail_sha256, &".jpg".to_string(), true).await
                 .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
                 self.handle_blacklist(&job.board, job.no, &thumbnail_sha256, &".jpg".to_string(), true)
                 .await.map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
@@ -74,9 +74,9 @@ impl Archiver {
                 file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
                 counter!("files_fetched", 1);
                 info!("Processed full image for /{}/{}", job.board, job.no);
-                self.db_client.set_post_files(&job.board, job.no, &file_sha256, &thumbnail_sha256).await
+                self.db_client.add_post_file(&job.board, job.no, 0, &file_sha256, &job.ext, false).await
                 .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
-                self.handle_blacklist(&job.board, job.no, &thumbnail_sha256, &".jpg".to_string(), true)
+                self.handle_blacklist(&job.board, job.no, &thumbnail_sha256,  &job.ext, true)
                 .await.map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
             }
         }

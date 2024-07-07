@@ -8,7 +8,7 @@ use log::{debug, warn};
 #[allow(unused_imports)]
 use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
-use crate::models::User;
+use crate::models::{StoredFile, User};
 
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
@@ -83,8 +83,8 @@ impl DBClient {
             "
             SELECT
             count(*)
-            FROM posts
-            WHERE file_sha256 != ''
+            FROM files
+            WHERE is_thumbnail != false
             "
         ).fetch_one(&self.pool).await?;
         Ok(count.count.unwrap_or(0))
@@ -97,8 +97,8 @@ impl DBClient {
             "
             SELECT
             count(*)
-            FROM posts
-            WHERE thumbnail_sha256 != ''
+            FROM files
+            WHERE is_thumbnail = true
             "
         ).fetch_one(&self.pool).await?;
         Ok(count.count.unwrap_or(0))
@@ -110,9 +110,11 @@ impl DBClient {
         let count = sqlx::query_as!(Count,
             "
             SELECT
-            count(*)
+            COUNT(*)
             FROM posts
-            WHERE thumbnail_sha256 = ''
+            LEFT JOIN posts_files 
+            ON posts_files.post_id = posts.post_id
+            WHERE posts_files.thumbnail_id IS NULL
             AND tim != 0 AND filedeleted = 0 AND deleted_on = 0
             "
         ).fetch_one(&self.pool).await?;
@@ -123,9 +125,18 @@ impl DBClient {
         let posts_missing_full_images: Vec<Post> = sqlx::query_as!(Post,
             "
             SELECT
-            *
+            posts.*,
+            files.sha256 as file_sha256,
+            thumbnails.hidden as mitsuba_file_hidden,
+            thumbnails.sha256 as thumbnail_sha256
             FROM posts
-            WHERE file_sha256 = ''
+            LEFT JOIN posts_files
+            ON posts_files.post_id = posts.post_id
+            LEFT JOIN files
+            ON files.file_id = posts_files.file_id
+            LEFT JOIN files as thumbnails
+            ON thumbnails.file_id = posts_files.thumbnail_id
+            WHERE posts_files.file_id IS NULL
             AND board = $1
             AND tim != 0 AND filedeleted = 0 AND deleted_on = 0
             ",
@@ -175,13 +186,28 @@ impl DBClient {
     }
 
 
-    pub async fn get_latest_images(&self, limit: i64, offset: i64, boards: Vec<String>) -> anyhow::Result<Vec<Post>> {
+    pub async fn get_latest_images(
+        &self,
+        limit: i64,
+        offset: i64,
+        boards: Vec<String>
+    ) -> anyhow::Result<Vec<Post>> {
         let posts = sqlx::query_as!(Post,
             "
-            SELECT *
+            SELECT
+            posts.*,
+            files.sha256 as file_sha256,
+            thumbnails.hidden as mitsuba_file_hidden,
+            thumbnails.sha256 as thumbnail_sha256
             FROM posts
-            WHERE thumbnail_sha256 != '' AND board = ANY($1)
-            AND mitsuba_file_hidden = false
+            LEFT JOIN posts_files
+            ON posts_files.post_id = posts.post_id
+            LEFT JOIN files
+            ON files.file_id = posts_files.file_id
+            LEFT JOIN files as thumbnails
+            ON thumbnails.file_id = posts_files.thumbnail_id
+            WHERE thumbnails.sha256 != '' AND board = ANY($1)
+            AND thumbnails.hidden = false
             ORDER BY last_modified DESC
             LIMIT $2 OFFSET $3
             ",
@@ -396,8 +422,18 @@ impl DBClient {
     pub async fn image_tim_to_sha256(&self, board: &String, image_tim: i64, thumb: bool, remove_hidden: bool) -> anyhow::Result<Option<String>> {
         let post_opt = sqlx::query_as!(Post,
             "
-            SELECT *
+            SELECT
+            posts.*,
+            files.sha256 as file_sha256,
+            thumbnails.hidden as mitsuba_file_hidden,
+            thumbnails.sha256 as thumbnail_sha256
             FROM posts
+            LEFT JOIN posts_files
+            ON posts_files.post_id = posts.post_id
+            LEFT JOIN files
+            ON files.file_id = posts_files.file_id
+            LEFT JOIN files as thumbnails
+            ON thumbnails.file_id = posts_files.thumbnail_id
             WHERE board = $1
             AND tim = $2
             ",
@@ -427,8 +463,18 @@ impl DBClient {
     pub async fn get_post(&self, board: &String, post_no: i64, remove_hidden: bool) -> anyhow::Result<Option<Post>> {
         let post = sqlx::query_as!(Post,
             "
-            SELECT *
+            SELECT
+            posts.*,
+            files.sha256 as file_sha256,
+            thumbnails.hidden as mitsuba_file_hidden,
+            thumbnails.sha256 as thumbnail_sha256
             FROM posts
+            LEFT JOIN posts_files
+            ON posts_files.post_id = posts.post_id
+            LEFT JOIN files
+            ON files.file_id = posts_files.file_id
+            LEFT JOIN files as thumbnails
+            ON thumbnails.file_id = posts_files.thumbnail_id
             WHERE board = $1 AND no = $2
             ",
             board,
@@ -473,9 +519,9 @@ impl DBClient {
         // Set image hidden on all posts that contain the blacklisted file.
         let res2: u64 = sqlx::query!(
             "
-            UPDATE posts
-            SET mitsuba_file_hidden = true
-            WHERE file_sha256 = $1 OR thumbnail_sha256 = $1
+            UPDATE files
+            SET hidden = true
+            WHERE sha256 = $1
             ",
             sha256
         ).execute(&self.pool).await?.rows_affected();
@@ -508,9 +554,9 @@ impl DBClient {
         // Set image back to visible on all posts that contain the blacklisted file
         let res2: u64 = sqlx::query!(
             "
-            UPDATE posts
-            SET mitsuba_file_hidden = false
-            WHERE file_sha256 = $1 OR thumbnail_sha256 = $1
+            UPDATE files
+            SET hidden = false
+            WHERE sha256 = $1
             ",
             sha256
         ).execute(&self.pool).await?.rows_affected();
@@ -542,8 +588,18 @@ impl DBClient {
     pub async fn get_thread(&self, board: &String, no: i64, remove_hidden: bool) -> anyhow::Result<Option<Thread>> {
         let posts = sqlx::query_as!(Post,
             "
-            SELECT *
+            SELECT
+            posts.*,
+            files.sha256 as file_sha256,
+            thumbnails.hidden as mitsuba_file_hidden,
+            thumbnails.sha256 as thumbnail_sha256
             FROM posts
+            LEFT JOIN posts_files
+            ON posts_files.post_id = posts.post_id
+            LEFT JOIN files
+            ON files.file_id = posts_files.file_id
+            LEFT JOIN files as thumbnails
+            ON thumbnails.file_id = posts_files.thumbnail_id
             WHERE board = $1
             AND (no = $2 OR resto = $2)
             ORDER BY no ASC
@@ -565,49 +621,105 @@ impl DBClient {
         }
         Ok(Some(thread))
     }
-    pub async fn set_post_files(&self, board: &String, no: i64, file_sha256: &String, thumbnail_sha256: &String) -> anyhow::Result<Option<Post>> {
-        let post = sqlx::query_as!(Post,
+    pub async fn add_post_file(&self, board: &String, no: i64, idx: i32, sha256: &String, ext: &String, is_thumbnail: bool) -> anyhow::Result<u64> {
+        // Obtain the post_id for the post
+        let post_id = sqlx::query!(
             "
-            UPDATE posts
-            SET 
-            file_sha256 = $1,
-            thumbnail_sha256 = $2
-            WHERE board = $3 AND no = $4
-            RETURNING *
+            SELECT post_id FROM posts WHERE board = $1 AND no = $2
             ",
-            file_sha256,
-            thumbnail_sha256,
             board,
             no
-        ).fetch_optional(&self.pool)
-        .await?;
-        Ok(post)
+        ).fetch_optional(&self.pool).await?
+        .map(|f| f.post_id);
+        
+        if post_id.is_none() {
+            return Ok(0);
+        }
+        // Insert the files into the files table if they don't exist
+        let file_id = if sha256.is_empty() {
+            None
+        } else {
+            sqlx::query!(
+                "
+                INSERT INTO files (sha256, is_thumbnail, hidden, file_ext)
+                VALUES ($1, $2, false, $3)
+                ON CONFLICT(sha256) DO NOTHING
+                RETURNING files.file_id;
+                ",
+                sha256,
+                is_thumbnail,
+                ext
+            ).fetch_optional(&self.pool).await?
+            .map(|f| f.file_id)
+        };
+        let res: u64;
+        if let Some(file_id) = file_id {
+            // Insert the file references into the posts_files table
+            if is_thumbnail {
+                res = sqlx::query!(
+                    "
+                    INSERT INTO posts_files (post_id, thumbnail_id, idx, file_id)
+                    VALUES ($1, $2, $3, NULL)
+                    ON CONFLICT(post_id, idx) DO UPDATE
+                    SET thumbnail_id = $2
+                    ",
+                    post_id,
+                    file_id,
+                    idx
+                ).execute(&self.pool).await?
+                .rows_affected();
+            } else {
+                res = sqlx::query!(
+                    "
+                    INSERT INTO posts_files (post_id, file_id, idx, thumbnail_id)
+                    VALUES ($1, $2, $3, NULL)
+                    ON CONFLICT(post_id, idx) DO UPDATE
+                    SET file_id = $2
+                    ",
+                    post_id,
+                    file_id,
+                    idx
+                ).execute(&self.pool).await?
+                .rows_affected();
+            }
+        } else {
+            res = 0;
+        }
+        Ok(res)
     }
-    pub async fn set_post_deleted(&self, board: &String, no: i64, deleted_time: i64) -> anyhow::Result<Option<Post>> {
-        let post = sqlx::query_as!(Post,
+    pub async fn set_post_deleted(&self, board: &String, no: i64, deleted_time: i64) -> anyhow::Result<Option<(i64, String)>> {
+        struct PostId {
+            no: i64,
+            board: String
+        }
+        let post = sqlx::query_as!(PostId,
             "
             UPDATE posts
             SET 
             deleted_on = $1
             WHERE board = $2 AND no = $3
-            RETURNING *
+            RETURNING no, board
             ",
             deleted_time,
             board,
             no
         ).fetch_optional(&self.pool)
         .await?;
-        Ok(post)
+        Ok(post.map(|p| (p.no, p.board)))
     }
-    pub async fn set_missing_posts_deleted(&self, board: &String, thread_no: i64, current_posts: Vec<i64>, deleted_time: i64) -> anyhow::Result<Vec<Post>> {
+    pub async fn set_missing_posts_deleted(&self, board: &String, thread_no: i64, current_posts: Vec<i64>, deleted_time: i64) -> anyhow::Result<Vec<(i64, String)>> {
         // Given the current list of post ids in a thread, it sets all posts not in the list as deleted.
-        let post = sqlx::query_as!(Post,
+        struct PostId {
+            no: i64,
+            board: String
+        }
+        let posts = sqlx::query_as!(PostId,
             "
             UPDATE posts
             SET 
             deleted_on = $1
             WHERE board = $2 AND resto = $3 AND deleted_on = 0 AND no != ALL($4)
-            RETURNING *
+            RETURNING posts.no as no, posts.board as board
             ",
             deleted_time,
             board,
@@ -615,110 +727,69 @@ impl DBClient {
             &current_posts
         ).fetch_all(&self.pool)
         .await?;
-        Ok(post)
+        Ok(posts.into_iter().map(|p| (p.no, p.board)).collect())
     }
-    pub async fn get_files_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<File>> {
-        struct FileOpt {
-            file_sha256: Option<String>,
-            ext: Option<String>,
-        }
-        let files_opt: Vec<FileOpt> = sqlx::query_as!(FileOpt,
-            "
-            SELECT file_sha256, ext FROM posts WHERE board = $1 and file_sha256 != ''
-            EXCEPT
-            SELECT file_sha256, ext FROM posts WHERE board != $1 and file_sha256 != ''
-            ",
-            board
-            ).fetch_all(&self.pool)
-            .await?;
 
-        let files: Vec<File> = files_opt
-        .into_iter()
-        .filter_map(|h| {
-            if let (Some(file_sha256), Some(ext)) = (h.file_sha256, h.ext) {
-                Some(File { file_sha256, ext })
-            } else {
-                None
-            }
-        })
-        .collect();
+    pub async fn get_orphaned_files(&self) -> anyhow::Result<Vec<StoredFile>> {
+        let files = sqlx::query_as!(StoredFile,
+            "
+            SELECT
+            files.file_id, 
+            files.sha256,
+            files.hidden,
+            files.is_thumbnail,
+            files.file_ext
+            FROM files
+            LEFT JOIN posts_files pf1 ON files.file_id = pf1.file_id
+            LEFT JOIN posts_files pf2 ON files.file_id = pf2.thumbnail_id
+            GROUP BY files.file_id
+            HAVING COUNT(pf1.file_id) = 0 AND COUNT(pf2.thumbnail_id) = 0;
+            "
+        ).fetch_all(&self.pool)
+        .await?;
         Ok(files)
     }
 
-    pub async fn get_thumbnails_exclusive_to_board(&self, board: &String) -> anyhow::Result<Vec<String>> {
+    pub async fn is_file_orphaned(&self, file_id: i64) -> anyhow::Result<bool> {
         struct Sha256Field {
-            thumbnail_sha256: Option<String>
+            post_id: i64
         }
         let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
             "
-            SELECT thumbnail_sha256 FROM posts WHERE board = $1 and thumbnail_sha256 != ''
-            EXCEPT
-            SELECT thumbnail_sha256 FROM posts WHERE board != $1 and thumbnail_sha256 != ''
+            SELECT post_id FROM posts_files WHERE file_id = $1 OR thumbnail_id = $1
             ",
-            board
+            file_id
             ).fetch_all(&self.pool)
             .await?;
-        Ok(hashes.into_iter().filter_map(|h| h.thumbnail_sha256).collect())
+        Ok(hashes.is_empty())
     }
 
-    pub async fn is_file_on_other_boards(&self, sha256: &String, ext: &String, board: &String) -> anyhow::Result<bool> {
-        struct Sha256Field {
-            file_sha256: Option<String>
-        }
-        let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
-            "
-            SELECT file_sha256 FROM posts WHERE file_sha256 = $1 AND ext = $2 AND board != $3
-            ",
-            sha256,
-            ext,
-            board
-            ).fetch_all(&self.pool)
-            .await?;
-        Ok(!hashes.is_empty())
-    }
-
-    pub async fn is_thumbnail_on_other_boards(&self, sha256: &String, ext: &String, board: &String) -> anyhow::Result<bool> {
-        struct Sha256Field {
-            thumbnail_sha256: Option<String>
-        }
-        let hashes: Vec<Sha256Field> = sqlx::query_as!(Sha256Field,
-            "
-            SELECT thumbnail_sha256 FROM posts WHERE thumbnail_sha256 = $1 AND ext = $2 AND board != $3
-            ",
-            sha256,
-            ext,
-            board
-            ).fetch_all(&self.pool)
-            .await?;
-        Ok(!hashes.is_empty())
-    }
-
-    pub async fn set_file_purged(&self, sha256: &String, ext: &String) -> anyhow::Result<u64> {
+    pub async fn remove_full_file_references_for_board(&self, board: &String) -> anyhow::Result<u64> {
         let res: u64 = sqlx::query!(
             "
-            UPDATE posts SET file_sha256 = '' WHERE file_sha256 = $1 AND ext = $2
+            UPDATE posts_files
+            SET file_id = NULL
+            WHERE post_id IN (SELECT post_id FROM posts WHERE board = $1)
             ",
-            sha256,
-            ext
+            board
         ).execute(&self.pool)
         .await?
         .rows_affected();
         Ok(res)
     }
 
-    pub async fn set_thumbnail_purged(&self, sha256: &String, ext: &String) -> anyhow::Result<u64> {
+    pub async fn delete_file(&self, sha256: &String) -> anyhow::Result<u64> {
         let res: u64 = sqlx::query!(
             "
-            UPDATE posts SET thumbnail_sha256 = '' WHERE thumbnail_sha256 = $1 AND ext = $2
+            DELETE FROM files WHERE sha256 = $1
             ",
-            sha256,
-            ext
+            sha256
         ).execute(&self.pool)
         .await?
         .rows_affected();
         Ok(res)
     }
-    
+
     async fn purge_board_posts(&self, board_name: &String) -> anyhow::Result<u64> {
         let res: u64 = sqlx::query!(
             "
@@ -783,7 +854,10 @@ impl DBClient {
                 debug!("Post has not changed, skipped (/{}/{})", entry.board, entry.no);
                 continue;
             }
-            let post = sqlx::query_as!(Post,
+            struct PostId {
+                post_id: i64
+            }
+            let _post_id = sqlx::query_as!(PostId,
                 "
                 INSERT INTO posts(
                     board, -- 1
@@ -825,13 +899,11 @@ impl DBClient {
                     archived, -- 37
                     archived_on, -- 38
                     last_modified, -- 39
-                    file_sha256, -- 40
-                    thumbnail_sha256, -- 41
-                    deleted_on -- 42
+                    deleted_on -- 40
                 )
                 VALUES
                 ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
-                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42)
+                $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40)
                 ON CONFLICT (board, no) DO 
                 UPDATE 
                 SET
@@ -849,10 +921,10 @@ impl DBClient {
                 archived = $37,
                 archived_on = $38,
                 last_modified = $39,
-                deleted_on = $42
+                deleted_on = $40
 
                 WHERE posts.board = $1 AND posts.no = $2
-                RETURNING *;
+                RETURNING post_id;
                 ",
                 entry.board, //1
                 entry.no, //2
@@ -893,9 +965,7 @@ impl DBClient {
                 entry.archived, //37
                 entry.archived_on, //38
                 entry.last_modified, //39
-                entry.file_sha256, //40,
-                entry.thumbnail_sha256, //41
-                entry.deleted_on // 42
+                entry.deleted_on // 40
             )
             .fetch_one(&self.pool)
             .await?;
@@ -910,29 +980,73 @@ impl DBClient {
             self.post_hashes.insert(hash);
             gauge!("post_hashes", self.post_hashes.len() as f64);
             // we will only return new or updated posts.
-            posts.push(post);
+            if let Some(post) = self.get_post(&entry.board, entry.no, false).await? {
+                posts.push(post);
+            }
         }
         
         Ok(posts)
     }
     pub async fn set_post_hidden_status(&self, board: &String, no: i64, hidden: bool, com_hidden: bool, file_hidden: bool) -> anyhow::Result<u64> {
-        let res = sqlx::query!(
+        let mut res = sqlx::query!(
             "
             UPDATE posts
             SET 
             mitsuba_post_hidden = $1,
-            mitsuba_com_hidden = $2,
-            mitsuba_file_hidden = $3
-            WHERE board = $4 AND no = $5
+            mitsuba_com_hidden = $2
+            WHERE board = $3 AND no = $4
             ",
             hidden,
             com_hidden,
-            file_hidden,
             board,
             no
         ).execute(&self.pool)
         .await?
         .rows_affected();
+        struct FileIds {
+            file_id: Option<i64>,
+            thumbnail_id: Option<i64>
+        }
+        // Retrieve the image for this post and set it hidden if it exists.
+        let file_ids = sqlx::query_as!(FileIds,
+            "
+            SELECT
+            posts_files.thumbnail_id as thumbnail_id,
+            posts_files.file_id as file_id
+            FROM posts
+            LEFT JOIN posts_files
+            ON posts_files.post_id = posts.post_id
+            WHERE board = $1 AND no = $2
+            ",
+            board,
+            no
+        ).fetch_optional(&self.pool).await?;
+
+        if let Some(file_ids) = file_ids {
+            if let Some(file_id) = file_ids.file_id {
+                res += sqlx::query!(
+                    "
+                    UPDATE files
+                    SET hidden = $1
+                    WHERE file_id = $2
+                    ",
+                    file_hidden,
+                    file_id
+                ).execute(&self.pool).await?.rows_affected();
+            }
+            if let Some(thumbnail_id) = file_ids.thumbnail_id {
+                res += sqlx::query!(
+                    "
+                    UPDATE files
+                    SET hidden = $1
+                    WHERE file_id = $2
+                    ",
+                    file_hidden,
+                    thumbnail_id
+                ).execute(&self.pool).await?.rows_affected();
+            }
+        }
+
         Ok(res)
     }
 
@@ -966,8 +1080,18 @@ impl DBClient {
         let posts = sqlx::query_as!(
             Post,
             "
-            SELECT *
+            SELECT
+            posts.*,
+            files.sha256 as file_sha256,
+            thumbnails.hidden as mitsuba_file_hidden,
+            thumbnails.sha256 as thumbnail_sha256
             FROM posts
+            LEFT JOIN posts_files
+            ON posts_files.post_id = posts.post_id
+            LEFT JOIN files
+            ON files.file_id = posts_files.file_id
+            LEFT JOIN files as thumbnails
+            ON thumbnails.file_id = posts_files.thumbnail_id
             WHERE board = $1
             AND (
                 $2 = '' OR to_tsvector('english', com) @@ plainto_tsquery('english', $2)
@@ -1221,16 +1345,16 @@ mod tests {
         assert_eq!(0usize, dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no, post2.no, post3.no, post4.no], 10).await.unwrap().len());
 
         let nos: Vec<(i64, i64)> = dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no, post2.no, post4.no], 10).await
-        .unwrap().iter().map(|p| (p.no, p.deleted_on)).collect();
+        .unwrap().iter().map(|p| (p.0, 10)).collect();
         assert_eq!(1, nos.len());
         assert_eq!((3, 10), nos[0]);
 
         let nos: Vec<(i64, i64)> = dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no, post2.no], 20).await
-        .unwrap().iter().map(|p| (p.no, p.deleted_on)).collect();
+        .unwrap().iter().map(|p| (p.0, 20)).collect();
         assert_eq!(1, nos.len());
         assert_eq!((4, 20), nos[0]);
         let nos: Vec<(i64, i64)> = dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no], 30).await
-        .unwrap().iter().map(|p| (p.no, p.deleted_on)).collect();
+        .unwrap().iter().map(|p| (p.0, 30)).collect();
         assert_eq!(1, nos.len());
         assert_eq!((2, 30), nos[0]);
         assert_eq!(0usize, dbc.set_missing_posts_deleted(&post1.board, post1.resto, vec![post1.no], 10).await.unwrap().len());
@@ -1289,15 +1413,6 @@ mod tests {
             post.last_modified = i;
             dbc.insert_posts(&vec![post.clone()]).await.unwrap();
         }
-    }
-    #[test]
-    fn test_image_filtering(){
-        run_async(get_images_board());
-    }
-    async fn get_images_board(){
-        let dbc = DBClient::new().await;
-        let hashes = dbc.get_files_exclusive_to_board(&"vip".to_string()).await.unwrap();
-        println!("{}", hashes.len());
     }
 
     #[test]

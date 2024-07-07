@@ -1,0 +1,2 @@
+ALTER TABLE posts_files
+ALTER COLUMN post_id SET NOT NULL;
