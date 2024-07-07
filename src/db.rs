@@ -128,14 +128,33 @@ impl DBClient {
             posts.*,
             files.sha256 as file_sha256,
             thumbnails.hidden as mitsuba_file_hidden,
-            thumbnails.sha256 as thumbnail_sha256
+            thumbnails.sha256 as thumbnail_sha256,
+            CASE 
+                WHEN 
+                blacklist_thumbnail.sha256 IS NOT NULL 
+                OR 
+                blacklist_file.sha256 IS NOT NULL
+                THEN true
+                ELSE false
+            END AS mitsuba_file_blacklisted
             FROM posts
+            
             LEFT JOIN posts_files
             ON posts_files.post_id = posts.post_id
+            AND posts_files.idx = 0
+            
             LEFT JOIN files
             ON files.file_id = posts_files.file_id
+            
             LEFT JOIN files as thumbnails
             ON thumbnails.file_id = posts_files.thumbnail_id
+
+            LEFT JOIN file_blacklist as blacklist_thumbnail
+            ON thumbnails.sha256 = blacklist_thumbnail.sha256
+            
+            LEFT JOIN file_blacklist as blacklist_file
+            ON files.sha256 = blacklist_file.sha256
+
             WHERE posts_files.file_id IS NULL
             AND board = $1
             AND tim != 0 AND filedeleted = 0 AND deleted_on = 0
@@ -198,16 +217,38 @@ impl DBClient {
             posts.*,
             files.sha256 as file_sha256,
             thumbnails.hidden as mitsuba_file_hidden,
-            thumbnails.sha256 as thumbnail_sha256
+            thumbnails.sha256 as thumbnail_sha256,
+            CASE 
+                WHEN 
+                blacklist_thumbnail.sha256 IS NOT NULL 
+                OR 
+                blacklist_file.sha256 IS NOT NULL
+                THEN true
+                ELSE false
+            END AS mitsuba_file_blacklisted
             FROM posts
+            
             JOIN posts_files
             ON posts_files.post_id = posts.post_id
+            AND posts_files.idx = 0
+            
             LEFT JOIN files
             ON files.file_id = posts_files.file_id
-            JOIN files as thumbnails
+            
+            LEFT JOIN files as thumbnails
             ON thumbnails.file_id = posts_files.thumbnail_id
+
+            LEFT JOIN file_blacklist as blacklist_thumbnail
+            ON thumbnails.sha256 = blacklist_thumbnail.sha256
+            
+            LEFT JOIN file_blacklist as blacklist_file
+            ON files.sha256 = blacklist_file.sha256
+
             WHERE board = ANY($1)
             AND thumbnails.hidden = false
+            AND blacklist_thumbnail.sha256 IS NULL
+            AND blacklist_file.sha256 IS NULL
+            AND thumbnails.file_id IS NOT NULL
             ORDER BY last_modified DESC
             LIMIT $2 OFFSET $3
             ",
@@ -426,14 +467,33 @@ impl DBClient {
             posts.*,
             files.sha256 as file_sha256,
             thumbnails.hidden as mitsuba_file_hidden,
-            thumbnails.sha256 as thumbnail_sha256
+            thumbnails.sha256 as thumbnail_sha256,
+            CASE 
+                WHEN 
+                blacklist_thumbnail.sha256 IS NOT NULL 
+                OR 
+                blacklist_file.sha256 IS NOT NULL
+                THEN true
+                ELSE false
+            END AS mitsuba_file_blacklisted
             FROM posts
+            
             LEFT JOIN posts_files
             ON posts_files.post_id = posts.post_id
+            AND posts_files.idx = 0
+            
             LEFT JOIN files
             ON files.file_id = posts_files.file_id
+            
             LEFT JOIN files as thumbnails
             ON thumbnails.file_id = posts_files.thumbnail_id
+
+            LEFT JOIN file_blacklist as blacklist_thumbnail
+            ON thumbnails.sha256 = blacklist_thumbnail.sha256
+            
+            LEFT JOIN file_blacklist as blacklist_file
+            ON files.sha256 = blacklist_file.sha256
+
             WHERE board = $1
             AND tim = $2
             ",
@@ -467,14 +527,33 @@ impl DBClient {
             posts.*,
             files.sha256 as file_sha256,
             thumbnails.hidden as mitsuba_file_hidden,
-            thumbnails.sha256 as thumbnail_sha256
+            thumbnails.sha256 as thumbnail_sha256,
+            CASE 
+                WHEN 
+                blacklist_thumbnail.sha256 IS NOT NULL 
+                OR 
+                blacklist_file.sha256 IS NOT NULL
+                THEN true
+                ELSE false
+            END AS mitsuba_file_blacklisted
             FROM posts
+            
             LEFT JOIN posts_files
             ON posts_files.post_id = posts.post_id
+            AND posts_files.idx = 0
+            
             LEFT JOIN files
             ON files.file_id = posts_files.file_id
+            
             LEFT JOIN files as thumbnails
             ON thumbnails.file_id = posts_files.thumbnail_id
+
+            LEFT JOIN file_blacklist as blacklist_thumbnail
+            ON thumbnails.sha256 = blacklist_thumbnail.sha256
+            
+            LEFT JOIN file_blacklist as blacklist_file
+            ON files.sha256 = blacklist_file.sha256
+
             WHERE board = $1 AND no = $2
             ",
             board,
@@ -592,14 +671,33 @@ impl DBClient {
             posts.*,
             files.sha256 as file_sha256,
             thumbnails.hidden as mitsuba_file_hidden,
-            thumbnails.sha256 as thumbnail_sha256
+            thumbnails.sha256 as thumbnail_sha256,
+            CASE 
+                WHEN 
+                blacklist_thumbnail.sha256 IS NOT NULL 
+                OR 
+                blacklist_file.sha256 IS NOT NULL
+                THEN true
+                ELSE false
+            END AS mitsuba_file_blacklisted
             FROM posts
+            
             LEFT JOIN posts_files
             ON posts_files.post_id = posts.post_id
+            AND posts_files.idx = 0
+            
             LEFT JOIN files
             ON files.file_id = posts_files.file_id
+            
             LEFT JOIN files as thumbnails
             ON thumbnails.file_id = posts_files.thumbnail_id
+
+            LEFT JOIN file_blacklist as blacklist_thumbnail
+            ON thumbnails.sha256 = blacklist_thumbnail.sha256
+            
+            LEFT JOIN file_blacklist as blacklist_file
+            ON files.sha256 = blacklist_file.sha256
+
             WHERE board = $1
             AND (no = $2 OR resto = $2)
             ORDER BY no ASC
@@ -1084,14 +1182,33 @@ impl DBClient {
             posts.*,
             files.sha256 as file_sha256,
             thumbnails.hidden as mitsuba_file_hidden,
-            thumbnails.sha256 as thumbnail_sha256
+            thumbnails.sha256 as thumbnail_sha256,
+            CASE 
+                WHEN 
+                blacklist_thumbnail.sha256 IS NOT NULL 
+                OR 
+                blacklist_file.sha256 IS NOT NULL
+                THEN true
+                ELSE false
+            END AS mitsuba_file_blacklisted
             FROM posts
+            
             LEFT JOIN posts_files
             ON posts_files.post_id = posts.post_id
+            AND posts_files.idx = 0
+            
             LEFT JOIN files
             ON files.file_id = posts_files.file_id
+            
             LEFT JOIN files as thumbnails
             ON thumbnails.file_id = posts_files.thumbnail_id
+
+            LEFT JOIN file_blacklist as blacklist_thumbnail
+            ON thumbnails.sha256 = blacklist_thumbnail.sha256
+            
+            LEFT JOIN file_blacklist as blacklist_file
+            ON files.sha256 = blacklist_file.sha256
+
             WHERE board = $1
             AND (
                 $2 = '' OR to_tsvector('english', com) @@ plainto_tsquery('english', $2)

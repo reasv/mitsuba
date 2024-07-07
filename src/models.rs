@@ -97,6 +97,8 @@ pub struct Post {
     pub mitsuba_com_hidden: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub mitsuba_file_hidden: bool,
+    #[serde(default, skip_serializing_if = "is_false_or_none")]
+    pub mitsuba_file_blacklisted: Option<bool>
 }
 
 fn is_empty_string(s: &String) -> bool {
@@ -105,6 +107,13 @@ fn is_empty_string(s: &String) -> bool {
 
 fn is_zero(i: &i64) -> bool {
     *i == 0
+}
+
+fn is_false_or_none(b: &Option<bool>) -> bool {
+    match b {
+        Some(b) => !*b,
+        None => true
+    }
 }
 
 fn is_false(b: &bool) -> bool {
@@ -465,5 +474,6 @@ pub struct StoredFile {
     pub sha256: String,
     pub file_ext: String,
     pub is_thumbnail: bool,
+    #[allow(dead_code)]
     pub hidden: bool,
 }
