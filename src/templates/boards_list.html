@@ -11,14 +11,12 @@ document.getElementById('logoutLink')
     fetch('/_mitsuba/logout.json', {
         method: 'PUT'
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            window.location.href = '/';
+    .then(response => 
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            response.json().then(data => console.error(data));
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
+    )
 });
 </script>

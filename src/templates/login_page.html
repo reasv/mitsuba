@@ -37,34 +37,35 @@
                 </form>
             </div>
             <script>
-                document.getElementById("login-button").addEventListener('click', function(event) {
+                document.getElementById("login-button").addEventListener('click', async function(event) {
                     event.preventDefault();
 
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
 
-                    fetch('/_mitsuba/login.json', {
+                    let response = await fetch('/_mitsuba/login.json', {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({ username, password })
                     })
-                    .then(response => response.json())
-                    .then(data => {
+
+                    if (!response.ok) {
                         const messageDiv = document.getElementById('message');
-                        if (data.success) {
-                            const urlParams = new URLSearchParams(window.location.search);
-                            const fromUrl = urlParams.get('from_path');
-                            window.location.href = fromUrl ? fromUrl : '/';
-                        } else {
-                            messageDiv.textContent = data.message;
+                        try {
+                            const data = await response.json();
+                            document.getElementById('message').textContent = data.message;
+                        } catch (error) {
+                            console.error('Error:', error);
+                            document.getElementById('message').textContent = 'An error occurred. Please try again.';
                         }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        document.getElementById('message').textContent = 'An error occurred. Please try again.';
-                    });
+                        return
+                    }
+
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const fromUrl = urlParams.get('from_path');
+                    window.location.href = fromUrl ? fromUrl : '/';
                 });
             </script>
         </div>
