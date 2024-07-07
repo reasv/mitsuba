@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE posts\n            SET \n            deleted_on = $1\n            WHERE board = $2 AND resto = $3 AND deleted_on = 0 AND no != ALL($4)\n            RETURNING posts.no as no, posts.board as board\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "no",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "board",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8",
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "561078242be2b6403658ab8344acb0b45bb78aea6807623303172c3e7c38fe19"
+}

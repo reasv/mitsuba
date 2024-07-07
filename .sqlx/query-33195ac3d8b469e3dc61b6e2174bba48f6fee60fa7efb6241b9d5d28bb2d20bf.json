@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE posts\n            SET \n            deleted_on = $1\n            WHERE board = $2 AND no = $3\n            RETURNING no, board\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "no",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "board",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "33195ac3d8b469e3dc61b6e2174bba48f6fee60fa7efb6241b9d5d28bb2d20bf"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE posts_files\n            SET file_id = NULL\n            WHERE post_id IN (SELECT post_id FROM posts WHERE board = $1)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "168982d846be3629739c1917ab510fdf45b355ddb6cf132c16c3522ab4fcf411"
+}

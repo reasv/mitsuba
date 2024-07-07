@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE files\n            SET hidden = false\n            WHERE sha256 = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "156f839e60adae80c4c526169f49e28085c68224860e2a9ddd1d9d5d70c94542"
+}

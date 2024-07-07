@@ -344,12 +344,6 @@ pub struct BoardsStatus {
     pub boards: Vec<Board>,
 }
 
-pub struct File {
-    pub file_sha256: String,
-    pub ext: String
-}
-
-
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct PurgeReport {
     pub full_files_deleted: u64,

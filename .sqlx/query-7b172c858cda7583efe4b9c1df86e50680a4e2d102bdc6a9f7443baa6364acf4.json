@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n            COUNT(*)\n            FROM posts\n            LEFT JOIN posts_files \n            ON posts_files.post_id = posts.post_id\n            WHERE posts_files.thumbnail_id IS NULL\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7b172c858cda7583efe4b9c1df86e50680a4e2d102bdc6a9f7443baa6364acf4"
+}

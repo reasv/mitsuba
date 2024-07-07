@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO posts_files (post_id, thumbnail_id, idx, file_id)\n                    VALUES ($1, $2, $3, NULL)\n                    ON CONFLICT(post_id, idx) DO UPDATE\n                    SET thumbnail_id = $2\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "64c329c36139eefee2c39ccf7408c611a7c7a8071070f95b02d8ab2f31ce9cbf"
+}

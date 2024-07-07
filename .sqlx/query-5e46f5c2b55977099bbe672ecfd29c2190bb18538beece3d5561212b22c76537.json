@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE files\n                    SET hidden = $1\n                    WHERE file_id = $2\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5e46f5c2b55977099bbe672ecfd29c2190bb18538beece3d5561212b22c76537"
+}

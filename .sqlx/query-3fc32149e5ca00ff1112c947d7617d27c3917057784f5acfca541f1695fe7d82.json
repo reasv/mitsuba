@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE posts\n            SET \n            deleted_on = $1\n            WHERE board = $2 AND resto = $3 AND deleted_on = 0 AND no != ALL($4)\n            RETURNING *\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256\n            FROM posts\n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n            WHERE posts_files.file_id IS NULL\n            AND board = $1\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
   "describe": {
     "columns": [
       {
@@ -205,41 +205,38 @@
       },
       {
         "ordinal": 40,
-        "name": "file_sha256",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 41,
-        "name": "thumbnail_sha256",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 42,
         "name": "deleted_on",
         "type_info": "Int8"
       },
       {
-        "ordinal": 43,
+        "ordinal": 41,
         "name": "mitsuba_post_hidden",
         "type_info": "Bool"
       },
       {
-        "ordinal": 44,
+        "ordinal": 42,
         "name": "mitsuba_com_hidden",
         "type_info": "Bool"
       },
       {
-        "ordinal": 45,
+        "ordinal": 43,
+        "name": "file_sha256",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 44,
         "name": "mitsuba_file_hidden",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 45,
+        "name": "thumbnail_sha256",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8",
-        "Text",
-        "Int8",
-        "Int8Array"
+        "Text"
       ]
     },
     "nullable": [
@@ -291,5 +288,5 @@
       false
     ]
   },
-  "hash": "1533d4513123fa112298e15460c0a1915fc29c9177c637b965ca900693534123"
+  "hash": "3fc32149e5ca00ff1112c947d7617d27c3917057784f5acfca541f1695fe7d82"
 }

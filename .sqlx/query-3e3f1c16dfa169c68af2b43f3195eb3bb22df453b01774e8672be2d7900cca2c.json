@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE posts\n            SET \n            file_sha256 = $1,\n            thumbnail_sha256 = $2\n            WHERE board = $3 AND no = $4\n            RETURNING *\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256\n            FROM posts\n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n            WHERE board = $1\n            AND (no = $2 OR resto = $2)\n            ORDER BY no ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -205,39 +205,37 @@
       },
       {
         "ordinal": 40,
-        "name": "file_sha256",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 41,
-        "name": "thumbnail_sha256",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 42,
         "name": "deleted_on",
         "type_info": "Int8"
       },
       {
-        "ordinal": 43,
+        "ordinal": 41,
         "name": "mitsuba_post_hidden",
         "type_info": "Bool"
       },
       {
-        "ordinal": 44,
+        "ordinal": 42,
         "name": "mitsuba_com_hidden",
         "type_info": "Bool"
       },
       {
-        "ordinal": 45,
+        "ordinal": 43,
+        "name": "file_sha256",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 44,
         "name": "mitsuba_file_hidden",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 45,
+        "name": "thumbnail_sha256",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
         "Text",
         "Int8"
       ]
@@ -291,5 +289,5 @@
       false
     ]
   },
-  "hash": "b4aad47a26fa2a0a994fd508d50becec7cf118bfb7537d5ac199ec987c9481aa"
+  "hash": "3e3f1c16dfa169c68af2b43f3195eb3bb22df453b01774e8672be2d7900cca2c"
 }

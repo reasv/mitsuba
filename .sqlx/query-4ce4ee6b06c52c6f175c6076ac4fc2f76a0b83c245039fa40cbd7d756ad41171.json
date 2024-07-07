@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n            posts_files.thumbnail_id as thumbnail_id,\n            posts_files.file_id as file_id\n            FROM posts\n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            WHERE board = $1 AND no = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "thumbnail_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "file_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "4ce4ee6b06c52c6f175c6076ac4fc2f76a0b83c245039fa40cbd7d756ad41171"
+}

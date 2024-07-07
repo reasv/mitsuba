@@ -12,7 +12,7 @@ use crate::models::{StoredFile, User};
 
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
-     ThreadInfo, ThreadJob, ThreadNo, File, UserRole};
+     ThreadInfo, ThreadJob, ThreadNo, UserRole};
 
 use crate::util::get_post_image_info;
 #[allow(unused_imports)]

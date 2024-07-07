@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n            files.file_id, \n            files.sha256,\n            files.hidden,\n            files.is_thumbnail,\n            files.file_ext\n            FROM files\n            LEFT JOIN posts_files pf1 ON files.file_id = pf1.file_id\n            LEFT JOIN posts_files pf2 ON files.file_id = pf2.thumbnail_id\n            GROUP BY files.file_id\n            HAVING COUNT(pf1.file_id) = 0 AND COUNT(pf2.thumbnail_id) = 0;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "sha256",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "hidden",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_thumbnail",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "file_ext",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5c9fe6ee7f9b6223fad26fab80e924d279f2eff8c768c9c2a0e6add43ba47275"
+}

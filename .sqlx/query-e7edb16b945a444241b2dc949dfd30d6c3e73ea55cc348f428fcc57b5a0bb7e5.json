@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            *\n            FROM posts\n            WHERE file_sha256 = ''\n            AND board = $1\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256\n            FROM posts\n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n            WHERE board = $1\n            AND (\n                $2 = '' OR to_tsvector('english', com) @@ plainto_tsquery('english', $2)\n                OR $3 = '' OR to_tsvector('english', name) @@ plainto_tsquery('english', $3)\n                OR $4 = '' OR to_tsvector('english', sub) @@ plainto_tsquery('english', $4)\n                OR $5 = '' OR to_tsvector('english', filename) @@ plainto_tsquery('english', $5)\n            )\n            ORDER BY time DESC\n            LIMIT $6 OFFSET $7\n            ",
   "describe": {
     "columns": [
       {
@@ -205,38 +205,44 @@
       },
       {
         "ordinal": 40,
-        "name": "file_sha256",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 41,
-        "name": "thumbnail_sha256",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 42,
         "name": "deleted_on",
         "type_info": "Int8"
       },
       {
-        "ordinal": 43,
+        "ordinal": 41,
         "name": "mitsuba_post_hidden",
         "type_info": "Bool"
       },
       {
-        "ordinal": 44,
+        "ordinal": 42,
         "name": "mitsuba_com_hidden",
         "type_info": "Bool"
       },
       {
-        "ordinal": 45,
+        "ordinal": 43,
+        "name": "file_sha256",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 44,
         "name": "mitsuba_file_hidden",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 45,
+        "name": "thumbnail_sha256",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -288,5 +294,5 @@
       false
     ]
   },
-  "hash": "3d746555f3c057ee77c8c7fd064920678a65a1a0f34134d65305aa3f78e9b569"
+  "hash": "e7edb16b945a444241b2dc949dfd30d6c3e73ea55cc348f428fcc57b5a0bb7e5"
 }

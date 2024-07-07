@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            count(*)\n            FROM posts\n            WHERE file_sha256 != ''\n            ",
+  "query": "\n            SELECT\n            count(*)\n            FROM files\n            WHERE is_thumbnail = true\n            ",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       null
     ]
   },
-  "hash": "512500f264da6ce576a49da6e8dcd2e9dee4cd5540624c7dd4032e2f31d77408"
+  "hash": "489af201fe5abd0da321cb8410c489ef1f1a5001cc051fa19bee2f684bef9e64"
 }
