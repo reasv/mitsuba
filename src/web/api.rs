@@ -17,7 +17,6 @@ use crate::web::auth::{should_respect_hidden_files, AuthUser, Authenticated, Adm
 use super::auth::RequireJanitor;
 #[derive(Serialize)]
 struct ActionSuccess<T> {
-    success: bool,
     data: Option<T>,
     message: String,
 }
@@ -25,14 +24,12 @@ struct ActionSuccess<T> {
 impl ActionSuccess<()> {
     fn new<T: ToString>(message: T) -> ActionSuccess<()> {
         ActionSuccess {
-            success: true,
             data: None,
             message: message.to_string(),
         }
     }
     fn new_with_data<T, S: ToString>(message: S, data: T) -> ActionSuccess<T> {
         ActionSuccess {
-            success: true,
             data: Some(data),
             message: message.to_string(),
         }
