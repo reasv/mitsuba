@@ -163,15 +163,15 @@ impl JSONError {
             code
         }
     }
+    #[allow(non_snake_case)]
     pub fn InternalServerError<T: ToString>(message: T) -> JSONError {
         JSONError::new("Internal Server Error".to_string(), message.to_string(), actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
     }
-    pub fn BadRequest<T: ToString>(message: T) -> JSONError {
-        JSONError::new("Bad Request".to_string(), message.to_string(), actix_web::http::StatusCode::BAD_REQUEST)
-    }
+    #[allow(non_snake_case)]
     pub fn Unauthorized<T: ToString>(message: T) -> JSONError {
         JSONError::new("Unauthorized".to_string(), message.to_string(), actix_web::http::StatusCode::UNAUTHORIZED)
     }
+    #[allow(non_snake_case)]
     pub fn NotFound<T: ToString>(message: T) -> JSONError {
         JSONError::new("Not Found".to_string(), message.to_string(), actix_web::http::StatusCode::NOT_FOUND)
     }
