@@ -203,6 +203,93 @@ pub(crate) async fn put_current_user(
     Ok(HttpResponse::Ok().json(ActionSuccess::new("User edited")))
 }
 
+#[derive(Serialize, Deserialize)]
+struct ModAction{
+    mitsuba_post_hidden: Option<bool>,
+    mitsuba_file_hidden: Option<bool>,
+    mitsuba_com_hidden: Option<bool>,
+    // Purges the image from the filesystem if this is set
+    mitsuba_file_blacklisted: Option<bool>,
+    reason: Option<String>,
+    comment: Option<String>,
+    targets: Vec<i64>,
+    board: String,
+}
+
+#[post("/_mitsuba/admin/modactions.json")]
+pub(crate) async fn post_mod_action(
+    db: web::Data<DBClient>,
+    post_edits: web::Json<ModAction>,
+    archiver: web::Data<Archiver>,
+    user: AuthUser<RequireJanitor>,
+) -> actix_web::Result<HttpResponse> {
+    let board = post_edits.board.clone();
+    let targets = post_edits.targets.clone();
+
+    let mut posts: Vec<Post> = Vec::new();
+    let post_edits = post_edits.into_inner();
+
+    for no in targets {
+        archiver.hide_post(
+            &board,
+            no,
+            post_edits.mitsuba_file_hidden,
+            post_edits.mitsuba_com_hidden,
+            post_edits.mitsuba_file_hidden
+        ).await.map_err(|e| {
+            error!("Error hiding post: {}", e);
+            JSONError::InternalServerError("Error hiding post")
+        })?;
+
+        if let Some(true) = post_edits.mitsuba_file_blacklisted {
+            // Only mods and above can ban images
+            if user.role > UserRole::Janitor {
+                archiver
+                .ban_image(
+                    &board,
+                    no,
+                    &post_edits.reason.clone().unwrap_or("Other".to_string())
+                ).await.map_err(|e| {
+                    error!("Error purging image: {}", e);
+                    JSONError::InternalServerError("Error banning image")
+                })?;
+            }
+        }
+
+        if let Some(false) = post_edits.mitsuba_file_blacklisted {
+            // Only mods and above can unban images
+            if user.role > UserRole::Janitor {
+                archiver
+                .unban_image(
+                    &board,
+                    no
+                ).await.map_err(|e| {
+                    error!("Error unpurging image: {}", e);
+                    JSONError::InternalServerError("Error unbanning image")
+                })?;
+            }
+        }
+
+        if let Some(new_post_data) = db.get_post(
+            &board,
+            no,
+            false
+        ).await
+        .map_err(|e| {
+            error!("Error getting post from DB: {}", e);
+            JSONError::InternalServerError("")
+        })? {
+            posts.push(new_post_data);
+        }
+    }
+    Ok(HttpResponse::Ok().json(
+        ActionSuccess::new_with_data(
+            "Actions applied",
+            posts
+        )
+    ))
+}
+
 
 #[get("/_mitsuba/admin/boards-status.json")]
 pub(crate) async fn get_boards_status(db: web::Data<DBClient>, _: AuthUser<Authenticated>) -> actix_web::Result<HttpResponse> {
@@ -316,92 +403,6 @@ pub(crate) async fn get_post(
         })?
         .ok_or(JSONError::NotFound("Post not found in database"))?;
     Ok(HttpResponse::Ok().json(post))
-}
-
-#[derive(Serialize, Deserialize)]
-struct ModAction{
-    mitsuba_post_hidden: Option<bool>,
-    mitsuba_file_hidden: Option<bool>,
-    mitsuba_com_hidden: Option<bool>,
-    // Purges the image from the filesystem if this is set
-    mitsuba_file_blacklisted: Option<bool>,
-    reason: Option<String>,
-    comment: Option<String>,
-    targets: Vec<i64>,
-    board: String,
-}
-#[post("/_mitsuba/admin/modactions.json")]
-pub(crate) async fn post_mod_action(
-    db: web::Data<DBClient>,
-    post_edits: web::Json<ModAction>,
-    archiver: web::Data<Archiver>,
-    user: AuthUser<RequireJanitor>,
-) -> actix_web::Result<HttpResponse> {
-    let board = post_edits.board.clone();
-    let targets = post_edits.targets.clone();
-
-    let mut posts: Vec<Post> = Vec::new();
-    let post_edits = post_edits.into_inner();
-
-    for no in targets {
-        archiver.hide_post(
-            &board,
-            no,
-            post_edits.mitsuba_file_hidden,
-            post_edits.mitsuba_com_hidden,
-            post_edits.mitsuba_file_hidden
-        ).await.map_err(|e| {
-            error!("Error hiding post: {}", e);
-            JSONError::InternalServerError("Error hiding post")
-        })?;
-
-        if let Some(true) = post_edits.mitsuba_file_blacklisted {
-            // Only mods and above can ban images
-            if user.role > UserRole::Janitor {
-                archiver
-                .ban_image(
-                    &board,
-                    no,
-                    &post_edits.reason.clone().unwrap_or("Other".to_string())
-                ).await.map_err(|e| {
-                    error!("Error purging image: {}", e);
-                    JSONError::InternalServerError("Error banning image")
-                })?;
-            }
-        }
-
-        if let Some(false) = post_edits.mitsuba_file_blacklisted {
-            // Only mods and above can unban images
-            if user.role > UserRole::Janitor {
-                archiver
-                .unban_image(
-                    &board,
-                    no
-                ).await.map_err(|e| {
-                    error!("Error unpurging image: {}", e);
-                    JSONError::InternalServerError("Error unbanning image")
-                })?;
-            }
-        }
-
-        if let Some(new_post_data) = db.get_post(
-            &board,
-            no,
-            false
-        ).await
-        .map_err(|e| {
-            error!("Error getting post from DB: {}", e);
-            JSONError::InternalServerError("")
-        })? {
-            posts.push(new_post_data);
-        }
-    }
-    Ok(HttpResponse::Ok().json(
-        ActionSuccess::new_with_data(
-            "Actions applied",
-            posts
-        )
-    ))
 }
 
 #[derive(Deserialize)]
