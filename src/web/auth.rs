@@ -57,7 +57,6 @@ pub struct JSONRCError;
 impl RoleCheckError for JSONRCError {
     fn not_authenticated(_: actix_web::HttpRequest) -> actix_web::Error {
         JSONError {
-            error: "Not Authenticated".to_string(),
             code: actix_web::http::StatusCode::UNAUTHORIZED,
             message: "User must be authenticated".to_string()
         }.into()
@@ -65,7 +64,6 @@ impl RoleCheckError for JSONRCError {
 
     fn not_authorized(role: &UserRole) -> actix_web::Error {
         JSONError {
-            error: "Not Authorized".to_string(),
             code: actix_web::http::StatusCode::FORBIDDEN,
             message: format!("User role not authorized for this action: {:?}", role)
         }.into()
@@ -128,7 +126,6 @@ impl ResponseError for RedirectError {
 
 #[derive(Debug, Serialize)]
 pub struct JSONError {
-    error: String,
     message: String,
     #[serde(skip)]
     code: actix_web::http::StatusCode
@@ -136,7 +133,7 @@ pub struct JSONError {
 
 impl std::fmt::Display for JSONError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.error, self.message)
+        write!(f, "JSONError: {}", self.message)
     }
 }
 
@@ -152,24 +149,35 @@ impl ResponseError for JSONError {
 }
 
 impl JSONError {
-    pub fn new(error: String, message: String, code: actix_web::http::StatusCode) -> JSONError {
+    pub fn new(message: String, code: actix_web::http::StatusCode) -> JSONError {
         JSONError {
-            error,
             message,
             code
         }
     }
     #[allow(non_snake_case)]
     pub fn InternalServerError<T: ToString>(message: T) -> JSONError {
-        JSONError::new("Internal Server Error".to_string(), message.to_string(), actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
+        let message = message.to_string();
+        JSONError::new(
+            if message.is_empty() { "Internal server error".to_string() } else { message },
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+        )
     }
     #[allow(non_snake_case)]
     pub fn Unauthorized<T: ToString>(message: T) -> JSONError {
-        JSONError::new("Unauthorized".to_string(), message.to_string(), actix_web::http::StatusCode::UNAUTHORIZED)
+        let message = message.to_string();
+        JSONError::new(
+            if message.is_empty() { "Unauthorized".to_string() } else { message },
+            actix_web::http::StatusCode::UNAUTHORIZED
+        )
     }
     #[allow(non_snake_case)]
     pub fn NotFound<T: ToString>(message: T) -> JSONError {
-        JSONError::new("Not Found".to_string(), message.to_string(), actix_web::http::StatusCode::NOT_FOUND)
+        let message = message.to_string();
+        JSONError::new(
+            if message.is_empty() { "Not Found".to_string() } else { message },
+            actix_web::http::StatusCode::NOT_FOUND
+        )
     }
 }
 
