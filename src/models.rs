@@ -477,3 +477,33 @@ pub struct StoredFile {
     #[allow(dead_code)]
     pub hidden: bool,
 }
+
+pub struct ModLogEntry {
+    pub log_id: i64,
+    pub user_name: String,
+    pub reason: String,
+    pub comment: Option<String>,
+}
+
+pub struct ModLogAction {
+    pub no: i64,
+    pub board: String,
+    pub file_sha256: Option<String>,
+    pub action: String,
+    pub is_thumbnail: bool,
+}
+
+pub struct ModLog {
+    pub entries: Vec<ModLogEntry>
+}
+
+pub struct UserReport {
+    pub no: i64,
+    pub board: String,
+    pub reason: String,
+    pub comment: Option<String>
+}
+
+pub struct UserReports {
+    pub reports: Vec<UserReport>
+}

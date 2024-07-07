@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256\n            FROM posts\n            JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n            WHERE board = ANY($1)\n            AND thumbnails.hidden = false\n            ORDER BY last_modified DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256,\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE board = $1\n            AND tim = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -232,12 +232,16 @@
         "ordinal": 45,
         "name": "thumbnail_sha256",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 46,
+        "name": "mitsuba_file_blacklisted",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "TextArray",
-        "Int8",
+        "Text",
         "Int8"
       ]
     },
@@ -287,8 +291,9 @@
       false,
       false,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "92eab4bff1a4ec569e77f2c9944dba8ee24c2e1ab8953a6a9bbe76a7a87f9611"
+  "hash": "c553d12894e69df36ad147ceb149a06f5de99a6c91e48a72317276daad2814e1"
 }

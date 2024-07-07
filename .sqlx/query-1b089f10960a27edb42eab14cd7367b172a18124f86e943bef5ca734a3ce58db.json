@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n            moderation_log.log_id as log_id,\n            users.name as user_name,\n            moderation_log.reason as reason,\n            moderation_log.comment as comment\n            FROM moderation_log\n            JOIN users\n            ON users.user_id = moderation_log.user_id\n            ORDER BY moderation_log.executed_at DESC\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "log_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1b089f10960a27edb42eab14cd7367b172a18124f86e943bef5ca734a3ce58db"
+}

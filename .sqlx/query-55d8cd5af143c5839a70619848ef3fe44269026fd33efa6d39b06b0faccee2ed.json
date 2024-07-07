@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                moderation_actions.action as action,\n                posts.board as board,\n                posts.no as no,\n                files.sha256 as file_sha256,\n                files.is_thumbnail as is_thumbnail\n                FROM moderation_actions\n                LEFT JOIN posts\n                ON posts.post_id = moderation_actions.post_id\n                LEFT JOIN files\n                ON files.file_id = moderation_actions.file_id\n                WHERE log_id = $1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "action",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "board",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "no",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_sha256",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_thumbnail",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "55d8cd5af143c5839a70619848ef3fe44269026fd33efa6d39b06b0faccee2ed"
+}

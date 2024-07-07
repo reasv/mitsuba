@@ -8,11 +8,11 @@ use log::{debug, warn};
 #[allow(unused_imports)]
 use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
-use crate::models::{StoredFile, User};
+use crate::models::{StoredFile, User, UserReport};
 
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
-     ThreadInfo, ThreadJob, ThreadNo, UserRole};
+     ThreadInfo, ThreadJob, ThreadNo, UserRole, ModLogEntry, ModLogAction};
 
 use crate::util::get_post_image_info;
 #[allow(unused_imports)]
@@ -1306,6 +1306,234 @@ impl DBClient {
         .rows_affected();
         Ok(res)
     }
+
+    pub async fn create_moderation_log_entry(
+        &self,
+        user_name: &String,
+        reason: &String,
+        comment: &String
+    ) -> anyhow::Result<i64> {
+        let user_id = sqlx::query!(
+            "
+            SELECT user_id FROM users WHERE name = $1
+            ",
+            user_name
+        ).fetch_one(&self.pool).await?.user_id;
+
+        let log_id = sqlx::query!(
+            "
+            INSERT INTO moderation_log (user_id, reason, comment)
+            VALUES ($1, $2, $3)
+            RETURNING log_id
+            ",
+            user_id,
+            reason,
+            comment
+        ).fetch_one(&self.pool)
+        .await?.log_id;
+        Ok(log_id)
+    }
+
+    pub async fn get_moderation_log(
+        &self,
+        page: i64,
+        page_size: i64
+    ) -> anyhow::Result<Vec<(ModLogEntry, Vec<ModLogAction>)>> {
+        let offset = page * page_size;
+        let logs = sqlx::query_as!(ModLogEntry,
+            "
+            SELECT
+            moderation_log.log_id as log_id,
+            users.name as user_name,
+            moderation_log.reason as reason,
+            moderation_log.comment as comment
+            FROM moderation_log
+            JOIN users
+            ON users.user_id = moderation_log.user_id
+            ORDER BY moderation_log.executed_at DESC
+            LIMIT $1 OFFSET $2
+            ",
+            page_size,
+            offset
+        ).fetch_all(&self.pool)
+        .await?;
+        let mut logs_actions = vec![];
+
+        for log in logs {
+            let actions = sqlx::query_as!(ModLogAction,
+                "
+                SELECT
+                moderation_actions.action as action,
+                posts.board as board,
+                posts.no as no,
+                files.sha256 as file_sha256,
+                files.is_thumbnail as is_thumbnail
+                FROM moderation_actions
+                LEFT JOIN posts
+                ON posts.post_id = moderation_actions.post_id
+                LEFT JOIN files
+                ON files.file_id = moderation_actions.file_id
+                WHERE log_id = $1
+                ",
+                log.log_id
+            ).fetch_all(&self.pool)
+            .await?;
+            logs_actions.push((log, actions));
+        }
+        Ok(logs_actions)
+    }
+
+    pub async fn get_image_ids(&self, board: &String, post_no: i64) -> anyhow::Result<Option<(i64, i64)>> {
+        let image_ids = sqlx::query!(
+            "
+            SELECT file_id, thumbnail_id FROM posts_files
+            LEFT JOIN posts
+            ON posts.post_id = posts_files.post_id
+            WHERE board = $1 AND no = $2
+            ",
+            board,
+            post_no
+        ).fetch_optional(&self.pool)
+        .await?;
+        Ok(image_ids.map(|i| (i.file_id, i.thumbnail_id)))
+    }
+
+    pub async fn register_mod_action(
+        &self,
+        log_id: i64,
+        post_no: i64,
+        board: &String,
+        on_image: bool,
+        action: &String
+    ) -> anyhow::Result<u64> {
+        let post_id = self.get_post_id(board, post_no).await?;
+        if post_id.is_none() {
+            return Ok(0);
+        }
+
+        let image_ids = if on_image {
+            self.get_image_ids(board, post_no).await?
+        } else {
+            None
+        };
+
+        if let Some((file_id, thumbnail_id)) = image_ids {
+            let res: u64 = sqlx::query!(
+                "
+                INSERT INTO moderation_actions (log_id, post_id, file_id, action)
+                VALUES ($1, $2, $3, $4)
+                ",
+                log_id,
+                post_id,
+                file_id,
+                action
+            ).execute(&self.pool)
+            .await?
+            .rows_affected();
+            
+            let res2: u64 = sqlx::query!(
+                "
+                INSERT INTO moderation_actions (log_id, post_id, file_id, action)
+                VALUES ($1, $2, $3, $4)
+                ",
+                log_id,
+                post_id,
+                thumbnail_id,
+                action
+            ).execute(&self.pool)
+            .await?
+            .rows_affected();
+            Ok(res + res2)
+        } else {
+            let res: u64 = sqlx::query!(
+                "
+                INSERT INTO moderation_actions (log_id, post_id, action)
+                VALUES ($1, $2, $3)
+                ",
+                log_id,
+                post_id,
+                action
+            ).execute(&self.pool)
+            .await?
+            .rows_affected();
+            Ok(res)
+        }
+    }
+
+    pub async fn get_post_id(&self, board: &String, post_no: i64) -> anyhow::Result<Option<i64>> {
+        let post_id = sqlx::query!(
+            "
+            SELECT post_id FROM posts WHERE board = $1 AND no = $2
+            ",
+            board,
+            post_no
+        ).fetch_optional(&self.pool)
+        .await?
+        .map(|p| p.post_id);
+        Ok(post_id)
+    }
+
+    pub async fn file_user_report(
+        &self,
+        post_no: i64,
+        board: &String,
+        reason: &String,
+        comment: &String
+    ) -> anyhow::Result<u64> {
+        let post_id = self.get_post_id(board, post_no).await?;
+        if post_id.is_none() {
+            return Ok(0);
+        }
+
+        let res: u64 = sqlx::query!(
+            "
+            INSERT INTO user_reports (post_id, reason, comment)
+            VALUES ($1, $2, $3)
+            ",
+            post_id,
+            reason,
+            comment
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
+
+    pub async fn get_user_reports(&self, page: i64, page_size: i64) -> anyhow::Result<Vec<UserReport>> {
+        let offset = page * page_size;
+        let reports = sqlx::query_as!(
+            UserReport,
+            "
+            SELECT
+            posts.board as board,
+            posts.no as no,
+            user_reports.reason as reason,
+            user_reports.comment as comment
+            FROM user_reports
+            JOIN posts
+            ON posts.post_id = user_reports.post_id
+            ORDER BY user_reports.created_at DESC
+            LIMIT $1 OFFSET $2
+            ",
+            page_size,
+            offset
+        ).fetch_all(&self.pool)
+        .await?;
+        Ok(reports)
+    }
+
+    pub async fn delete_user_report(&self, report_id: i64) -> anyhow::Result<u64> {
+        let res: u64 = sqlx::query!(
+            "
+            DELETE FROM user_reports WHERE report_id = $1
+            ",
+            report_id
+        ).execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(res)
+    }
+
 }
 
 impl std::panic::UnwindSafe for DBClient {}

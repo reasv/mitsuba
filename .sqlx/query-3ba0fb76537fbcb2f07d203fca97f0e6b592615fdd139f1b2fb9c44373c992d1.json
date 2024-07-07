@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256\n            FROM posts\n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n            WHERE posts_files.file_id IS NULL\n            AND board = $1\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256,\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE board = ANY($1)\n            AND thumbnails.hidden = false\n            AND blacklist_thumbnail.sha256 IS NULL\n            AND blacklist_file.sha256 IS NULL\n            AND thumbnails.file_id IS NOT NULL\n            ORDER BY last_modified DESC\n            LIMIT $2 OFFSET $3\n            ",
   "describe": {
     "columns": [
       {
@@ -232,11 +232,18 @@
         "ordinal": 45,
         "name": "thumbnail_sha256",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 46,
+        "name": "mitsuba_file_blacklisted",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "TextArray",
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -285,8 +292,9 @@
       false,
       false,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "3fc32149e5ca00ff1112c947d7617d27c3917057784f5acfca541f1695fe7d82"
+  "hash": "3ba0fb76537fbcb2f07d203fca97f0e6b592615fdd139f1b2fb9c44373c992d1"
 }

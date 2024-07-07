@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n            posts.board as board,\n            posts.no as no,\n            user_reports.reason as reason,\n            user_reports.comment as comment\n            FROM user_reports\n            JOIN posts\n            ON posts.post_id = user_reports.post_id\n            ORDER BY user_reports.created_at DESC\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "board",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "no",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "bb5dc1d8f336886fec864c902821fa5f1477804b94e431501e65c324f0c96d41"
+}
