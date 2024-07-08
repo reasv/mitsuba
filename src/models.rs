@@ -477,14 +477,14 @@ pub struct StoredFile {
     #[allow(dead_code)]
     pub hidden: bool,
 }
-
-pub struct ModLogEntry {
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub struct ModLogInfo {
     pub log_id: i64,
     pub user_name: String,
     pub reason: String,
     pub comment: Option<String>,
 }
-
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct ModLogAction {
     pub no: i64,
     pub board: String,
@@ -493,17 +493,89 @@ pub struct ModLogAction {
     pub is_thumbnail: bool,
 }
 
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub struct ModLogEntry {
+    pub log_info: ModLogInfo,
+    pub actions: Vec<ModLogAction>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct ModLog {
     pub entries: Vec<ModLogEntry>
 }
-
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct UserReport {
     pub no: i64,
     pub board: String,
     pub reason: String,
     pub comment: Option<String>
 }
-
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct UserReports {
     pub reports: Vec<UserReport>
+}
+
+pub enum ModActionType {
+    BlacklistImage,
+    HidePost,
+    HidePostContent,
+    HidePostFile,
+    UndoBlacklistImage,
+    UnhidePost,
+    UnhidePostContent,
+    UnhidePostFile,
+}
+
+// Implement FromStr for ModActionType
+
+impl FromStr for ModActionType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "blacklist_image" => Ok(ModActionType::BlacklistImage),
+            "hide_post" => Ok(ModActionType::HidePost),
+            "hide_post_content" => Ok(ModActionType::HidePostContent),
+            "hide_post_file" => Ok(ModActionType::HidePostFile),
+            "undo_blacklist_image" => Ok(ModActionType::UndoBlacklistImage),
+            "unhide_post" => Ok(ModActionType::UnhidePost),
+            "unhide_post_content" => Ok(ModActionType::UnhidePostContent),
+            "unhide_post_file" => Ok(ModActionType::UnhidePostFile),
+            _ => Err(())
+        }
+    }
+}
+
+// Implement From for ModActionType
+
+impl From<String> for ModActionType {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "blacklist_image" => ModActionType::BlacklistImage,
+            "hide_post" => ModActionType::HidePost,
+            "hide_post_content" => ModActionType::HidePostContent,
+            "hide_post_file" => ModActionType::HidePostFile,
+            "undo_blacklist_image" => ModActionType::UndoBlacklistImage,
+            "unhide_post" => ModActionType::UnhidePost,
+            "unhide_post_content" => ModActionType::UnhidePostContent,
+            "unhide_post_file" => ModActionType::UnhidePostFile,
+            _ => ModActionType::HidePost
+        }
+    }
+}
+
+// Implement ToString for ModActionType
+
+impl std::string::ToString for ModActionType {
+    fn to_string(&self) -> String {
+        match self {
+            ModActionType::BlacklistImage => "blacklist_image".to_string(),
+            ModActionType::HidePost => "hide_post".to_string(),
+            ModActionType::HidePostContent => "hide_post_content".to_string(),
+            ModActionType::HidePostFile => "hide_post_file".to_string(),
+            ModActionType::UndoBlacklistImage => "undo_blacklist_image".to_string(),
+            ModActionType::UnhidePost => "unhide_post".to_string(),
+            ModActionType::UnhidePostContent => "unhide_post_content".to_string(),
+            ModActionType::UnhidePostFile => "unhide_post_file".to_string(),
+        }
+    }
 }

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO moderation_actions (log_id, post_id, file_id, thumbnail_id, action)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING action_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "action_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d4cf21e9b3d62df061753609e0e4fc7820142c62c4b635822fed505bccc39ebf"
+}

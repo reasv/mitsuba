@@ -307,21 +307,50 @@ async fn real_main() {
             let hide_comment = hide_opt.hide_comment.unwrap_or(false);
             let hide_image = hide_opt.hide_image.unwrap_or(false);
             let hide_post = !hide_comment && !hide_image;
-            client.hide_post(&board, post, Some(hide_post), hide_opt.hide_comment, hide_opt.hide_image).await.unwrap();
+
+            let log_id = client.db_client
+                .create_moderation_log_entry(None,None, None)
+                .await.unwrap();
+            
+            client.hide_post(
+                &board,
+                post,
+                Some(hide_post),
+                hide_opt.hide_comment,
+                hide_opt.hide_image,
+                log_id)
+            .await.unwrap();
             let hide_post = !hide_comment && !hide_image;
             println!("Hid post /{}/{} (Entire post hidden: {}, Only comment field hidden: {}, Only image hidden: {})", board, post, hide_post, hide_comment, hide_image);
         },
         SubCommand::Unhide(unhide_opt) => {
             let board = unhide_opt.board_name;
             let post = unhide_opt.post;
-            client.unhide_post(&board, post).await.unwrap();
+
+            let log_id = client.db_client
+                .create_moderation_log_entry(None,None, None)
+                .await.unwrap();
+
+            client.unhide_post(&board, post, log_id).await.unwrap();
             println!("Unhid post /{}/{}", board, post);
         },
         SubCommand::PurgeImage(ban_image_opt) => {
             let board = ban_image_opt.board_name;
             let post = ban_image_opt.post;
-            let reason = ban_image_opt.reason.unwrap_or("None".to_string());
-            let image_hashes = client.ban_image(&board, post, &reason).await.unwrap();
+            
+            let log_id = client.db_client
+                .create_moderation_log_entry(
+                    None,
+                    ban_image_opt.reason,
+                    None
+                )
+                .await.unwrap();
+            let image_hashes = client
+                .ban_image(
+                    &board,
+                    post,
+                    log_id
+                ).await.unwrap();
             for sha256 in image_hashes {
                 println!("Purged image {} for post /{}/{}", sha256, board, post);
             }
@@ -329,7 +358,19 @@ async fn real_main() {
         SubCommand::UnpurgeImage(unban_image_opt) => {
             let board = unban_image_opt.board_name;
             let post = unban_image_opt.post;
-            let image_hashes = client.unban_image(&board, post).await.unwrap();
+            let log_id = client.db_client
+                .create_moderation_log_entry(
+                    None,
+                    None,
+                    None
+                )
+                .await.unwrap();
+            let image_hashes = client
+                .unban_image(
+                    &board,
+                    post,
+                    log_id
+                 ).await.unwrap();
             for sha256 in image_hashes {
                 println!("Unpurged image {} for post /{}/{}", sha256, board, post);
             }

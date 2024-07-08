@@ -16,7 +16,7 @@ mod image_archiver;
 mod thread_archiver;
 mod archiver_metrics;
 
-use crate::{http::HttpClient, models::{User, UserRole}};
+use crate::{http::HttpClient, models::{ModActionType, User, UserRole}};
 use crate::models::{Board, BoardsList, PurgeReport};
 use crate::db::DBClient;
 
@@ -147,26 +147,85 @@ impl Archiver {
         Ok(report)
     }
 
-    pub async fn hide_post(&self, board_name: &String, no: i64, hide_post: Option<bool>, hide_comment: Option<bool>, hide_image: Option<bool>) -> anyhow::Result<()> {
-        let post_opt = self.db_client.get_post(board_name, no, false).await?;
+    pub async fn hide_post(
+        &self,
+        board_name: &String,
+        no: i64,
+        hide_post: Option<bool>,
+        hide_comment: Option<bool>,
+        hide_image: Option<bool>,
+        log_id: i64,
+    ) -> anyhow::Result<()> {
+        let post_opt = self.db_client
+            .get_post(board_name, no, false).await?;
         if post_opt.is_none() {
             return Err(anyhow::anyhow!("Post /{}/{} not found", board_name, no));
         }
         let post = post_opt.unwrap_or_default();
         // Only override the values if they are specified
-        let post_hidden = hide_post.unwrap_or(post.mitsuba_post_hidden);
-        let hide_comment = hide_comment.unwrap_or(post.mitsuba_com_hidden);
-        let hide_image = hide_image.unwrap_or(post.mitsuba_file_hidden);
-        self.db_client.set_post_hidden_status(&board_name, no, post_hidden, hide_comment, hide_image).await?;
+        let set_post_hidden = hide_post.unwrap_or(post.mitsuba_post_hidden);
+        let set_hide_comment = hide_comment.unwrap_or(post.mitsuba_com_hidden);
+        let set_hide_image = hide_image.unwrap_or(post.mitsuba_file_hidden);
+
+        let mut actions = vec![];
+
+        if set_post_hidden && !post.mitsuba_post_hidden {
+            actions.push((ModActionType::HidePost, false));
+        }
+        if set_hide_comment && !post.mitsuba_com_hidden {
+            actions.push((ModActionType::HidePostContent, false));
+        }
+        if set_hide_image && !post.mitsuba_file_hidden {
+            actions.push((ModActionType::HidePostFile, true));
+        }
+        // Unhide actions
+        if !set_post_hidden && post.mitsuba_post_hidden {
+            actions.push((ModActionType::UnhidePost, false));
+        }
+        if !set_hide_comment && post.mitsuba_com_hidden {
+            actions.push((ModActionType::UnhidePostContent, false));
+        }
+        if !set_hide_image && post.mitsuba_file_hidden {
+            actions.push((ModActionType::UnhidePostFile, true));
+        }
+
+        self.db_client
+            .set_post_hidden_status(
+                &board_name,
+                no,
+                set_post_hidden,
+                set_hide_comment,
+                set_hide_image
+            ).await?;
+        for (action, is_file) in actions {
+            self.db_client.register_mod_action(log_id, no, board_name, is_file, action).await?;
+        }
         Ok(())
     }
 
-    pub async fn unhide_post(&self, board_name: &String, no: i64) -> anyhow::Result<()> {
-        self.db_client.set_post_hidden_status(&board_name, no, false, false, false).await?;
+    pub async fn unhide_post(
+        &self,
+        board_name: &String,
+        no: i64,
+        log_id: i64
+    ) -> anyhow::Result<()> {
+        self.hide_post(
+            board_name,
+            no,
+            Some(false),
+            Some(false),
+            Some(false),
+            log_id
+        ).await?;
         Ok(())
     }
 
-    pub async fn ban_image(&self, board_name: &String, no: i64, reason: &String) -> anyhow::Result<Vec<String>> {
+    pub async fn ban_image(
+        &self,
+        board_name: &String,
+        no: i64,
+        log_id: i64
+    ) -> anyhow::Result<Vec<String>> {
         let mut purged_files = Vec::new();
         let post = self.db_client.get_post(board_name, no, false).await?;
         if let Some(post) = post {
@@ -181,13 +240,30 @@ impl Archiver {
         } else {
             warn!("Post /{}/{} not found.", board_name, no);
         }
+        if purged_files.is_empty() {
+            return Ok(purged_files);
+        }
+        let action_id = self
+            .db_client.register_mod_action(
+                log_id, 
+                no, 
+                board_name, 
+                true, 
+                ModActionType::BlacklistImage
+            ).await?;
         for sha256 in &purged_files {
-            self.db_client.blacklist_file(&sha256, &reason).await?;
+            self.db_client
+                .blacklist_file(&sha256, action_id).await?;
         }
         Ok(purged_files)
     }
 
-    pub async fn unban_image(&self, board_name: &String, no: i64) -> anyhow::Result<Vec<String>> {
+    pub async fn unban_image(
+        &self,
+        board_name: &String,
+        no: i64,
+        log_id: i64
+    ) -> anyhow::Result<Vec<String>> {
         let mut purged_files = Vec::new();
         let post = self.db_client.get_post(board_name, no, false).await?;
         if let Some(post) = post {
@@ -202,6 +278,17 @@ impl Archiver {
         } else {
             warn!("Post /{}/{} not found.", board_name, no);
         }
+        if purged_files.is_empty() {
+            return Ok(purged_files);
+        }
+        let _action_id = self
+        .db_client.register_mod_action(
+            log_id, 
+            no, 
+            board_name, 
+            true, 
+            ModActionType::UndoBlacklistImage
+        ).await?;
         Ok(purged_files)
     }
 

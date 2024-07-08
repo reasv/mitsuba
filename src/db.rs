@@ -8,7 +8,7 @@ use log::{debug, warn};
 #[allow(unused_imports)]
 use metrics::{gauge, increment_gauge, decrement_gauge, counter, histogram};
 
-use crate::models::{StoredFile, User, UserReport};
+use crate::models::{ModActionType, ModLog, ModLogInfo, StoredFile, User, UserReport};
 
 #[allow(unused_imports)]
 use crate::models::{Post, Image, PostUpdate, Board, Thread, ImageInfo, ImageJob,
@@ -582,16 +582,16 @@ impl DBClient {
         .rows_affected();
         Ok(res)
     }
-    pub async fn blacklist_file(&self, sha256: &String, reason: &String) -> anyhow::Result<(u64, u64)> {
+    pub async fn blacklist_file(&self, sha256: &String, action_id: i64) -> anyhow::Result<(u64, u64)> {
         let res: u64 = sqlx::query!(
             "
-            INSERT INTO file_blacklist (sha256, reason)
+            INSERT INTO file_blacklist (sha256, action_id)
             VALUES ($1, $2)
             ON CONFLICT(sha256)
             DO NOTHING
             ",
             sha256,
-            reason
+            action_id
         ).execute(&self.pool)
         .await?
         .rows_affected();
@@ -1309,17 +1309,20 @@ impl DBClient {
 
     pub async fn create_moderation_log_entry(
         &self,
-        user_name: &String,
-        reason: &String,
-        comment: &String
+        user_name: Option<&String>,
+        reason: Option<String>,
+        comment: Option<String>
     ) -> anyhow::Result<i64> {
-        let user_id = sqlx::query!(
-            "
-            SELECT user_id FROM users WHERE name = $1
-            ",
-            user_name
-        ).fetch_one(&self.pool).await?.user_id;
-
+        let user_id = if let Some(name) = user_name {
+            sqlx::query!(
+            "SELECT user_id FROM users WHERE name = $1",
+            name
+        ).fetch_one(&self.pool)
+            .await?.user_id
+        } else {
+            0
+        };
+        let reason_str = reason.unwrap_or("other".to_string());
         let log_id = sqlx::query!(
             "
             INSERT INTO moderation_log (user_id, reason, comment)
@@ -1327,7 +1330,7 @@ impl DBClient {
             RETURNING log_id
             ",
             user_id,
-            reason,
+            reason_str,
             comment
         ).fetch_one(&self.pool)
         .await?.log_id;
@@ -1338,9 +1341,9 @@ impl DBClient {
         &self,
         page: i64,
         page_size: i64
-    ) -> anyhow::Result<Vec<(ModLogEntry, Vec<ModLogAction>)>> {
+    ) -> anyhow::Result<ModLog> {
         let offset = page * page_size;
-        let logs = sqlx::query_as!(ModLogEntry,
+        let logs = sqlx::query_as!(ModLogInfo,
             "
             SELECT
             moderation_log.log_id as log_id,
@@ -1357,9 +1360,9 @@ impl DBClient {
             offset
         ).fetch_all(&self.pool)
         .await?;
-        let mut logs_actions = vec![];
+        let mut log_entries = vec![];
 
-        for log in logs {
+        for log_info in logs {
             let actions = sqlx::query_as!(ModLogAction,
                 "
                 SELECT
@@ -1375,18 +1378,24 @@ impl DBClient {
                 ON files.file_id = moderation_actions.file_id
                 WHERE log_id = $1
                 ",
-                log.log_id
+                log_info.log_id
             ).fetch_all(&self.pool)
             .await?;
-            logs_actions.push((log, actions));
+            log_entries.push(ModLogEntry{log_info, actions});
         }
-        Ok(logs_actions)
+        Ok(ModLog {
+            entries: log_entries
+        })
     }
 
-    pub async fn get_image_ids(&self, board: &String, post_no: i64) -> anyhow::Result<Option<(i64, i64)>> {
-        let image_ids = sqlx::query!(
+    pub async fn get_image_ids(
+        &self,
+        board: &String,
+        post_no: i64
+    ) -> anyhow::Result<(Option<i64>, Option<i64>)> {
+        let thumbnail_id = sqlx::query!(
             "
-            SELECT file_id, thumbnail_id FROM posts_files
+            SELECT thumbnail_id FROM posts_files
             LEFT JOIN posts
             ON posts.post_id = posts_files.post_id
             WHERE board = $1 AND no = $2
@@ -1394,8 +1403,21 @@ impl DBClient {
             board,
             post_no
         ).fetch_optional(&self.pool)
-        .await?;
-        Ok(image_ids.map(|i| (i.file_id, i.thumbnail_id)))
+        .await?.map(|f| f.thumbnail_id);
+
+        let file_id = sqlx::query!(
+            "
+            SELECT file_id FROM posts_files
+            LEFT JOIN posts
+            ON posts.post_id = posts_files.post_id
+            WHERE board = $1 AND no = $2
+            ",
+            board,
+            post_no
+        ).fetch_optional(&self.pool)
+        .await?.map(|f| f.file_id);
+
+        Ok((thumbnail_id, file_id))
     }
 
     pub async fn register_mod_action(
@@ -1404,60 +1426,33 @@ impl DBClient {
         post_no: i64,
         board: &String,
         on_image: bool,
-        action: &String
-    ) -> anyhow::Result<u64> {
+        action: ModActionType
+    ) -> anyhow::Result<i64> {
         let post_id = self.get_post_id(board, post_no).await?;
         if post_id.is_none() {
             return Ok(0);
         }
 
-        let image_ids = if on_image {
+        let (file_id, thumbnail_id) = if on_image {
             self.get_image_ids(board, post_no).await?
         } else {
-            None
+            (None, None)
         };
 
-        if let Some((file_id, thumbnail_id)) = image_ids {
-            let res: u64 = sqlx::query!(
-                "
-                INSERT INTO moderation_actions (log_id, post_id, file_id, action)
-                VALUES ($1, $2, $3, $4)
-                ",
-                log_id,
-                post_id,
-                file_id,
-                action
-            ).execute(&self.pool)
-            .await?
-            .rows_affected();
-            
-            let res2: u64 = sqlx::query!(
-                "
-                INSERT INTO moderation_actions (log_id, post_id, file_id, action)
-                VALUES ($1, $2, $3, $4)
-                ",
-                log_id,
-                post_id,
-                thumbnail_id,
-                action
-            ).execute(&self.pool)
-            .await?
-            .rows_affected();
-            Ok(res + res2)
-        } else {
-            let res: u64 = sqlx::query!(
-                "
-                INSERT INTO moderation_actions (log_id, post_id, action)
-                VALUES ($1, $2, $3)
-                ",
-                log_id,
-                post_id,
-                action
-            ).execute(&self.pool)
-            .await?
-            .rows_affected();
-            Ok(res)
-        }
+        let action_id: i64 = sqlx::query!(
+            "
+            INSERT INTO moderation_actions (log_id, post_id, file_id, thumbnail_id, action)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING action_id
+            ",
+            log_id,
+            post_id,
+            file_id,
+            thumbnail_id,
+            action.to_string()
+        ).fetch_one(&self.pool)
+        .await?.action_id;
+        Ok(action_id)
     }
 
     pub async fn get_post_id(&self, board: &String, post_no: i64) -> anyhow::Result<Option<i64>> {
@@ -1479,10 +1474,10 @@ impl DBClient {
         board: &String,
         reason: &String,
         comment: &String
-    ) -> anyhow::Result<u64> {
+    ) -> anyhow::Result<Option<u64>> {
         let post_id = self.get_post_id(board, post_no).await?;
         if post_id.is_none() {
-            return Ok(0);
+            return Ok(None);
         }
 
         let res: u64 = sqlx::query!(
@@ -1496,7 +1491,7 @@ impl DBClient {
         ).execute(&self.pool)
         .await?
         .rows_affected();
-        Ok(res)
+        Ok(Some(res))
     }
 
     pub async fn get_user_reports(&self, page: i64, page_size: i64) -> anyhow::Result<Vec<UserReport>> {

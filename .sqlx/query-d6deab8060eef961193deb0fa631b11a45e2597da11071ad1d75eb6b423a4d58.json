@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT file_id FROM posts_files\n            LEFT JOIN posts\n            ON posts.post_id = posts_files.post_id\n            WHERE board = $1 AND no = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d6deab8060eef961193deb0fa631b11a45e2597da11071ad1d75eb6b423a4d58"
+}

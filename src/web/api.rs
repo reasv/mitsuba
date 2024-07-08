@@ -6,6 +6,7 @@ use actix_web::{get, put, post, delete, web, HttpResponse};
 use actix_files::NamedFile;
 use new_mime_guess::from_path;
 use serde::{Deserialize, Serialize};
+use sqlx::query;
 
 use crate::archiver::Archiver;
 use crate::db::DBClient;
@@ -204,7 +205,7 @@ pub(crate) async fn put_current_user(
 }
 
 #[derive(Serialize, Deserialize)]
-struct ModAction{
+struct ModActionOptions{
     mitsuba_post_hidden: Option<bool>,
     mitsuba_file_hidden: Option<bool>,
     mitsuba_com_hidden: Option<bool>,
@@ -219,7 +220,7 @@ struct ModAction{
 #[post("/_mitsuba/admin/modactions.json")]
 pub(crate) async fn post_mod_action(
     db: web::Data<DBClient>,
-    post_edits: web::Json<ModAction>,
+    post_edits: web::Json<ModActionOptions>,
     archiver: web::Data<Archiver>,
     user: AuthUser<RequireJanitor>,
 ) -> actix_web::Result<HttpResponse> {
@@ -228,6 +229,15 @@ pub(crate) async fn post_mod_action(
 
     let mut posts: Vec<Post> = Vec::new();
     let post_edits = post_edits.into_inner();
+    
+    let log_id = archiver
+        .db_client
+        .create_moderation_log_entry(
+            Some(&user.name),
+            post_edits.reason,
+            post_edits.comment,
+        )
+        .await.unwrap();
 
     for no in targets {
         archiver.hide_post(
@@ -235,7 +245,8 @@ pub(crate) async fn post_mod_action(
             no,
             post_edits.mitsuba_file_hidden,
             post_edits.mitsuba_com_hidden,
-            post_edits.mitsuba_file_hidden
+            post_edits.mitsuba_file_hidden,
+            log_id
         ).await.map_err(|e| {
             error!("Error hiding post: {}", e);
             JSONError::InternalServerError("Error hiding post")
@@ -248,7 +259,7 @@ pub(crate) async fn post_mod_action(
                 .ban_image(
                     &board,
                     no,
-                    &post_edits.reason.clone().unwrap_or("Other".to_string())
+                    log_id
                 ).await.map_err(|e| {
                     error!("Error purging image: {}", e);
                     JSONError::InternalServerError("Error banning image")
@@ -262,7 +273,8 @@ pub(crate) async fn post_mod_action(
                 archiver
                 .unban_image(
                     &board,
-                    no
+                    no,
+                    log_id
                 ).await.map_err(|e| {
                     error!("Error unpurging image: {}", e);
                     JSONError::InternalServerError("Error unbanning image")
@@ -288,6 +300,77 @@ pub(crate) async fn post_mod_action(
             posts
         )
     ))
+}
+
+#[derive(Serialize, Deserialize)]
+struct SubmittedUserReport {
+    pub reason: String,
+    pub comment: String,
+    pub post_no: i64,
+    pub board: String,
+}
+
+#[post("/_mitsuba/reports.json")]
+pub(crate) async fn post_user_report(
+    db: web::Data<DBClient>,
+    report_submission: web::Json<SubmittedUserReport>,
+) -> actix_web::Result<HttpResponse> {
+    let res = db.file_user_report(
+        report_submission.post_no,
+        &report_submission.board,
+        &report_submission.reason,
+        &report_submission.comment
+    ).await.map_err(|e| {
+        error!("Error filing user report: {}", e);
+        JSONError::InternalServerError("Error filing user report")
+    })?;
+    if let Some(report_id) = res {
+        return Ok(HttpResponse::Ok().json(ActionSuccess::new(format!("Filed Report #{}", report_id))))
+    } else {
+        return Err(JSONError::BadRequest("Post does not exist").into())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct PageQuery {
+    page: Option<i64>,
+    page_size: Option<i64>,
+}
+
+#[get("/_mitsuba/reports.json")]
+pub(crate) async fn get_user_reports(
+    archiver: web::Data<Archiver>,
+    query: web::Query<PageQuery>,
+    _: AuthUser<RequireJanitor>,
+) -> actix_web::Result<HttpResponse> {
+    let page = query.page.unwrap_or(0);
+    let logs = archiver
+        .db_client
+        .get_user_reports(page, query.page_size.unwrap_or(15))
+        .await
+        .map_err(|e| {
+            error!("Error getting user reports from DB: {}", e);
+            JSONError::InternalServerError("Error getting moderation logs from DB")
+        })?;
+    Ok(HttpResponse::Ok().json(logs))
+}
+
+#[get("/_mitsuba/admin/modactions.json")]
+pub(crate) async fn get_mod_actions(
+    archiver: web::Data<Archiver>,
+    _: AuthUser<RequireJanitor>,
+    query: web::Query<PageQuery>,
+) -> actix_web::Result<HttpResponse> {
+    let page = query.page.unwrap_or(0);
+    let logs = archiver
+        .db_client
+        .get_moderation_log(page, query.page_size.unwrap_or(15))
+        .await
+        .map_err(|e| {
+            error!("Error getting moderation logs from DB: {}", e);
+            JSONError::InternalServerError("Error getting moderation logs from DB")
+        })?;
+    Ok(HttpResponse::Ok().json(logs))
 }
 
 

@@ -179,6 +179,15 @@ impl JSONError {
             actix_web::http::StatusCode::NOT_FOUND
         )
     }
+
+    #[allow(non_snake_case)]
+    pub fn BadRequest<T: ToString>(message: T) -> JSONError {
+        let message = message.to_string();
+        JSONError::new(
+            if message.is_empty() { "Bad Request".to_string() } else { message },
+            actix_web::http::StatusCode::BAD_REQUEST
+        )
+    }
 }
 
 pub trait RoleCheck {
