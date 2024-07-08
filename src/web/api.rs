@@ -6,7 +6,6 @@ use actix_web::{get, put, post, delete, web, HttpResponse};
 use actix_files::NamedFile;
 use new_mime_guess::from_path;
 use serde::{Deserialize, Serialize};
-use sqlx::query;
 
 use crate::archiver::Archiver;
 use crate::db::DBClient;
