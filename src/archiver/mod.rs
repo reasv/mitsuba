@@ -165,7 +165,7 @@ impl Archiver {
         // Only override the values if they are specified
         let set_post_hidden = hide_post.unwrap_or(post.mitsuba_post_hidden);
         let set_hide_comment = hide_comment.unwrap_or(post.mitsuba_com_hidden);
-        let set_hide_image = hide_image.unwrap_or(post.mitsuba_file_hidden);
+        let set_hide_image = hide_image.unwrap_or(post.mitsuba_file_hidden.unwrap_or(false));
 
         let mut actions = vec![];
 
@@ -175,7 +175,7 @@ impl Archiver {
         if set_hide_comment && !post.mitsuba_com_hidden {
             actions.push((ModActionType::HidePostContent, false));
         }
-        if set_hide_image && !post.mitsuba_file_hidden {
+        if set_hide_image && !post.mitsuba_file_hidden.unwrap_or(false) {
             actions.push((ModActionType::HidePostFile, true));
         }
         // Unhide actions
@@ -185,7 +185,7 @@ impl Archiver {
         if !set_hide_comment && post.mitsuba_com_hidden {
             actions.push((ModActionType::UnhidePostContent, false));
         }
-        if !set_hide_image && post.mitsuba_file_hidden {
+        if !set_hide_image && post.mitsuba_file_hidden.unwrap_or(false) {
             actions.push((ModActionType::UnhidePostFile, true));
         }
 
@@ -229,13 +229,13 @@ impl Archiver {
         let mut purged_files = Vec::new();
         let post = self.db_client.get_post(board_name, no, false).await?;
         if let Some(post) = post {
-            if !post.thumbnail_sha256.is_empty() {
-                self.http_client.delete_downloaded_file(&post.thumbnail_sha256, &".jpg".to_string(), true).await?;
-                purged_files.push(post.thumbnail_sha256.clone());
+            if let Some(thumbnail_sha256) = &post.thumbnail_sha256 {
+                self.http_client.delete_downloaded_file(thumbnail_sha256, &".jpg".to_string(), true).await?;
+                purged_files.push(thumbnail_sha256.clone());
             }
-            if !post.file_sha256.is_empty() {
-                self.http_client.delete_downloaded_file(&post.file_sha256, &post.ext, false).await?;
-                purged_files.push(post.file_sha256.clone());
+            if let Some(file_sha256) = &post.file_sha256 {
+                self.http_client.delete_downloaded_file(file_sha256, &post.ext, false).await?;
+                purged_files.push(file_sha256.clone());
             }
         } else {
             warn!("Post /{}/{} not found.", board_name, no);
@@ -267,13 +267,13 @@ impl Archiver {
         let mut purged_files = Vec::new();
         let post = self.db_client.get_post(board_name, no, false).await?;
         if let Some(post) = post {
-            if !post.thumbnail_sha256.is_empty() {
-                self.db_client.remove_file_blacklist(&post.thumbnail_sha256).await?;
-                purged_files.push(post.thumbnail_sha256.clone());
+            if let Some(thumbnail_sha256) = &post.thumbnail_sha256 {
+                self.db_client.remove_file_blacklist(thumbnail_sha256).await?;
+                purged_files.push(thumbnail_sha256.clone());
             }
-            if !post.file_sha256.is_empty() {
-                self.db_client.remove_file_blacklist(&post.file_sha256).await?;
-                purged_files.push(post.thumbnail_sha256.clone());
+            if let Some(file_sha256) = &post.file_sha256 {
+                self.db_client.remove_file_blacklist(file_sha256).await?;
+                purged_files.push(file_sha256.clone());
             }
         } else {
             warn!("Post /{}/{} not found.", board_name, no);

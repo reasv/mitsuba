@@ -53,31 +53,16 @@ impl Archiver {
         )
     }
     pub async fn archive_image(&self, job: &ImageJob) -> Result<(),()> {
-        let mut thumbnail_sha256 = job.thumbnail_sha256.clone();
-        let mut file_sha256 = job.file_sha256.clone();
-        
         if let Some(board) = self.db_client.get_board(&job.board).await
             .map_err(|e| {error!("Failed to get board info for file job: /{}/{}: {}", job.board, job.no, e);})?
         {
-            if thumbnail_sha256.is_empty() && board.archive {
-                thumbnail_sha256 = self.http_client.download_file_checksum(&job.thumbnail_url, &".jpg".to_string(), true).await?;
-                counter!("thumbnails_fetched", 1);
-                info!("Processed thumbnail for /{}/{}", job.board, job.no);
-                self.db_client.add_post_file(&job.board, job.no, 0, &thumbnail_sha256, &".jpg".to_string(), true).await
-                .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
-                self.handle_blacklist(&job.board, job.no, &thumbnail_sha256, &".jpg".to_string(), true)
-                .await.map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+            if job.thumbnail_sha256.is_none() && board.archive {
+                self.process_single_image(&job.board, job.no, &job.thumbnail_url, &".jpg".to_string(), true).await?;
             }
     
             // If full_images is enabled for the board (and the board is still enabled), download the full image
-            if file_sha256.is_empty() && board.full_images && board.archive {
-                file_sha256 = self.http_client.download_file_checksum(&job.url, &job.ext, false).await?;
-                counter!("files_fetched", 1);
-                info!("Processed full image for /{}/{}", job.board, job.no);
-                self.db_client.add_post_file(&job.board, job.no, 0, &file_sha256, &job.ext, false).await
-                .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
-                self.handle_blacklist(&job.board, job.no, &thumbnail_sha256,  &job.ext, true)
-                .await.map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", job.board, job.no, e);})?;
+            if job.file_sha256.is_none() && board.full_images && board.archive {
+                self.process_single_image(&job.board, job.no, &job.url, &job.ext, false).await?;
             }
         }
         self.db_client.delete_image_job(job.id).await
@@ -85,7 +70,43 @@ impl Archiver {
         Ok(())
     }
 
-    pub async fn handle_blacklist(&self, board_name: &String, no: i64, sha256: &String, ext: &String, is_thumb: bool) -> anyhow::Result<()> {
+    async fn process_single_image(
+        &self,
+        board: &String,
+        no: i64,
+        url: &String,
+        ext: &String,
+        is_thumb: bool
+    )
+    -> Result<(),()> {
+        let sha256 = self.http_client
+            .download_file_checksum(
+                url,
+                ext,
+                is_thumb
+        ).await?;
+        if is_thumb {
+            counter!("thumbnails_fetched", 1);
+        } else {
+            counter!("files_fetched", 1);
+        }
+        info!("Processed file (thumb: {}) for /{}/{}", is_thumb, board, no);
+        self.db_client
+            .add_post_file(
+                board,
+                no,
+                0,
+                &sha256,
+                ext,
+                true
+            ).await
+            .map_err(|e| {error!("Failed to update file for post: /{}/{}: {}", board, no, e);})?;
+        self.handle_blacklist(board, no, &sha256, ext, is_thumb)
+            .await.map_err(|e| {error!("Failed to check file blacklist for post: /{}/{}: {}", board, no, e);})?;
+        Ok(())
+    }
+
+    async fn handle_blacklist(&self, board_name: &String, no: i64, sha256: &String, ext: &String, is_thumb: bool) -> anyhow::Result<()> {
         if !self.db_client.is_file_blacklisted(sha256).await? {
             return Ok(());
         }

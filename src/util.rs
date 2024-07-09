@@ -61,7 +61,18 @@ pub fn get_post_image_info(board: &String, page: i32, post: &Post) -> Option<Ima
     }
     let url = format!("https://i.4cdn.org/{}/{}{}", board, post.tim, post.ext);
     let thumbnail_url = format!("https://i.4cdn.org/{}/{}s.jpg", board, post.tim);
-    Some(ImageInfo{url, thumbnail_url, ext: post.ext.clone(), file_sha256: post.file_sha256.clone(), thumbnail_sha256: post.thumbnail_sha256.clone(), page, no: post.no, board: board.clone()})
+    Some(
+        ImageInfo {
+            url,
+            thumbnail_url,
+            ext: post.ext.clone(),
+            file_sha256: post.file_sha256.clone(),
+            thumbnail_sha256: post.thumbnail_sha256.clone(),
+            page,
+            no: post.no,
+            board: board.clone()
+        }
+    )
 }
 
 pub fn base64_to_32(b64: String) -> anyhow::Result<String> {
@@ -140,9 +151,9 @@ pub fn process_hidden_post(post: &Post) -> Option<Post> {
         return None;
     }
     let mut post = post.clone();
-    if post.mitsuba_file_hidden {
-        post.thumbnail_sha256 = "".to_string();
-        post.file_sha256 = "".to_string();
+    if post.mitsuba_file_hidden.unwrap_or(false) {
+        post.thumbnail_sha256 = None;
+        post.file_sha256 = None;
     }
     if post.mitsuba_com_hidden {
         post.com = "<b><i>[Hidden]</i></b>".to_string();

@@ -85,24 +85,31 @@ pub struct Post {
     pub archived_on: i64,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub last_modified: i64,
-    #[serde(default, skip_serializing_if = "is_empty_string")]
-    pub file_sha256: String,
-    #[serde(default, skip_serializing_if = "is_empty_string")]
-    pub thumbnail_sha256: String,
+    #[serde(default, skip_serializing_if = "is_empty_string_or_none")]
+    pub file_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "is_empty_string_or_none")]
+    pub thumbnail_sha256: Option<String>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub deleted_on: i64,
     #[serde(default, skip_serializing_if = "is_false")]
     pub mitsuba_post_hidden: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub mitsuba_com_hidden: bool,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub mitsuba_file_hidden: bool,
+    #[serde(default, skip_serializing_if = "is_false_or_none")]
+    pub mitsuba_file_hidden: Option<bool>,
     #[serde(default, skip_serializing_if = "is_false_or_none")]
     pub mitsuba_file_blacklisted: Option<bool>
 }
 
 fn is_empty_string(s: &String) -> bool {
     s.is_empty()
+}
+
+fn is_empty_string_or_none(s: &Option<String>) -> bool {
+    match s {
+        Some(s) => s.is_empty(),
+        None => true
+    }
 }
 
 fn is_zero(i: &i64) -> bool {
@@ -195,8 +202,8 @@ pub struct ImageInfo {
     pub thumbnail_url: String,
     pub ext: String,
     pub page: i32,
-    pub file_sha256: String,
-    pub thumbnail_sha256: String
+    pub file_sha256: Option<String>,
+    pub thumbnail_sha256: Option<String>
 }
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Eq, PartialEq)]
 pub struct ImageJob {
@@ -207,8 +214,8 @@ pub struct ImageJob {
     pub thumbnail_url: String,
     pub ext: String,
     pub page: i32,
-    pub file_sha256: String,
-    pub thumbnail_sha256: String
+    pub file_sha256: Option<String>,
+    pub thumbnail_sha256: Option<String>
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]

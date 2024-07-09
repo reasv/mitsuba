@@ -511,11 +511,11 @@ impl DBClient {
             } else {
                 post_raw
             };
-            if thumb && !post.thumbnail_sha256.is_empty() {
-                return Ok(Some(post.thumbnail_sha256))
+            if thumb {
+                return Ok(post.thumbnail_sha256)
             }
-            if !thumb && !post.file_sha256.is_empty() {
-                return Ok(Some(post.file_sha256))
+            if !thumb {
+                return Ok(post.file_sha256)
             }
         }
         Ok(None)
@@ -656,6 +656,7 @@ impl DBClient {
             limit
         ).fetch_all(&self.pool)
         .await?;
+
         let mut threads = Vec::new();
         for thread_id in thread_ids {
             if let Some(thread) = self.get_thread(board, thread_id.resto, remove_hidden).await? {
@@ -669,9 +670,9 @@ impl DBClient {
             "
             SELECT
             posts.*,
-            files.sha256 as file_sha256,
-            thumbnails.hidden as mitsuba_file_hidden,
-            thumbnails.sha256 as thumbnail_sha256,
+            NULL as file_sha256,
+            false as mitsuba_file_hidden,
+            '' as thumbnail_sha256,
             CASE 
                 WHEN 
                 blacklist_thumbnail.sha256 IS NOT NULL 
@@ -937,8 +938,8 @@ impl DBClient {
             hash_post.last_modified = 0;
         }
         // ignore image hashes - image hashes are updated with set_post_files()
-        hash_post.file_sha256 = "".to_string();
-        hash_post.thumbnail_sha256 = "".to_string();
+        hash_post.file_sha256 = None;
+        hash_post.thumbnail_sha256 = None;
         hash_post.hash(& mut hasher);
         hasher.finish()
     }
