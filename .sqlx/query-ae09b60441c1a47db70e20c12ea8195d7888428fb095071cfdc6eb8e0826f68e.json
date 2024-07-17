@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            posts.*,\n            CASE\n                WHEN\n                    files.sha256 IS NOT NULL\n                THEN files.sha256\n                ELSE NULL\n            END AS file_sha256,\n            CASE\n                WHEN\n                    thumbnails.hidden IS NOT NULL\n                THEN thumbnails.hidden\n                ELSE NULL\n            END AS mitsuba_file_hidden,\n            CASE\n                WHEN\n                    thumbnails.sha256 IS NOT NULL\n                THEN thumbnails.sha256\n                ELSE NULL\n            END AS thumbnail_sha256,\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE posts_files.file_id IS NULL\n            AND board = $1\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            files.sha256 AS \"file_sha256?\",\n            thumbnails.hidden AS \"mitsuba_file_hidden?\",\n            thumbnails.sha256 AS \"thumbnail_sha256?\",\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE board = $1\n            AND (\n                $2 = '' OR to_tsvector('english', com) @@ plainto_tsquery('english', $2)\n                OR $3 = '' OR to_tsvector('english', name) @@ plainto_tsquery('english', $3)\n                OR $4 = '' OR to_tsvector('english', sub) @@ plainto_tsquery('english', $4)\n                OR $5 = '' OR to_tsvector('english', filename) @@ plainto_tsquery('english', $5)\n            )\n            ORDER BY time DESC\n            LIMIT $6 OFFSET $7\n            ",
   "describe": {
     "columns": [
       {
@@ -220,17 +220,17 @@
       },
       {
         "ordinal": 43,
-        "name": "file_sha256",
+        "name": "file_sha256?",
         "type_info": "Text"
       },
       {
         "ordinal": 44,
-        "name": "mitsuba_file_hidden",
+        "name": "mitsuba_file_hidden?",
         "type_info": "Bool"
       },
       {
         "ordinal": 45,
-        "name": "thumbnail_sha256",
+        "name": "thumbnail_sha256?",
         "type_info": "Text"
       },
       {
@@ -241,7 +241,13 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -288,11 +294,11 @@
       false,
       false,
       false,
-      null,
-      null,
-      null,
+      false,
+      false,
+      false,
       null
     ]
   },
-  "hash": "2ded94b7b040ed3eedffb8bf6041394ca18a936f039c2b1b25606efd54b07c56"
+  "hash": "ae09b60441c1a47db70e20c12ea8195d7888428fb095071cfdc6eb8e0826f68e"
 }

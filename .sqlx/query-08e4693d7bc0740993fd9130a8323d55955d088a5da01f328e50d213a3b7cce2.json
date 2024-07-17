@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            posts.*,\n            CASE\n                WHEN\n                    files.sha256 IS NOT NULL\n                THEN files.sha256\n                ELSE NULL\n            END AS file_sha256,\n            CASE\n                WHEN\n                    thumbnails.hidden IS NOT NULL\n                THEN thumbnails.hidden\n                ELSE NULL\n            END AS mitsuba_file_hidden,\n            CASE\n                WHEN\n                    thumbnails.sha256 IS NOT NULL\n                THEN thumbnails.sha256\n                ELSE NULL\n            END AS thumbnail_sha256,\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE board = ANY($1)\n            AND thumbnails.hidden = false\n            AND blacklist_thumbnail.sha256 IS NULL\n            AND blacklist_file.sha256 IS NULL\n            AND thumbnails.file_id IS NOT NULL\n            ORDER BY last_modified DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            files.sha256 AS \"file_sha256?\",\n            thumbnails.hidden AS \"mitsuba_file_hidden?\",\n            thumbnails.sha256 AS \"thumbnail_sha256?\",\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE posts_files.file_id IS NULL\n            AND board = $1\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
   "describe": {
     "columns": [
       {
@@ -220,17 +220,17 @@
       },
       {
         "ordinal": 43,
-        "name": "file_sha256",
+        "name": "file_sha256?",
         "type_info": "Text"
       },
       {
         "ordinal": 44,
-        "name": "mitsuba_file_hidden",
+        "name": "mitsuba_file_hidden?",
         "type_info": "Bool"
       },
       {
         "ordinal": 45,
-        "name": "thumbnail_sha256",
+        "name": "thumbnail_sha256?",
         "type_info": "Text"
       },
       {
@@ -241,9 +241,7 @@
     ],
     "parameters": {
       "Left": [
-        "TextArray",
-        "Int8",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -290,11 +288,11 @@
       false,
       false,
       false,
-      null,
-      null,
-      null,
+      false,
+      false,
+      false,
       null
     ]
   },
-  "hash": "459cfc6fe96380459bcd448cdbd8db7ddcb7b16d23f893c72b7ead22fd872fa0"
+  "hash": "08e4693d7bc0740993fd9130a8323d55955d088a5da01f328e50d213a3b7cce2"
 }

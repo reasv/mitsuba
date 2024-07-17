@@ -126,24 +126,9 @@ impl DBClient {
             "
             SELECT
             posts.*,
-            CASE
-                WHEN
-                    files.sha256 IS NOT NULL
-                THEN files.sha256
-                ELSE NULL
-            END AS file_sha256,
-            CASE
-                WHEN
-                    thumbnails.hidden IS NOT NULL
-                THEN thumbnails.hidden
-                ELSE NULL
-            END AS mitsuba_file_hidden,
-            CASE
-                WHEN
-                    thumbnails.sha256 IS NOT NULL
-                THEN thumbnails.sha256
-                ELSE NULL
-            END AS thumbnail_sha256,
+            files.sha256 AS \"file_sha256?\",
+            thumbnails.hidden AS \"mitsuba_file_hidden?\",
+            thumbnails.sha256 AS \"thumbnail_sha256?\",
             CASE 
                 WHEN 
                 blacklist_thumbnail.sha256 IS NOT NULL 
@@ -230,24 +215,9 @@ impl DBClient {
             "
             SELECT
             posts.*,
-            CASE
-                WHEN
-                    files.sha256 IS NOT NULL
-                THEN files.sha256
-                ELSE NULL
-            END AS file_sha256,
-            CASE
-                WHEN
-                    thumbnails.hidden IS NOT NULL
-                THEN thumbnails.hidden
-                ELSE NULL
-            END AS mitsuba_file_hidden,
-            CASE
-                WHEN
-                    thumbnails.sha256 IS NOT NULL
-                THEN thumbnails.sha256
-                ELSE NULL
-            END AS thumbnail_sha256,
+            files.sha256 AS \"file_sha256?\",
+            thumbnails.hidden AS \"mitsuba_file_hidden?\",
+            thumbnails.sha256 AS \"thumbnail_sha256?\",
             CASE 
                 WHEN 
                 blacklist_thumbnail.sha256 IS NOT NULL 
@@ -495,24 +465,9 @@ impl DBClient {
             "
             SELECT
             posts.*,
-            CASE
-                WHEN
-                    files.sha256 IS NOT NULL
-                THEN files.sha256
-                ELSE NULL
-            END AS file_sha256,
-            CASE
-                WHEN
-                    thumbnails.hidden IS NOT NULL
-                THEN thumbnails.hidden
-                ELSE NULL
-            END AS mitsuba_file_hidden,
-            CASE
-                WHEN
-                    thumbnails.sha256 IS NOT NULL
-                THEN thumbnails.sha256
-                ELSE NULL
-            END AS thumbnail_sha256,
+            files.sha256 AS \"file_sha256?\",
+            thumbnails.hidden AS \"mitsuba_file_hidden?\",
+            thumbnails.sha256 AS \"thumbnail_sha256?\",
             CASE 
                 WHEN 
                 blacklist_thumbnail.sha256 IS NOT NULL 
@@ -570,24 +525,9 @@ impl DBClient {
             "
             SELECT
             posts.*,
-            CASE
-                WHEN
-                    files.sha256 IS NOT NULL
-                THEN files.sha256
-                ELSE NULL
-            END AS file_sha256,
-            CASE
-                WHEN
-                    thumbnails.hidden IS NOT NULL
-                THEN thumbnails.hidden
-                ELSE NULL
-            END AS mitsuba_file_hidden,
-            CASE
-                WHEN
-                    thumbnails.sha256 IS NOT NULL
-                THEN thumbnails.sha256
-                ELSE NULL
-            END AS thumbnail_sha256,
+            files.sha256 AS \"file_sha256?\",
+            thumbnails.hidden AS \"mitsuba_file_hidden?\",
+            thumbnails.sha256 AS \"thumbnail_sha256?\",
             CASE 
                 WHEN 
                 blacklist_thumbnail.sha256 IS NOT NULL 
@@ -730,25 +670,10 @@ impl DBClient {
             "
             SELECT
             posts.*,
+            files.sha256 AS \"file_sha256?\",
+            thumbnails.hidden AS \"mitsuba_file_hidden?\",
+            thumbnails.sha256 AS \"thumbnail_sha256?\",
             CASE
-                WHEN
-                    files.sha256 IS NOT NULL
-                THEN files.sha256
-                ELSE NULL
-            END AS file_sha256,
-            CASE
-                WHEN
-                    thumbnails.hidden IS NOT NULL
-                THEN thumbnails.hidden
-                ELSE NULL
-            END AS mitsuba_file_hidden,
-            CASE
-                WHEN
-                    thumbnails.sha256 IS NOT NULL
-                THEN thumbnails.sha256
-                ELSE NULL
-            END AS thumbnail_sha256,
-            CASE 
                 WHEN 
                 blacklist_thumbnail.sha256 IS NOT NULL 
                 OR 
@@ -1256,24 +1181,9 @@ impl DBClient {
             "
             SELECT
             posts.*,
-            CASE
-                WHEN
-                    files.sha256 IS NOT NULL
-                THEN files.sha256
-                ELSE NULL
-            END AS file_sha256,
-            CASE
-                WHEN
-                    thumbnails.hidden IS NOT NULL
-                THEN thumbnails.hidden
-                ELSE NULL
-            END AS mitsuba_file_hidden,
-            CASE
-                WHEN
-                    thumbnails.sha256 IS NOT NULL
-                THEN thumbnails.sha256
-                ELSE NULL
-            END AS thumbnail_sha256,
+            files.sha256 AS \"file_sha256?\",
+            thumbnails.hidden AS \"mitsuba_file_hidden?\",
+            thumbnails.sha256 AS \"thumbnail_sha256?\",
             CASE 
                 WHEN 
                 blacklist_thumbnail.sha256 IS NOT NULL 
