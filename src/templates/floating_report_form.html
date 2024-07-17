@@ -1,0 +1,181 @@
+<div id="reportForm" class="extPanel reply" data-trackpos="QR-position" style="left: 57.8048%; top: 41.8726%; display:none;">
+    <div id="frfHeader" class="drag postblock">Reply to Thread No.<span id="frfTid">101290174</span><img alt="X"
+            src="/static/image/buttons/burichan/cross@2x.png" id="frfClose" class="extButton" title="Close Window">
+    </div>
+    <form name="frfPost" action="/g/post" method="post" enctype="multipart/form-data"><input
+            type="hidden" value="4194304" name="MAX_FILE_SIZE"><input type="hidden" value="regist" name="mode"><input
+            id="frfResto" type="hidden" value="101290174" name="resto">
+        <div id="frfForm">
+            <div><input name="name" type="text" tabindex="0" placeholder="Name"></div>
+            <div><input name="email" type="text" tabindex="0" id="frfEmail" placeholder="Options"></div>
+            <div><textarea name="com" cols="48" rows="4" wrap="soft" tabindex="0" placeholder="Comment"></textarea>
+            </div>
+            <div><input id="frfFile" name="upfile" type="file" tabindex="0" size="19"
+                    title="Shift + Click to remove the file"><input type="submit" value="Post" tabindex="0"></div>
+        </div>
+    </form>
+    <div id="frfError"></div>
+</div>
+
+<script type="text/javascript">
+    var FF = {};
+    FF.config = {};
+    FF.isOpen = false;
+    FF.start = function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            let openform = document.createElement('span');
+            openform.innerHTML = `[<a href="#">Open Tools</a>]`;
+            document
+                .getElementsByClassName('navLinks')[0]
+                .appendChild(openform);
+            openlink = openform.getElementsByTagName('a')[0];
+            openlink.addEventListener('click', function (e) {
+                e.preventDefault();
+                FF.show();
+            });
+        });
+    };
+
+    FF.show = function () {
+        if (FF.isOpen) {
+            return;
+        }
+        FF.isOpen = true;
+        document.getElementById('reportForm').style.display = 'block';
+        Draggable.set($.id('frfHeader'));
+        document.getElementById('frfClose').addEventListener('click', FF.hide);
+    };
+
+    FF.hide = function () {
+        if (!FF.isOpen) {
+            return;
+        }
+        FF.isOpen = false;
+        document.getElementById('reportForm').style.display = 'none';
+        document.getElementById('frfClose').removeEventListener('click', FF.hide);
+        Draggable.unset($.id('frfHeader'));
+    };
+
+    FF.start();
+</script>
+
+<style type="text/css">
+    #reportForm {
+        display: block;
+        position: fixed;
+        padding: 2px;
+        font-size: 10pt;
+    }
+    #frfepHeader,
+    #frfHeader {
+        font-size: 10pt;
+        text-align: center;
+        margin-bottom: 1px;
+        padding: 0;
+        height: 18px;
+        line-height: 18px;
+    }
+    #frfHeader .left { float: left; margin-left: 3px; }
+    #frfepClose,
+    #frfClose {
+        float: right;
+    }
+    #frfCaptchaContainer { height: 78px; }
+    #frfForm > div {
+    clear: both;
+    }
+    #reportForm input[type="text"],
+    #reportForm textarea,
+    #reportForm #recaptcha_response_field {
+        border: 1px solid #aaa;
+        font-family: arial,helvetica,sans-serif;
+        font-size: 10pt;
+        outline: medium none;
+        width: 296px;
+        padding: 2px;
+        margin: 0 0 1px 0;
+    }
+    .tomorrow #reportForm input[type="text"],
+    .tomorrow #reportForm textarea,
+    .tomorrow #reportForm #recaptcha_response_field {
+        border: 1px solid #515151;
+        background-color: #282a2e;
+        color: #c5c8c6;
+    }
+    .tomorrow #reportForm input[type="text"]:focus,
+    .tomorrow #reportForm textarea:focus {
+        border: 1px solid #757575;
+    }
+    #reportForm textarea {
+        min-width: 296px;
+        float: left;
+    }
+    .tomorrow #reportForm input::placeholder {
+        color: 919191 !important;
+    }
+    #reportForm input[type="submit"] {
+        width: 75px;
+        margin: 0;
+        float: right;
+    }
+    #reportForm #frfCapField {
+        display: block;
+        margin-top: 1px;
+    }
+    #frfCaptchaContainer > div > div { width: 300px !important; }
+    #reportForm input.presubmit {
+        margin-right: 1px;
+        width: 212px;
+        float: left;
+    }
+    #frfFile {
+        width: 130px;
+        margin-right: 5px;
+    }
+    .yotsuba_new #frfFile {
+        color:black;
+    }
+    #frfSpoiler {
+        display: inline;
+    }
+    #frfError {
+        width: 292px;
+        display: none;
+        font-family: monospace;
+        background-color: #E62020;
+        font-size: 12px;
+        color: white;
+        padding: 3px 5px;
+        text-shadow: 0 1px rgba(0, 0, 0, 0.20);
+        clear: both;
+    }
+    #frfError a:hover,
+    #frfError a {
+        color: white !important;
+        text-decoration: underline;
+    }
+    #reportForm input[type="text"],
+    #reportForm textarea,
+    .extPanel input[type="text"],
+    .extPanel textarea {
+        font-size: 16px;
+    }
+    #frfDummyFile {
+        float: left;
+        margin-right: 5px;
+        width: 220px;
+        cursor: default;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    #frfDummyFileLabel {
+    margin-left: 3px;
+    }
+    #frf-painter-ctrl { text-align: center; }
+    #frf-painter-ctrl label { margin-right: 4px; }
+</style>
