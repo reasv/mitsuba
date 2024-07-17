@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            posts.*,\n            files.sha256 as file_sha256,\n            thumbnails.hidden as mitsuba_file_hidden,\n            thumbnails.sha256 as thumbnail_sha256,\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE posts_files.file_id IS NULL\n            AND board = $1\n            AND tim != 0 AND filedeleted = 0 AND deleted_on = 0\n            ",
+  "query": "\n            SELECT\n            posts.*,\n            CASE\n                WHEN\n                    files.sha256 IS NOT NULL\n                THEN files.sha256\n                ELSE NULL\n            END AS file_sha256,\n            CASE\n                WHEN\n                    thumbnails.hidden IS NOT NULL\n                THEN thumbnails.hidden\n                ELSE NULL\n            END AS mitsuba_file_hidden,\n            CASE\n                WHEN\n                    thumbnails.sha256 IS NOT NULL\n                THEN thumbnails.sha256\n                ELSE NULL\n            END AS thumbnail_sha256,\n            CASE \n                WHEN \n                blacklist_thumbnail.sha256 IS NOT NULL \n                OR \n                blacklist_file.sha256 IS NOT NULL\n                THEN true\n                ELSE false\n            END AS mitsuba_file_blacklisted\n            FROM posts\n            \n            LEFT JOIN posts_files\n            ON posts_files.post_id = posts.post_id\n            AND posts_files.idx = 0\n            \n            LEFT JOIN files\n            ON files.file_id = posts_files.file_id\n            \n            LEFT JOIN files as thumbnails\n            ON thumbnails.file_id = posts_files.thumbnail_id\n\n            LEFT JOIN file_blacklist as blacklist_thumbnail\n            ON thumbnails.sha256 = blacklist_thumbnail.sha256\n            \n            LEFT JOIN file_blacklist as blacklist_file\n            ON files.sha256 = blacklist_file.sha256\n\n            WHERE board = $1\n            AND (no = $2 OR resto = $2)\n            ORDER BY no ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -241,7 +241,8 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Int8"
       ]
     },
     "nullable": [
@@ -288,11 +289,11 @@
       false,
       false,
       false,
-      false,
-      false,
-      false,
+      null,
+      null,
+      null,
       null
     ]
   },
-  "hash": "5592a271d2d4026ad791a01f5ca419ad31eb869b1c5549d3b767fa9c7b02e9c0"
+  "hash": "4db56e6b958d6d8e1c1ca7aecda10fc19c7a8ae0bdf19ef20c501b0970e61188"
 }
