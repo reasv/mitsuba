@@ -1,0 +1,5 @@
+ALTER TABLE image_backlog
+ALTER COLUMN file_sha256 DROP NOT NULL;
+
+ALTER TABLE image_backlog
+ALTER COLUMN thumbnail_sha256 DROP NOT NULL;

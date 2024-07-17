@@ -62,8 +62,8 @@
       false,
       false,
       false,
-      false,
-      false
+      true,
+      true
     ]
   },
   "hash": "f88cd0fdeb5a2544a940992d55b84960a486f3b9e443c8eb6b609f36e731fc0a"
